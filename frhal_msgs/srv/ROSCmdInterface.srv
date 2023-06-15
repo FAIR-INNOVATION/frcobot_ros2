@@ -1,0 +1,4 @@
+string cmd_str #ros用户输入的字符串指令，比如movej(p1,100)
+---
+string cmd_res #创建结果反馈，0-成功，-1-失败
+
