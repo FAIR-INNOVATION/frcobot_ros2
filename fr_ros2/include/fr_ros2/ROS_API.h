@@ -37,10 +37,10 @@ class ROS_API:public FRAPI_base,public rclcpp::Node{
 public:
     ROS_API(const std::string node_name);
     ~ROS_API();
-    //普通设置类
-    int  DragTeachSwitch(std::string para);//拖动示教模式切换
-    int  RobotEnable(std::string para);//机械臂使能
-    int  Mode(std::string para);//手动模式，自动模式切换
+    //Common settings class
+    int  DragTeachSwitch(std::string para);//Drag to switch teaching mode
+    int  RobotEnable(std::string para);//Arm enable
+    int  Mode(std::string para);//Manual mode, automatic mode switching
     int  SetSpeed(std::string para);
     int  SetToolCoord(std::string para);
     int  SetToolList(std::string para);
@@ -53,7 +53,7 @@ public:
     int  SetRobotInstallPos(std::string para);
     int  SetRobotInstallAngle(std::string para);
 
-    //安全配置
+    //Security configuration
     int  SetAnticollision(std::string para);
     int  SetCollisionStrategy(std::string para);
     int  SetLimitPositive(std::string para);
@@ -65,17 +65,17 @@ public:
     int  SetFrictionValue_ceiling(std::string para);
     int  SetFrictionValue_freedom(std::string para);
 
-    //外设控制
+    //Peripheral control
     int  ActGripper(std::string para);
     int  MoveGripper(std::string para);
     
-    //IO控制
+    //IO control
     int  SetDO(std::string para);
     int  SetToolDO(std::string para);
     int  SetAO(std::string para);
     int  SetToolAO(std::string para);
 
-    //运动指令
+    //Motion command
     int  StartJOG(std::string para);
     int  StopJOG(std::string para);
     int  ImmStopJOG(std::string para);
@@ -97,31 +97,31 @@ public:
     int  PointsOffsetDisable(std::string para);
 
 private:
-    int (ROS_API:: *funcP)(std::string para);//函数指针是有作用域的，所以全局函数的指针和类内成员函数的指针定义有很大不同，这里不能用typedef
-    int _send_data_factory_callback(std::string data);//模板函数,用于指令字符串数据的发送和反馈接收确认
-    int _ParseRecvData(std::string str);//反馈值解析函数
+    int (ROS_API:: *funcP)(std::string para);//Function pointers have scope, so the definitions of pointers to global functions and pointers to member functions in a class are very different. Typedef cannot be used here
+    int _send_data_factory_callback(std::string data);//Template function, used to send instruction string data and confirm receipt of feedback
+    int _ParseRecvData(std::string str);//Feedback value analysis function
     void _ParseROSCommandData_callback(const std::shared_ptr<frhal_msgs::srv::ROSCmdInterface::Request> req,
-                                             std::shared_ptr<frhal_msgs::srv::ROSCmdInterface::Response> res);//用于解析用户发送的ROS接口指令
+                                             std::shared_ptr<frhal_msgs::srv::ROSCmdInterface::Response> res);//Used to parse the ROS interface instructions sent by the user
     void _selectfunc(std::string func_name);
     int _def_jnt_position(std::string pos);
     int _def_cart_position(std::string pos);
     std::string _get_variable(std::string para_list);
-    int _retry_count;//重试次数
-    uint16_t _cmd_counter;//指令数据帧计数器
+    int _retry_count;//Number of retries
+    uint16_t _cmd_counter;//Command Data Frame Counter
     std::string _cur_func_name;
     int _cur_id;
-    int _recv_data_cmdcount;//接受到的回复信息中指令计数器的值
-    int _recv_data_cmdid;//接受到的回复信息中指令id
-    int _recv_data_res;//接受到的回复信息中指令反馈结果
+    int _recv_data_cmdcount;//The value of the instruction counter in the received reply message
+    int _recv_data_cmdid;//Command id in the received reply message
+    int _recv_data_res;//The command feedback result in the received reply message
     float _kin_res[6];
-    rclcpp::Service<frhal_msgs::srv::ROSCmdInterface>::SharedPtr _recv_ros_command_server;//用于接受用户发送过来的字符串指令
-    int _robot_install;//机械臂安装方式
-    std::vector<JointPos> _cmd_jnt_pos_list;//存储关节数据点
-    std::vector<DescPose> _cmd_cart_pos_list;//存储笛卡尔数据点
+    rclcpp::Service<frhal_msgs::srv::ROSCmdInterface>::SharedPtr _recv_ros_command_server;//Used to accept string commands sent by users
+    int _robot_install;//Arm installation method
+    std::vector<JointPos> _cmd_jnt_pos_list;//Store joint data points
+    std::vector<DescPose> _cmd_cart_pos_list;//Store Cartesian data points
     std::mutex _mtx;
     std::string _controller_ip;
-    int port1 = 8080;//TCP命令发送端口
-    int port2 = 8082;//脚本传输和自定义数据流发送端口
+    int port1 = 8080;//TCP command sending port
+    int port2 = 8082;//Script transmission and custom data stream sending port
     int _socketfd1, _socketfd2;
     rclcpp::TimerBase::SharedPtr _locktimer;
 

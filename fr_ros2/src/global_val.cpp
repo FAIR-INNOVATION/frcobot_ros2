@@ -16,7 +16,7 @@ std::map<std::string,int>& glob_FR_cmd_id(){
     {"SetLoadWeight",306},
     {"SetLoadCoord",307},
     {"SetRobotInstallPos",337},
-    {"SetRobotInstallAngle",631},//通用设置
+    {"SetRobotInstallAngle",631},//General settings
     {"SetAnticollision",305},
     {"SetCollisionStrategy",569},
     {"SetLimitPositive",308},
@@ -25,14 +25,14 @@ std::map<std::string,int>& glob_FR_cmd_id(){
     {"FrictionCompensationOnOff",338},
     {"SetFrictionValue_level",541},
     {"SetFrictionValue_wall",542},
-    {"SetFrictionValue_ceiling",543},//安全设置
+    {"SetFrictionValue_ceiling",543},//Security settings
     {"SetFrictionValue_freedom",637},
     {"ActGripper",227},
-    {"MoveGripper",228},//外设控制
+    {"MoveGripper",228},//Peripheral control
     {"SetDO",204},
     {"SetToolDO",210},
     {"SetAO",209},
-    {"SetToolAO",211},//IO控制
+    {"SetToolAO",211},//IO control
     {"StartJOG",232},
     {"StopJOG",233},
     {"ImmStopJOG",242},
@@ -49,7 +49,7 @@ std::map<std::string,int>& glob_FR_cmd_id(){
     {"NewSplineEnd",554},
     {"StopMotion",102},
     {"PointsOffsetEnable",718},
-    {"PointsOffsetDisable",719}//运动指令
+    {"PointsOffsetDisable",719}//Motion command
 };
     return tmp;
 }

@@ -1,39 +1,39 @@
 #include "state_feedback.h"
 
 
-/******状态信息获取节点******/
+/******Status information acquisition node******/
 /*************************/
 state_recv_thread::state_recv_thread(const std::string node_name):rclcpp::Node(node_name,
                    rclcpp::NodeOptions().use_intra_process_comms(true))
 {
     using namespace std::chrono_literals;
-    _controller_ip = "192.168.58.2";//控制器默认ip地址
-    std::cout << "开始创建状态反馈TCP socket" << std::endl;
-    _socketfd1 = socket(AF_INET,SOCK_STREAM,0);//状态获取端口只有TCP
+    _controller_ip = "192.168.58.2";//Controller default ip address
+    std::cout << "Start to create status feedback TCP socket" << std::endl;
+    _socketfd1 = socket(AF_INET,SOCK_STREAM,0);//The status acquisition port is only TCP
     _socketfd2 = socket(AF_INET,SOCK_STREAM,0);
     if(_socketfd1 == -1 || _socketfd2 == -1){
-        std::cout << "错误: 创建socket失败！" << std::endl;
-        exit(0);//创建套字失败，丢出错误
+        std::cout << "Error: Failed to create socket!" << std::endl;
+        exit(0);//Failed to create socket, throwing error
     }else{
-        std::cout << "创建状态反馈socket成功，开始连接控制器..." << std::endl;
+        std::cout << "The status feedback socket is created successfully, and the connection to the controller starts..." << std::endl;
         struct sockaddr_in tcp_client1,tcp_client2;
         tcp_client1.sin_family = AF_INET;
         tcp_client2.sin_family = AF_INET;
-        tcp_client1.sin_port = htons(port1);//8083端口
-        tcp_client2.sin_port = htons(port2);//30004端口
+        tcp_client1.sin_port = htons(port1);//Port 8083
+        tcp_client2.sin_port = htons(port2);//Port 30004
         tcp_client1.sin_addr.s_addr = inet_addr(_controller_ip.c_str());
         tcp_client2.sin_addr.s_addr = inet_addr(_controller_ip.c_str());
 
-        //尝试连接控制器
+        //Try to connect to the controller
         int res1 = connect(_socketfd1,(struct sockaddr *)&tcp_client1,sizeof(tcp_client1));
         int res2 = connect(_socketfd2,(struct sockaddr *)&tcp_client2,sizeof(tcp_client2));
         if(res1 || res2){
-            std::cout << "错误:无法连接控制器数据端口，程序退出!" << std::endl;
-            exit(0);//连接失败，丢出错误并返回
+            std::cout << "ERROR: Failed to connect to controller data port, program exited!" << std::endl;
+            exit(0);//Connection fails, throws an error and returns
         }else{
-            std::cout << "控制器状态端口连接成功" << std::endl;
+            std::cout << "Controller status port connection successful" << std::endl;
             /*
-            //下面开始RTDE端口配置及启动信息发送，确认启动成功后即可开始后续程序运行
+            //Next, start the RTDE port configuration and send the startup information. After confirming that the startup is successful, you can start the subsequent program operation.
             std::string RTDE_config_data,RTDE_start_data;
             std::string config_data = std::string("actual_p,actual_dp,actual_current,\
                                actual_TCP_pose,actual_TCP_speed,actual_TCP_force");
@@ -41,10 +41,10 @@ state_recv_thread::state_recv_thread(const std::string node_name):rclcpp::Node(n
             std::string config_data_len = std::to_string(config_data.size());
             std::string config_data_checksum = std::to_string(config_data_head.size() + config_data.size() + config_data_len.size());
             RTDE_config_data = config_data_head + config_data_len + config_data + config_data_checksum;
-            send(_socketfd2,RTDE_config_data.c_str(),RTDE_config_data.size(),0);//30004 RTDE端口发送配置信息
+            send(_socketfd2,RTDE_config_data.c_str(),RTDE_config_data.size(),0);//30004 RTDE Port sending configuration information
             config_data_head = std::string("0x5A5A120");
             RTDE_start_data = config_data_head + std::to_string(config_data_head.size());
-            send(_socketfd2,RTDE_start_data.c_str(),RTDE_start_data.size(),0);//30004 RTDE端口发送启动信息
+            send(_socketfd2,RTDE_start_data.c_str(),RTDE_start_data.size(),0);//30004 RTDE Port sends start information
             */
 
             // char recv_buff[128];
@@ -52,17 +52,17 @@ state_recv_thread::state_recv_thread(const std::string node_name):rclcpp::Node(n
             // while(recv(_socketfd2,recv_buff,sizeof(recv_buff),0) == -1){ 
             //     cnt++;
             //     if(cnt == 50){
-            //         std::cout << "警告:实时数据端口未配置成功,程序退出" << std::endl;
+            //         std::cout << "Warning: The real-time data port is not configured successfully, and the program exits" << std::endl;
             //         exit(0);
             //     }
             // }
 
-            //将两个socket设置成非阻塞模式
+            //Set the two sockets to non-blocking mode
             int flags1 = fcntl(_socketfd1,F_GETFL,0);
             int flags2 = fcntl(_socketfd2,F_GETFL,0);
             fcntl(_socketfd1,F_SETFL,flags1|SOCK_NONBLOCK);
             fcntl(_socketfd2,F_SETFL,flags2|SOCK_NONBLOCK);
-            //std::cout << "数据反馈端口配置成功" << std::endl;
+            //std::cout << "The data feedback port configuration is successful" << std::endl;
             _state_publisher = this->create_publisher<frhal_msgs::msg::FRState>(
                 "nonrt_state_data",
                 10
@@ -71,14 +71,14 @@ state_recv_thread::state_recv_thread(const std::string node_name):rclcpp::Node(n
                 "rt_state_data",
                 10
             );
-            _locktimer = this->create_wall_timer(100ms,std::bind(&state_recv_thread::_state_recv_callback,this));//创建一个定时器任务用于获取非实时状态数据，触发间隔为100ms
-            //_rt_locktimer = this->create_wall_timer(8ms,std::bind(&state_recv_thread::_rt_state_recv_callback,this));//创建一个定时器人物用于获取实时状态数据，触发间隔8ms
+            _locktimer = this->create_wall_timer(100ms,std::bind(&state_recv_thread::_state_recv_callback,this));//Create a timer task to obtain non-real-time status data, with a trigger interval of 100ms
+            //_rt_locktimer = this->create_wall_timer(8ms,std::bind(&state_recv_thread::_rt_state_recv_callback,this));//Create a timer character to obtain real-time status data, and the trigger interval is 8ms
         }
     }
 }
 
 state_recv_thread::~state_recv_thread(){
-    //关闭并销毁socket
+    //close and destroy socket
     if(_socketfd1 != -1){
         close(_socketfd1);
     }
