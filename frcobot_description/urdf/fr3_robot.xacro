@@ -1,0 +1,472 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
+     Commit Version: 1.5.1-0-g916b5db  Build Version: 1.5.7152.31018
+     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+<robot
+  name="FR3-V5.0">
+
+  <link name="world">
+  </link>
+  <joint name="world" type="fixed">
+    <parent link="world"/>
+    <child link="base_link"/>
+  </joint>
+
+  <link
+    name="base_link">
+    <inertial>
+      <origin
+        xyz="-0.0004939 -0.0004509 0.032214"
+        rpy="0 0 0" />
+      <mass
+        value="0.77817" />
+      <inertia
+        ixx="0.0013699"
+        ixy="1.1455E-05"
+        ixz="-1.0521E-05"
+        iyy="0.0013695"
+        iyz="-9.7516E-06"
+        izz="0.0019676" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://frcobot_description/meshes/fr3/visual/base_link.DAE" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.89804 0.91765 0.92941 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://frcobot_description/meshes/fr3/collision/base_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <link
+    name="shoulder_Link">
+    <inertial>
+      <origin
+        xyz="0.00215579656064623 0.0675269492548249 0.000166380479814213"
+        rpy="0 0 0" />
+      <mass
+        value="2.37326151468102" />
+      <inertia
+        ixx="0.00464437636424801"
+        ixy="3.37752841443834E-06"
+        ixz="-6.35167995342536E-06"
+        iyy="0.00257740285163467"
+        iyz="2.76302522141466E-07"
+        izz="0.00472586337172682" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://frcobot_description/meshes/fr3/visual/shoulder_Link.DAE" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.898039215686275 0.917647058823529 0.929411764705882 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://frcobot_description/meshes/fr3/collision/shoulder_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="j1"
+    type="revolute">
+    <origin
+      xyz="0 0 0.074"
+      rpy="1.5708 0 -1.494083" />
+    <!-- <origin
+      xyz="0 0 0.074"
+      rpy="1.5708 0 0.076717" /> -->
+    <parent
+      link="base_link" />
+    <child
+      link="shoulder_Link" />
+    <axis
+      xyz="0 1 0" />
+    <limit
+      lower="-3.0543261"
+      upper="3.0543261"
+      effort="150"
+      velocity="3.15" />
+    <calibration
+      rising="0"
+      falling="0" />
+    <dynamics
+      damping="0"
+      friction="0" />
+    <safety_controller
+      soft_upper_limit="3.0543261"
+      soft_lower_limit="-3.0543261"
+      k_position="100"
+      k_velocity="40" />
+  </joint>
+  <link
+    name="upperarm_Link">
+    <inertial>
+      <origin
+        xyz="0.14052615364316 3.19832122998853E-06 -0.0673220294744213"
+        rpy="0 0 0" />
+      <mass
+        value="5.20488445581566" />
+      <inertia
+        ixx="0.0100877805389267"
+        ixy="-1.86156773781519E-06"
+        ixz="7.99549951803734E-16"
+        iyy="0.0114295275122961"
+        iyz="-4.02196283458795E-16"
+        izz="0.0071309461346971" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0.13"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://frcobot_description/meshes/fr3/visual/upperarm_Link.DAE" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.898039215686275 0.917647058823529 0.929411764705882 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://frcobot_description/meshes/fr3/collision/upperarm_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="j2"
+    type="revolute">
+    <origin
+      xyz="0.048656 0.0652 0.0037401"
+      rpy="3.141593 -1.647517 0" /> 
+    <parent
+      link="shoulder_Link" />
+    <child
+      link="upperarm_Link" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-4.6251"
+      upper="1.4835"
+      effort="150"
+      velocity="3.15" />
+    <calibration
+      rising="0"
+      falling="0" />
+    <dynamics
+      damping="0"
+      friction="0" />
+    <safety_controller
+      soft_upper_limit="1.4835"
+      soft_lower_limit="-4.6251"
+      k_position="100"
+      k_velocity="40" />
+  </joint>
+  <link
+    name="forearm_Link">
+    <inertial>
+      <origin
+        xyz="0.192635357876029 0.0487629311118559 -4.94516124512836E-06"
+        rpy="0 0 0" />
+      <mass
+        value="2.36119902745376" />
+      <inertia
+        ixx="0.0035452659318639"
+        ixy="-7.3938698701374E-05"
+        ixz="7.22720216440109E-07"
+        iyy="0.00303455488056437"
+        iyz="-2.92335000076181E-07"
+        izz="0.00417679573122483" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0.0025 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://frcobot_description/meshes/fr3/visual/forearm_Link.DAE" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.898039215686275 0.917647058823529 0.929411764705882 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://frcobot_description/meshes/fr3/collision/forearm_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="j3"
+    type="revolute">
+    <origin
+      xyz="0.28 0 0"
+      rpy="1.5708 0 0" />
+    <parent
+      link="upperarm_Link" />
+    <child
+      link="forearm_Link" />
+    <axis
+      xyz="0 1 0" />
+    <limit
+      lower="-2.8274"
+      upper="2.8274"
+      effort="150"
+      velocity="3.15" />
+    <calibration
+      rising="0"
+      falling="0" />
+    <dynamics
+      damping="0"
+      friction="0" />
+    <safety_controller
+      soft_upper_limit="2.8274"
+      soft_lower_limit="-2.8274"
+      k_position="100"
+      k_velocity="40" />
+  </joint>
+  <link
+    name="wrist1_Link">
+    <inertial>
+      <origin
+        xyz="-0.0454134679338634 0.00172297187615156 4.23850043613353E-07"
+        rpy="0 0 0" />
+      <mass
+        value="1.74643097684016" />
+      <inertia
+        ixx="0.00262730745088668"
+        ixy="1.0106539916888E-05"
+        ixz="-3.62880005254338E-08"
+        iyy="0.00158503705125863"
+        iyz="1.43437921244792E-08"
+        izz="0.00273363370089196" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0.106 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://frcobot_description/meshes/fr3/visual/wrist1_Link.DAE" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.898039215686275 0.917647058823529 0.929411764705882 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://frcobot_description/meshes/fr3/collision/wrist1_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="j4"
+    type="revolute">
+    <origin
+      xyz="0.24001 -0.004399 0"
+      rpy="1.5708 0 1.5708" />
+    <parent
+      link="forearm_Link" />
+    <child
+      link="wrist1_Link" />
+    <axis
+      xyz="1 0 0" />
+    <limit
+      lower="-4.6251"
+      upper="1.4835"
+      effort="28"
+      velocity="3.2" />
+    <calibration
+      rising="0"
+      falling="0" />
+    <dynamics
+      damping="0"
+      friction="0" />
+    <safety_controller
+      soft_upper_limit="1.4835"
+      soft_lower_limit="-4.6251"
+      k_position="100"
+      k_velocity="40" />
+  </joint>
+  <link
+    name="wrist2_Link">
+    <inertial>
+      <origin
+        xyz="-0.0454134586122821 0.00172297186091633 4.35135087973705E-07"
+        rpy="0 0 0" />
+      <mass
+        value="1.74643097580082" />
+      <inertia
+        ixx="0.00262730745010995"
+        ixy="1.01065424165879E-05"
+        ixz="-3.62775265607763E-08"
+        iyy="0.00158503704914344"
+        iyz="1.44762939343378E-08"
+        izz="0.00273363369934455" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://frcobot_description/meshes/fr3/visual/wrist2_Link.DAE" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.898039215686275 0.917647058823529 0.929411764705882 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://frcobot_description/meshes/fr3/collision/wrist2_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="j5"
+    type="revolute">
+    <origin
+      xyz="0.057 -0.15 0"
+      rpy="3.141593 0 -1.5708" />
+    <parent
+      link="wrist1_Link" />
+    <child
+      link="wrist2_Link" />
+    <axis
+      xyz="1 0 0" />
+    <limit
+      lower="-3.0543"
+      upper="3.0543"
+      effort="28"
+      velocity="3.2" />
+    <calibration
+      rising="0"
+      falling="0" />
+    <dynamics
+      damping="0"
+      friction="0" />
+    <safety_controller
+      soft_upper_limit="3.0543"
+      soft_lower_limit="-3.0543"
+      k_position="100"
+      k_velocity="40" />
+  </joint>
+  <link
+    name="wrist3_Link">
+    <inertial>
+      <origin
+        xyz="-2.38767308875232E-05 0.0229240957730459 7.5877926720147E-05"
+        rpy="0 0 0" />
+      <mass
+        value="1.05057803931133" />
+      <inertia
+        ixx="0.000555936779063335"
+        ixy="5.09768154107326E-07"
+        ixz="1.02477772503103E-06"
+        iyy="0.000831680492730721"
+        iyz="2.52800063915235E-08"
+        izz="0.000554791835939161" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://frcobot_description/meshes/fr3/visual/wrist3_Link.DAE" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="0.898039215686275 0.917647058823529 0.929411764705882 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://frcobot_description/meshes/fr3/collision/wrist3_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="j6"
+    type="revolute">
+    <origin
+      xyz="-0.048801 -0.0532 0"
+      rpy="3.1416 -0.5 0" />
+    <parent
+      link="wrist2_Link" />
+    <child
+      link="wrist3_Link" />
+    <axis
+      xyz="0 1 0" />
+    <limit
+      lower="-3.0543"
+      upper="3.0543"
+      effort="28"
+      velocity="3.2" />
+    <calibration
+      rising="0"
+      falling="0" />
+    <dynamics
+      damping="0"
+      friction="0" />
+    <safety_controller
+      soft_upper_limit="3.0543"
+      soft_lower_limit="-3.0543"
+      k_position="100"
+      k_velocity="40" />
+  </joint>
+</robot>
