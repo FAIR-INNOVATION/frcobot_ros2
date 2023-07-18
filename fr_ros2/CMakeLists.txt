@@ -14,19 +14,31 @@ find_package(frhal_msgs REQUIRED)
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
-
-set(HEADFILE_DIR ./include/fr_ros2/state_feedback.h ./include/fr_ros2/global_val.h 
-                 ./include/fr_ros2/data_type_def.h ./include/fr_ros2/ROS_API.h)
-set(SRC_DIR ./src/main.cpp ./src/state_feedback.cpp ./src/global_val.cpp ./src/ROS_API.cpp)
+set(HEADFILE_DIR)
+file(GLOB HEADFILE_DIR ./include/fr_ros2/*.h)
+set(SRC_DIR)
+file(GLOB SRC_DIR ./src/*.cpp)
+set(EXP_HEADFILE_DIR)
+file(GLOB EXP_HEADFILE_DIR ./examples/include/*.hpp)
+set(EXP_SRC_DIR)
+file(GLOB EXP_SRC_DIR ./examples/src/*.cpp)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/fr_ros2)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/examples/include)
 
 add_executable(ros2_cmd_server  ${HEADFILE_DIR} ${SRC_DIR})
+add_executable(srv_test_client ${EXP_HEADFILE_DIR} ${EXP_SRC_DIR})
 
-ament_target_dependencies(ros2_cmd_server rclcpp std_msgs frhal_msgs)
+ament_target_dependencies(ros2_cmd_server rclcpp frhal_msgs)
+ament_target_dependencies(srv_test_client rclcpp frhal_msgs)
 
 install(TARGETS
   ros2_cmd_server
+  DESTINATION lib/${PROJECT_NAME}
+  )
+
+install(TARGETS
+  srv_test_client
   DESTINATION lib/${PROJECT_NAME}
   )
 

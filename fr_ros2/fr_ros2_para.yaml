@@ -44,5 +44,6 @@
           reliability: reliable
     toolcoord_install: 0
     toolcoord_type: 0
+    ServoJT_timeinterval: 0.008
     use_sim_time: false
 
