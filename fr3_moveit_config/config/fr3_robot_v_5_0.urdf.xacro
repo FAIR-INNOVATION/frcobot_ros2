@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="fr3_robot_v_5_0">
+    <xacro:arg name="initial_positions_file" default="initial_positions.yaml" />
+
+    <!-- Import fr3_robot_v_5_0 urdf file -->
+    <xacro:include filename="$(find frcobot_description)/urdf/fr3_robot.xacro" />
+
+    <!-- Import control_xacro -->
+    <xacro:include filename="fr3_robot_v_5_0.ros2_control.xacro" />
+
+
+    <xacro:fr3_robot_v_5_0_ros2_control name="FakeSystem" initial_positions_file="$(arg initial_positions_file)"/>
+
+</robot>

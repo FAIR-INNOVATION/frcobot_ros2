@@ -1,0 +1,25 @@
+moveit_setup_assistant_config:
+  urdf:
+    package: frcobot_description
+    relative_path: urdf/fr3_robot.xacro
+  srdf:
+    relative_path: config/fr3_robot_v_5_0.srdf
+  package_settings:
+    author_name: siwonMo
+    author_email: zxcvbnm914121@gmail.com
+    generated_timestamp: 1689837919
+  control_xacro:
+    command:
+      - position
+    state:
+      - position
+      - velocity
+  modified_urdf:
+    xacros:
+      - control_xacro
+  control_xacro:
+    command:
+      - position
+    state:
+      - position
+      - velocity
