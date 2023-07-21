@@ -21,10 +21,10 @@ std::string FRAPI_base::command_factry(std::string name, uint16_t counter, std::
             cmd_id = "377";
         }
     }else{
-        cmd_id = std::to_string(iter->second);//The enumeration class is essentially int type data, so it needs to be converted into a string
+        cmd_id = std::to_string(iter->second);//枚举类本质是int型数据，因此需要转换成字符串
     }
-    std::string cmd_data = name + "(" + data + ")";//Command data into string
-    std::string cmd_len = std::to_string(cmd_data.size());//Size returns the length of the string, the type is uint, which needs to be converted into a string
+    std::string cmd_data = name + "(" + data + ")";//指令数据转成string
+    std::string cmd_len = std::to_string(cmd_data.size());//size返回字符串长度，类型是uint，需要转换成字符串
     std::string cmd_counter = std::to_string(counter);
     cmd_send = _cmd_head + _cmd_interval + cmd_counter + _cmd_interval + cmd_id 
                + _cmd_interval + cmd_len + _cmd_interval + cmd_data + _cmd_interval + _cmd_tail;
@@ -41,22 +41,22 @@ ROS_API::ROS_API(const std::string node_name):FRAPI_base(),rclcpp::Node(node_nam
 {
     using namespace std::chrono_literals;
     _cmd_counter = 0;
-    _retry_count = 10;//Initialization command feedback receiving retry times
     _recv_data_cmdcount = 0;
-    this->declare_parameter<uint8_t>("toolcoord_install",0);//The default tool is installed at the end of the robot
-    this->declare_parameter<uint8_t>("toolcoord_type",0);//The default is the tool coordinate system
-    this->declare_parameter<uint8_t>("collision_mode",0);//Collision level mode, default is level
-    this->declare_parameter<uint8_t>("collision_config",1);//Collision configuration file settings, the configuration file is not updated by default
+    _skip_answer_flag = 0;
+    this->declare_parameter<uint8_t>("toolcoord_install",0);//默认工具安装在机器人末端
+    this->declare_parameter<uint8_t>("toolcoord_type",0);//默认是工具坐标系
+    this->declare_parameter<uint8_t>("collision_mode",0);//碰撞等级模式，默认是等级
+    this->declare_parameter<uint8_t>("collision_config",1);//碰撞配置文件设置，默认不更新配置文件
     this->declare_parameter<uint8_t>("gripper_vel",50);
     this->declare_parameter<uint8_t>("gripper_force",50);
     this->declare_parameter<uint8_t>("gripper_maxtime",30000);
-    this->declare_parameter<uint8_t>("gripper_block",1);//Default gripper control non-blocking
-    this->declare_parameter<uint8_t>("DO_smooth",0);//Default DO is not smooth
-    this->declare_parameter<uint8_t>("DO_block",1);//By default DO is non-blocking
-    this->declare_parameter<uint8_t>("AO_block",1);//By default AO is non-blocking
-    this->declare_parameter<uint8_t>("JOG_acc",40);//JOG default acceleration 40
-    this->declare_parameter<int>("JOG_maxdis",5);//JOG default single step 5mm
-    this->declare_parameter<int>("MoveJLC_tool",1);
+    this->declare_parameter<uint8_t>("gripper_block",1);//默认夹爪控制非阻塞
+    this->declare_parameter<uint8_t>("DO_smooth",0);//默认DO不平滑
+    this->declare_parameter<uint8_t>("DO_block",1);//默认DO非阻塞
+    this->declare_parameter<uint8_t>("AO_block",1);//默认AO非阻塞
+    this->declare_parameter<uint8_t>("JOG_acc",40);//JOG默认加速度40
+    this->declare_parameter<int>("JOG_maxdis",5);//JOG默认单步5mm
+    this->declare_parameter<int>("MoveJLC_tool",0);
     this->declare_parameter<int>("MoveJLC_user",0);
     this->declare_parameter<float>("MoveJLC_acc",0);
     this->declare_parameter<float>("MoveJLC_ovl",100);
@@ -80,41 +80,42 @@ ROS_API::ROS_API(const std::string node_name):FRAPI_base(),rclcpp::Node(node_nam
     this->declare_parameter<float>("Spline_acc",0);
     this->declare_parameter<float>("Spline_ovl",100);
     this->declare_parameter<float>("NewSpline_blendR",10);
+    this->declare_parameter<float>("ServoJT_timeinterval",0.008);
 
     _recv_ros_command_server = this->create_service<frhal_msgs::srv::ROSCmdInterface>(
         "FR_ROS_API_service",
         std::bind(&ROS_API::_ParseROSCommandData_callback,this,std::placeholders::_1,std::placeholders::_2)
     );
 
-    _controller_ip = "192.168.58.2";//Controller default ip address
-    std::cout << "Start creating instruction TCP socket" << std::endl;
+    _controller_ip = "192.168.58.2";//控制器默认ip地址
+    std::cout << "开始创建指令TCP socket" << std::endl;
     _socketfd1 = socket(AF_INET,SOCK_STREAM,0);
     _socketfd2 = socket(AF_INET,SOCK_STREAM,0);
     if(_socketfd1 == -1 || _socketfd2 == -1){
-        std::cout << "Error: Failed to create socket!" << std::endl;
-        exit(0);//Failed to create socket, throwing error
+        std::cout << "错误: 创建socket失败！" << std::endl;
+        exit(0);//创建套字失败，丢出错误
     }else{
-        std::cout << "The instruction socket is created successfully, and the connection to the controller begins..." << std::endl;
+        std::cout << "创建指令socket成功，开始连接控制器..." << std::endl;
         struct sockaddr_in tcp_client1,tcp_client2;
         tcp_client1.sin_family = AF_INET;
         tcp_client2.sin_family = AF_INET;
-        tcp_client1.sin_port = htons(port1);//Port 8080
-        tcp_client2.sin_port = htons(port2);//Port 8082
+        tcp_client1.sin_port = htons(port1);//8080端口
+        tcp_client2.sin_port = htons(port2);//8082端口
         tcp_client1.sin_addr.s_addr = inet_addr(_controller_ip.c_str());
         tcp_client2.sin_addr.s_addr = inet_addr(_controller_ip.c_str());
 
-        //Try to connect to the controller
+        //尝试连接控制器
         int res1 = connect(_socketfd1,(struct sockaddr *)&tcp_client1,sizeof(tcp_client1));
         int res2 = connect(_socketfd2,(struct sockaddr *)&tcp_client2,sizeof(tcp_client2));
         if(res1 || res2){
-            std::cout << "Error: Unable to connect to controller data port, program exited!" << std::endl;
-            exit(0);//Connection fails, throws an error and returns
+            std::cout << "错误:无法连接控制器数据端口，程序退出!" << std::endl;
+            exit(0);//连接失败，丢出错误并返回
         }else{
-            std::cout << "The controller command port connection is successful" << std::endl;
+            std::cout << "控制器指令端口连接成功" << std::endl;
             int flags1 = fcntl(_socketfd1,F_GETFL,0);
             int flags2 = fcntl(_socketfd2,F_GETFL,0);
             fcntl(_socketfd1,F_SETFL,flags1|SOCK_NONBLOCK);
-            fcntl(_socketfd2,F_SETFL,flags2|SOCK_NONBLOCK);//Set the two sockets to non-blocking mode
+            fcntl(_socketfd2,F_SETFL,flags2|SOCK_NONBLOCK);//将两个socket设置成非阻塞模式
         }
     }
 }
@@ -200,6 +201,12 @@ void ROS_API::_selectfunc(std::string func_name){
         funcP = &ROS_API::MoveL;
     }else if(func_name == "MoveC"){
         funcP = &ROS_API::MoveC;
+    }else if(func_name == "ServoJTStart"){
+        funcP = &ROS_API::ServoJTStart;
+    }else if(func_name == "ServoJT"){
+        funcP = &ROS_API::ServoJT;
+    }else if(func_name == "ServoJTEnd"){
+        funcP = &ROS_API::ServoJTEnd;
     }else if(func_name == "Circle"){
         funcP = &ROS_API::Circle;
     }else if(func_name == "NewSpiral"){
@@ -222,6 +229,8 @@ void ROS_API::_selectfunc(std::string func_name){
         funcP = &ROS_API::PointsOffsetEnable;
     }else if(func_name == "PointsOffsetDisable"){
         funcP = &ROS_API::PointsOffsetDisable;
+    }else if(func_name == "ProgramRun"){
+        funcP = &ROS_API::ProgramRun;
     }else{
         funcP = NULL;
     }
@@ -230,31 +239,32 @@ void ROS_API::_selectfunc(std::string func_name){
 int ROS_API::_send_data_factory_callback(std::string data){
     using namespace std::chrono_literals;
     static char recv_buff[128];
-    int cnt = 0;
-    //std::cout << "Send command information..." << data << std::endl;
-    send(_socketfd1,data.c_str(),data.size(),0);//Send command information
-    //std::cout << "Send command successfully!" << std::endl;
+    //std::cout << "发送指令信息..." << data << std::endl;
+    send(_socketfd1,data.c_str(),data.size(),0);//发送指令信息
+    //std::cout << "发送指令成功!" << std::endl;
     memset(recv_buff,0,sizeof(recv_buff));
-    //while(cnt < _retry_count){
+    if(!_skip_answer_flag) {//针对servoJT指令，不需要看反馈值直接发送
         rclcpp::sleep_for(30ms);
         if(recv(_socketfd1,recv_buff,sizeof(recv_buff),0) > -1){
-            //std::cout << "Reply message received..." << std::string(recv_buff) << std::endl;
+            //std::cout << "收到指令回复信息..." << std::string(recv_buff) << std::endl;
             if(_ParseRecvData(std::string(recv_buff))){
                 if(_recv_data_cmdid == 377){
-                    //std::cout << "Kinematics Interface Return Parameters" << std::endl;
+                    //std::cout << "运动学接口返回参数" << std::endl;
                     return -2001;
-                }else if(_recv_data_cmdcount == _cmd_counter){//The id and the frame counter can be matched, indicating that the corresponding reply information is correct
-                    //std::cout << "Set function interface return parameters" << std::endl;
+                }else if(_recv_data_cmdcount == _cmd_counter){//id和帧计数器能对上，说明对应回复信息是正确的
+                    //std::cout << "设置函数接口返回参数" << std::endl;
                     return _recv_data_res;
                 }else{
-                    //std::cout << "unhandled case, return by default 0" << std::endl;
+                    //std::cout << "未处理的情况,默认返回0" << std::endl;
                     return 0;
                 }
             }
         }
-        cnt++;
-    //}
-    //std::cout << "Accept command feedback timeout" << std::endl;
+    }else{
+        _skip_answer_flag = 0;
+        return 0;
+    }
+    //std::cout << "接受指令反馈超时" << std::endl;
 }
 
 
@@ -262,11 +272,11 @@ int ROS_API::_send_data_factory_callback(std::string data){
 int ROS_API::_ParseRecvData(std::string str){
     std::regex pattern("/f/bIII(\\d*?)III(\\d*?)III(\\d*)III(.*?)III/b/f");
     std::smatch data_match;
-    if(std::regex_match(str,data_match,pattern)){//Determine whether the frame data conforms to the pattern
+    if(std::regex_match(str,data_match,pattern)){//判断帧数据是否符合模式
         //_mtx.lock();
         _recv_data_cmdcount = std::atol(data_match[1].str().c_str());
         _recv_data_cmdid = std::atol(data_match[2].str().c_str());
-        if(_recv_data_cmdid == 377){//The information fed back by the kinematics interface
+        if(_recv_data_cmdid == 377){//运动学接口反馈回来的信息
             std::string kin_data = data_match[4];
             std::regex kin_pattern("(.*?),(.*?),(.*?),(.*?),(.*?),(.*?)");
             std::smatch kin_match;
@@ -275,62 +285,62 @@ int ROS_API::_ParseRecvData(std::string str){
                     _kin_res[i] = atof(kin_match[i+1].str().c_str());
                 }
             }else{
-                std::cout << "Parsing error: The kinematics interface returned incorrect information" << std::endl;
+                std::cout << "解析错误:运动学接口返回信息错误" << std::endl;
                 return 0;
             }
             return 1;
-        }else{//Feedback information of general control commands, single int type
-            _recv_data_res = atol(data_match[4].str().c_str());
+        }else{//一般控制指令的反馈信息,单一int型
+            _recv_data_res = atoi(data_match[4].str().c_str());
             return 1;
         }
         //_mtx.unlock();
     }else{
-        std::cout << "Parsing error: the received communication information is incomplete, discard the frame content" << std::endl;
+        std::cout << "解析错误：收到通讯信息不完整，丢弃该帧内容" << std::endl;
         return 0;
     }
 }
 
 
 void ROS_API::_ParseROSCommandData_callback(const std::shared_ptr<frhal_msgs::srv::ROSCmdInterface::Request> req,\ 
-                                            std::shared_ptr<frhal_msgs::srv::ROSCmdInterface::Response> res)//Used to parse the ROS interface instructions sent by the user
-{//The command format is movj(1,10)
-    std::regex func_reg("([A-Z|a-z|_]+)[(](.*)[)]");//The input pattern for a function name should be an alphabetic function name followed by (), with all input parameters in parentheses
+                                            std::shared_ptr<frhal_msgs::srv::ROSCmdInterface::Response> res)//用于解析用户发送的ROS接口指令
+{//指令格式为movj(1,10)
+    std::regex func_reg("([A-Z|a-z|_]+)[(](.*)[)]");//函数名的输入模式应该是字母函数名后跟()，圆括号中有所有输入参数
     std::smatch func_match;
     if(std::regex_match(req->cmd_str,func_match,func_reg)){
-        //std::cout << "Receive ROS command: " <<  req->cmd_str.data() <<std::endl;
+        //std::cout << "收到ROS指令: " <<  req->cmd_str.data() <<std::endl;
         std::string func_name = func_match[1];
         std::string para_list = func_match[2];
-        //std::regex para_pattern("[A-Z|a-z|\\.\\d|\\d|,|-]*");//Verify the content of the parameter. The parameter part must be composed of letters, numbers, commas, and negative signs. Other characters including spaces will cause the verification to fail.
-        std::regex para_pattern("[A-Za-z\\d.\\-,]*");//Verify the content of the parameter. The parameter part must be composed of letters, numbers, commas, and negative signs. Other characters including spaces will cause the verification to fail.
-        if(std::regex_match(para_list,para_pattern)){//Check whether the parameter input is legal
+        //std::regex para_pattern("[A-Z|a-z|\\.\\d|\\d|,|-]*");//校验参数的内容，参数部分必须是字母，数字和逗号，负号组成，出现其他字符包括空格都会导致校验失败,
+        std::regex para_pattern("[A-Za-z\\d.\\-,]*");//校验参数的内容，参数部分必须是字母，数字和逗号，负号组成，出现其他字符包括空格都会导致校验失败,
+        if(std::regex_match(para_list,para_pattern)){//检查参数输入是否合法
             if(func_name == "GET"){
                 res->cmd_res = _get_variable(para_list);
             }else{
                 _selectfunc(func_name);
                 if(funcP == NULL){
-                    std::cout << "Instruction error: The function corresponding to the instruction cannot be found" << std::endl;
+                    std::cout << "指令错误: 找不到该指令对应的函数" << std::endl;
                     res->cmd_res = std::string("0");
                 }else{
                     res->cmd_res = std::to_string((this->*(ROS_API::funcP))(para_list));
                 }
             }
         }else{
-            std::cout << "Instruction error: function parameter input is illegal, the parameter list consists of letters, numbers and commas, no spaces can appear" <<std::endl;
+            std::cout << "指令错误:函数参数输入不合法，参数列表由字母，数字和逗号组成，不能有空格出现" <<std::endl;
             res->cmd_res = std::string("0");
         }
     }else{
-        std::cout << "Instruction error: the function input form is wrong, the function input must be the input form of [function name](), please re-enter" << std::endl;
+        std::cout << "指令错误:函数输入形式错误，函数输入必须是 [函数名]() 这种输入形式，请重新输入" << std::endl;
         res->cmd_res = std::string("0");
     }
 }
 
 int ROS_API::_def_jnt_position(std::string pos){
-    //std::regex pattern("[-|\\.|,|\\d]*"); //The parameter pattern should be all parameters are numbers and commas
-    std::regex pattern("[\\d.\\-,]*"); //The parameter pattern should be all parameters are numbers and commas
+    //std::regex pattern("[-|\\.|,|\\d]*"); //参数模式应该是所有参数都是数字和逗号
+    std::regex pattern("[\\d.\\-,]*"); //参数模式应该是所有参数都是数字和逗号
     std::smatch para_match;
-    if(std::regex_match(pos,para_match,pattern)){//To judge the correctness of parameters
+    if(std::regex_match(pos,para_match,pattern)){//进行参数正确性判断
         std::smatch data_match;
-        std::regex search_para(",");//Delimiter
+        std::regex search_para(",");//分隔符
         std::regex_token_iterator iter_data(pos.begin(),pos.end(),search_para,-1);
         decltype(iter_data) end;
         int count = 0;
@@ -338,21 +348,21 @@ int ROS_API::_def_jnt_position(std::string pos){
             count++;
         }
         if(count != 7){
-            std::cout << "Command error: there are 6 joint position parameters, please confirm the number of parameter input" << std::endl;
+            std::cout << "指令错误:关节位置参数为6个,参数输入个数请确认" << std::endl;
             return 0;
         }
         iter_data = std::regex_token_iterator(pos.begin(),pos.end(),search_para,-1);
-        int idx = atol(iter_data->str().c_str());//Command number
+        int idx = atol(iter_data->str().c_str());//指令序号
         iter_data++;
-        if(idx > _cmd_jnt_pos_list.size()+1 || idx <= 0){//If it is greater than the maximum value of the current container + 1, then an error will be reported, because the middle of the sequence container cannot be left blank
-            std::cout << "Instruction error: container serial number exceeded" << std::endl;
+        if(idx > _cmd_jnt_pos_list.size()+1 || idx <= 0){//如果大于当前容器最大值+1,那么要报错，因为序列容器中间无法留空
+            std::cout << "指令错误:容器序号超限" << std::endl;
             return 0;
-        }else if(idx <= _cmd_jnt_pos_list.size()){//If it is less than or equal to the current capacity, then it is point information coverage
+        }else if(idx <= _cmd_jnt_pos_list.size()){//如果是小于等于当前的容量，那么就是点位信息覆盖
             int i=0;
             for(;iter_data != end;iter_data++,i++){
                 _cmd_jnt_pos_list.at(idx-1).jPos[i] = atof(iter_data->str().c_str());
             }
-        }else if(idx == _cmd_jnt_pos_list.size()+1){//Add element
+        }else if(idx == _cmd_jnt_pos_list.size()+1){//添加元素
             JointPos pos;
             int i=0;
             for(;iter_data != end;iter_data++,i++){
@@ -361,19 +371,19 @@ int ROS_API::_def_jnt_position(std::string pos){
             _cmd_jnt_pos_list.push_back(pos);
         }
     }else{
-        std::cout << "Instruction error: The rule of joint point input parameters is that the first one is the storage number, followed by the joint position information, separated by commas, and no spaces can appear" << std::endl;
+        std::cout << "指令错误：关节点位输入参数规则为第一个为存储序号，后续为关节位置信息，以逗号隔开，不能出现空格" << std::endl;
         return 0;
     }
     return 1;
 }
 
 int ROS_API::_def_cart_position(std::string pos){
-    //std::regex pattern("[\\.\\d|\\d|,|-]*"); //The parameter pattern should be all parameters are numbers
-    std::regex pattern("[\\d.\\-,]*"); //The parameter pattern should be all parameters are numbers
+    //std::regex pattern("[\\.\\d|\\d|,|-]*"); //参数模式应该是所有参数都是数字
+    std::regex pattern("[\\d.\\-,]*"); //参数模式应该是所有参数都是数字
     std::smatch para_match;
     if(std::regex_match(pos,para_match,pattern)){
         std::smatch data_match;
-        std::regex search_para(",");//Delimiter
+        std::regex search_para(",");//分隔符
         std::regex_token_iterator iter_data(pos.begin(),pos.end(),search_para,-1);
         decltype(iter_data) end;
         int count = 0;
@@ -381,23 +391,23 @@ int ROS_API::_def_cart_position(std::string pos){
             count++;
         }
         if(count != 7){
-            std::cout << "Instruction error: there are 6 Cartesian positional parameters, please confirm the number of parameter input" << std::endl;
+            std::cout << "指令错误:笛卡尔位置参数为6个,参数输入个数请确认" << std::endl;
             return 0;
         }
         iter_data = std::regex_token_iterator(pos.begin(),pos.end(),search_para,-1);
-        int idx = atol(iter_data->str().c_str());//Command number
+        int idx = atol(iter_data->str().c_str());//指令序号
         iter_data++;
-        if(idx > _cmd_cart_pos_list.size()+1 || idx <= 0){//If it is greater than the maximum value of the current container + 1, then an error will be reported, because the middle of the sequence container cannot be left blank
-            std::cout << "Instruction error: container serial number exceeded" << std::endl;
+        if(idx > _cmd_cart_pos_list.size()+1 || idx <= 0){//如果大于当前容器最大值+1,那么要报错，因为序列容器中间无法留空
+            std::cout << "指令错误:容器序号超限" << std::endl;
             return 0;
-        }else if(idx <= _cmd_cart_pos_list.size()){//If it is less than or equal to the current capacity, then it is point information coverage
+        }else if(idx <= _cmd_cart_pos_list.size()){//如果是小于等于当前的容量，那么就是点位信息覆盖
             _cmd_cart_pos_list.at(idx-1).tran.x = atof(iter_data->str().c_str());iter_data++;
             _cmd_cart_pos_list.at(idx-1).tran.y = atof(iter_data->str().c_str());iter_data++;
             _cmd_cart_pos_list.at(idx-1).tran.z = atof(iter_data->str().c_str());iter_data++;
             _cmd_cart_pos_list.at(idx-1).rpy.rx = atof(iter_data->str().c_str());iter_data++;
             _cmd_cart_pos_list.at(idx-1).rpy.ry = atof(iter_data->str().c_str());iter_data++;
             _cmd_cart_pos_list.at(idx-1).rpy.rz = atof(iter_data->str().c_str());
-        }else if(idx == _cmd_cart_pos_list.size()+1){//Add element
+        }else if(idx == _cmd_cart_pos_list.size()+1){//添加元素
             DescPose add_pos;
             add_pos.tran.x = atof(iter_data->str().c_str());iter_data++;
             add_pos.tran.y = atof(iter_data->str().c_str());iter_data++;
@@ -408,14 +418,14 @@ int ROS_API::_def_cart_position(std::string pos){
             _cmd_cart_pos_list.push_back(add_pos);
         }
     }else{
-        std::cout << "Instruction error: Cartesian point input parameter rule is that the first is the storage number, followed by Cartesian position information, separated by commas, no spaces can appear" << std::endl;
+        std::cout << "指令错误：笛卡尔点位输入参数规则为第一个为存储序号，后续为笛卡尔位置信息，以逗号隔开，不能出现空格" << std::endl;
         return 0;
     }
     return 1;
 }
 
 std::string ROS_API::_get_variable(std::string para_list){
-    std::regex pattern("([A-Z]*),([0-9]*)");//The parameter mode should be in the form of JNT,number or CART,number
+    std::regex pattern("([A-Z]*),([0-9]*)");//参数模式应该是 JNT,数字 或 CART,数字 的形式
     std::smatch para_match;
     if(std::regex_match(para_list,para_match,pattern)){
         if(para_match[1] == "JNT"){
@@ -430,7 +440,7 @@ std::string ROS_API::_get_variable(std::string para_list){
                                   std::to_string(pos.jPos[5]);
                 return res;
             }else{
-                std::cout << "Command error: The sequence number of the input point is out of range" << std::endl;
+                std::cout << "指令错误:输入点的序号超出范围" << std::endl;
             }
         }else if(para_match[1] == "CART"){
                 int idx = atol(para_match[2].str().c_str());
@@ -444,25 +454,25 @@ std::string ROS_API::_get_variable(std::string para_list){
                                           std::to_string(pos.rpy.rz);
                     return res;
                 }else{
-                    std::cout << "Command error: The sequence number of the input point is out of range" << std::endl;
+                    std::cout << "指令错误:输入点的序号超出范围" << std::endl;
                 }
         }else{
-            std::cout << "Command Error: Invalid GET command parameter" << std::endl;
+            std::cout << "指令错误: 无效的GET指令参数" << std::endl;
         }
     }else{
-        std::cout << "Command error: GET command parameter is illegal, the parameter format is [JNT|CART], [serial number]" << std::endl;
+        std::cout << "指令错误: GET指令参数非法,参数形式为[JNT|CART],[序号]" << std::endl;
     }
 }
 
-int  ROS_API::DragTeachSwitch(std::string para){//Drag to switch teaching mode
+int  ROS_API::DragTeachSwitch(std::string para){//拖动示教模式切换
     return _send_data_factory_callback(FRAPI_base::command_factry("DragTeachSwitch",++_cmd_counter,para));
 }
 
-int  ROS_API::RobotEnable(std::string para){//Arm enable
+int  ROS_API::RobotEnable(std::string para){//机械臂使能
     return _send_data_factory_callback(FRAPI_base::command_factry("RobotEnable",++_cmd_counter,para));
 }
 
-int ROS_API::Mode(std::string para){//Manual mode, automatic mode switching
+int ROS_API::Mode(std::string para){//手动模式，自动模式切换
     return _send_data_factory_callback(FRAPI_base::command_factry("Mode",++_cmd_counter,para));
 }
 
@@ -528,7 +538,7 @@ int ROS_API::SetRobotInstallAngle(std::string para){
     return _send_data_factory_callback(FRAPI_base::command_factry("SetRobotInstallAngle",++_cmd_counter,para));
 }
 
-//Security configuration
+//安全配置
 int ROS_API::SetAnticollision(std::string para){
     //int mode, float level[6], int config
     std::string mode,config;
@@ -584,7 +594,7 @@ int ROS_API::SetFrictionValue_freedom(std::string para){
     return _send_data_factory_callback(FRAPI_base::command_factry("SetFrictionValue_freedom",++_cmd_counter,para));
 }
 
-//Peripheral control
+//外设控制
 int ROS_API::ActGripper(std::string para){
     //int index, uint8_t act
     return _send_data_factory_callback(FRAPI_base::command_factry("ActGripper",++_cmd_counter,para));
@@ -601,7 +611,7 @@ int ROS_API::MoveGripper(std::string para){
     return _send_data_factory_callback(FRAPI_base::command_factry("MoveGripper",++_cmd_counter,para));
 }
     
-//IO Control
+//IO控制
 int ROS_API::SetDO(std::string para){
     //int id, uint8_t status, uint8_t smooth, uint8_t block
     std::string smooth,block;
@@ -644,7 +654,7 @@ int ROS_API::SetToolAO(std::string para){
     return _send_data_factory_callback(FRAPI_base::command_factry("SetToolAO",++_cmd_counter,para));
 }
 
-//Motion command
+//运动指令
 int ROS_API::StartJOG(std::string para){
     //uint8_t ref, uint8_t nb, uint8_t dir, float vel, float acc, float max_dis
     std::string acc,max_dis;
@@ -690,10 +700,10 @@ int ROS_API::MoveJ(std::string para){
     std::regex_token_iterator iter_data(para.begin(),para.end(),search_para,-1);
     std::smatch num_match;
     std::string head_str = iter_data->str();
-    if(std::regex_match(head_str,num_match,std::regex("(JNT)([0-9]*)"))){//Whether the first element satisfies the JNT1 pattern
+    if(std::regex_match(head_str,num_match,std::regex("(JNT)([0-9]*)"))){//第一个元素是否满足JNT1这种模式
         int index = atol(num_match[2].str().c_str());
         if(index > _cmd_jnt_pos_list.size()){
-            std::cout << "Instruction error: MoveJ input position number exceeds the limit" << std::endl;
+            std::cout << "指令错误:MoveJ输入位置点序号超限" << std::endl;
             return 0;
         }
         JointPos tmp_jnt_pos = _cmd_jnt_pos_list.at(index-1);
@@ -707,7 +717,7 @@ int ROS_API::MoveJ(std::string para){
             }
         }
         //std::cout << "send kin req data: " << para2; 
-        int res = _send_data_factory_callback(FRAPI_base::command_factry("GetForwardKin",++_cmd_counter,para2));//Solving Forward Kinematics
+        int res = _send_data_factory_callback(FRAPI_base::command_factry("GetForwardKin",++_cmd_counter,para2));//求解正向运动学
         if(res == -2001){
             para.clear();
             for(int i=0;i<6;i++){
@@ -721,16 +731,19 @@ int ROS_API::MoveJ(std::string para){
                    + offset_pos_x + "," + offset_pos_y + "," + offset_pos_z + "," + offset_pos_rx + ","\
                    + offset_pos_ry + "," + offset_pos_rz;
             // std::string tmp_para = FRAPI_base::command_factry("MoveJ",1,para);
-            // std::cout << "MoveJ send data: " << tmp_para << std::endl;
+            // std::cout << "MoveJ发送数据: " << tmp_para << std::endl;
+            if(blendT == "-1"){
+                
+            }
             return _send_data_factory_callback(FRAPI_base::command_factry("MoveJ",++_cmd_counter,para));
         }else{
-            std::cout << "Instruction error: An error occurred when the MoveJ instruction invoked forward kinematics" << std::endl;
+            std::cout << "指令错误:MoveJ指令调用正向运动学发生错误" << std::endl;
             return 0;
         }
     }else if(std::regex_match(head_str,num_match,std::regex("(CART)([0-9]*)"))){
         int index = atol(num_match[2].str().c_str());
         if(index > _cmd_cart_pos_list.size()){
-            std::cout << "Instruction error: MoveJ input position number exceeds the limit" << std::endl;
+            std::cout << "指令错误:MoveJ输入位置点序号超限" << std::endl;
             return 0;
         }
         DescPose tmp_cart_pos = _cmd_cart_pos_list.at(index-1);
@@ -745,7 +758,7 @@ int ROS_API::MoveJ(std::string para){
         para2 = para2 + std::to_string(tmp_cart_pos.rpy.rz) + ",";
         para2 += "-1";
         //std::cout << "send kin req data: " << para2; 
-        int res = _send_data_factory_callback(FRAPI_base::command_factry("GetInverseKin",++_cmd_counter,para2));//Solving Inverse Kinematics
+        int res = _send_data_factory_callback(FRAPI_base::command_factry("GetInverseKin",++_cmd_counter,para2));//求解逆向运动学
         if(res == -2001){
             para.clear();
             for(int i=0;i<6;i++){
@@ -764,11 +777,11 @@ int ROS_API::MoveJ(std::string para){
             //std::cout << "send movej req data: " << para;   
             return _send_data_factory_callback(FRAPI_base::command_factry("MoveJ",++_cmd_counter,para));
         }else{
-            std::cout << "Instruction error: An error occurred when the MoveJ instruction invoked inverse kinematics" << std::endl;
+            std::cout << "指令错误:MoveJ指令调用逆向运动学发生错误" << std::endl;
             return 0;
         }
     }else{
-        std::cout << "Instruction error: MoveJ parameter input is illegal, no point information found" << std::endl;
+        std::cout << "指令错误:MoveJ参数输入非法,没有找到点位信息" << std::endl;
         return 0;
     }
 
@@ -803,7 +816,7 @@ int ROS_API::MoveL(std::string para){
     if(std::regex_match(head_str,num_match,std::regex("(JNT)([0-9]*)"))){   
         int index = atol(num_match[2].str().c_str());
         if(index > _cmd_jnt_pos_list.size()){
-            std::cout << "Instruction error: MoveL input position number exceeds the limit" << std::endl;
+            std::cout << "指令错误:MoveL输入位置点序号超限" << std::endl;
             return 0;
         }
         JointPos tmp_jnt_pos = _cmd_jnt_pos_list.at(index-1);
@@ -816,7 +829,7 @@ int ROS_API::MoveL(std::string para){
                 para2 += ",";
             }
         }
-        int res = _send_data_factory_callback(FRAPI_base::command_factry("GetForwardKin",++_cmd_counter,para2));//Solving Forward Kinematics
+        int res = _send_data_factory_callback(FRAPI_base::command_factry("GetForwardKin",++_cmd_counter,para2));//求解正向运动学
         if(res == -2001){
             para.clear();
             for(int i=0;i<6;i++){
@@ -831,13 +844,13 @@ int ROS_API::MoveL(std::string para){
                    + offset_pos_ry + "," + offset_pos_rz;
             return _send_data_factory_callback(FRAPI_base::command_factry("MoveL",++_cmd_counter,para));
         }else{
-            std::cout << "Instruction error: An error occurred when the MoveL instruction invoked forward kinematics" << std::endl;
+            std::cout << "指令错误:MoveL指令调用正向运动学发生错误" << std::endl;
             return 0;
         }
     }else if(std::regex_match(head_str,num_match,std::regex("(CART)([0-9]*)"))){
         int index = atol(num_match[2].str().c_str());
         if(index > _cmd_cart_pos_list.size()){
-            std::cout << "Instruction error: MoveL input position number exceeds the limit" << std::endl;
+            std::cout << "指令错误:MoveL输入位置点序号超限" << std::endl;
             return 0;
         }
         DescPose tmp_cart_pos = _cmd_cart_pos_list.at(index-1);
@@ -851,7 +864,7 @@ int ROS_API::MoveL(std::string para){
         para2 = para2 + std::to_string(tmp_cart_pos.rpy.ry) + ",";
         para2 = para2 + std::to_string(tmp_cart_pos.rpy.rz) + ",";
         para2 += "-1";
-        int res = _send_data_factory_callback(FRAPI_base::command_factry("GetInverseKin",++_cmd_counter,para2));//Solving Inverse Kinematics
+        int res = _send_data_factory_callback(FRAPI_base::command_factry("GetInverseKin",++_cmd_counter,para2));//求解逆向运动学
         if(res == -2001){
             para.clear();
             for(int i=0;i<6;i++){
@@ -869,11 +882,11 @@ int ROS_API::MoveL(std::string para){
                    + offset_pos_ry + "," + offset_pos_rz;
             return _send_data_factory_callback(FRAPI_base::command_factry("MoveL",++_cmd_counter,para));
         }else{
-            std::cout << "Instruction error: An error occurred when the MoveL instruction invoked inverse kinematics" << std::endl;
+            std::cout << "指令错误:MoveL指令调用逆向运动学发生错误" << std::endl;
             return 0;
         }
     }else{
-        std::cout << "Instruction error: MoveL parameter input is illegal" << std::endl;
+        std::cout << "指令错误:MoveL参数输入非法" << std::endl;
         return 0;
     }
 
@@ -903,14 +916,14 @@ int ROS_API::MoveC(std::string para){
     std::regex search_para(",");
     std::regex_token_iterator iter_data(para.begin(),para.end(),search_para,-1);
     std::smatch num_match,num_match2;
-    std::string head_str = iter_data->str();//First point
+    std::string head_str = iter_data->str();//第一个点位
     iter_data++;
-    std::string second_str = iter_data->str();//Second point
+    std::string second_str = iter_data->str();//第二个点位
     if(std::regex_match(head_str,num_match,std::regex("(JNT)([0-9]*)")) && std::regex_match(second_str,num_match2,std::regex("(JNT)([0-9]*)"))){   
         int index = atol(num_match[2].str().c_str());
         int index2 = atol(num_match2[2].str().c_str());
         if(index > _cmd_jnt_pos_list.size() || index2 > _cmd_jnt_pos_list.size()){
-            std::cout << "Command error: MoveC input position point number exceeds the limit" << std::endl;
+            std::cout << "指令错误:MoveC输入位置点序号超限" << std::endl;
             return 0;
         }
         JointPos tmp_jnt_pos = _cmd_jnt_pos_list.at(index-1);
@@ -924,7 +937,7 @@ int ROS_API::MoveC(std::string para){
                 para2 += ",";
             }
         }
-        int res1 = _send_data_factory_callback(FRAPI_base::command_factry("GetForwardKin",++_cmd_counter,para2));//Solving Forward Kinematics
+        int res1 = _send_data_factory_callback(FRAPI_base::command_factry("GetForwardKin",++_cmd_counter,para2));//求解正向运动学
         float _kin_res_1[6];
         for(int i=0;i<6;i++){
             _kin_res_1[i] = _kin_res[i];
@@ -936,7 +949,7 @@ int ROS_API::MoveC(std::string para){
                 para2 += ",";
             }
         }
-        int res2 = _send_data_factory_callback(FRAPI_base::command_factry("GetForwardKin",++_cmd_counter,para2));//Solving Forward Kinematics
+        int res2 = _send_data_factory_callback(FRAPI_base::command_factry("GetForwardKin",++_cmd_counter,para2));//求解正向运动学
         if(res1 == -2001 && res2 == -2001){
             para.clear();
             para2.clear();
@@ -957,14 +970,14 @@ int ROS_API::MoveC(std::string para){
                    + ovl + "," + blendR ;
             return _send_data_factory_callback(FRAPI_base::command_factry("MoveC",++_cmd_counter,para));
         }else{
-            std::cout << "Instruction error: An error occurred when the MoveC instruction invoked forward kinematics" << std::endl;
+            std::cout << "指令错误:MoveC指令调用正向运动学发生错误" << std::endl;
             return 0;
         }
     }else if(std::regex_match(head_str,num_match,std::regex("(CART)([0-9]*)")) && std::regex_match(second_str,num_match2,std::regex("(CART)([0-9]*)"))){
         int index = atol(num_match[2].str().c_str());
         int index2 = atol(num_match2[2].str().c_str());
         if(index > _cmd_cart_pos_list.size() || index2 > _cmd_cart_pos_list.size()){
-            std::cout << "Command error: MoveC input position point number exceeds the limit" << std::endl;
+            std::cout << "指令错误:MoveC输入位置点序号超限" << std::endl;
             return 0;
         }
         DescPose tmp_cart_pos = _cmd_cart_pos_list.at(index-1);
@@ -979,7 +992,7 @@ int ROS_API::MoveC(std::string para){
         para2 += std::to_string(tmp_cart_pos.rpy.ry) + ",";
         para2 += std::to_string(tmp_cart_pos.rpy.rz) + ",";
         para2 += "-1";
-        int res1 = _send_data_factory_callback(FRAPI_base::command_factry("GetInverseKin",++_cmd_counter,para2));//Solving Inverse Kinematics
+        int res1 = _send_data_factory_callback(FRAPI_base::command_factry("GetInverseKin",++_cmd_counter,para2));//求解逆向运动学
         float _kin_res_1[6];
         for(int i=0;i<6;i++){
             _kin_res_1[i] = _kin_res[i];
@@ -993,7 +1006,7 @@ int ROS_API::MoveC(std::string para){
         para2 += std::to_string(tmp_cart_pos2.rpy.ry) + ",";
         para2 += std::to_string(tmp_cart_pos2.rpy.rz) + ",";
         para2 += "-1";
-        int res2 = _send_data_factory_callback(FRAPI_base::command_factry("GetInverseKin",++_cmd_counter,para2));//Solving Inverse Kinematics
+        int res2 = _send_data_factory_callback(FRAPI_base::command_factry("GetInverseKin",++_cmd_counter,para2));//求解逆向运动学
         if(res1 == -2001 && res2 == -2001){
             para.clear();
             para2.clear();
@@ -1022,11 +1035,11 @@ int ROS_API::MoveC(std::string para){
                    + ovl + "," + blendR ;
             return _send_data_factory_callback(FRAPI_base::command_factry("MoveC",++_cmd_counter,para));
         }else{
-            std::cout << "Instruction error: An error occurred when the MoveC instruction invoked inverse kinematics" << std::endl;
+            std::cout << "指令错误:MoveC指令调用逆向运动学发生错误" << std::endl;
             return 0;
         }
     }else{
-        std::cout << "Instruction error: MoveC parameter input is illegal" << std::endl;
+        std::cout << "指令错误:MoveC参数输入非法" << std::endl;
         return 0;
     }
 }
@@ -1041,6 +1054,27 @@ int ROS_API::Circle(std::string para){
 //     return -1;
 // }
 
+int ROS_API::ServoJTStart(std::string para){
+    para.clear();
+    return _send_data_factory_callback(FRAPI_base::command_factry("ServoJTStart",++_cmd_counter,para));
+}
+
+
+int ROS_API::ServoJT(std::string para){
+    //{double tor1-tor6}, double interval
+    std::string time_interval = this->get_parameter("ServoJT_timeinterval").value_to_string();
+    para = "{" + para + "}," + "0.008"; 
+    _skip_answer_flag = 1;
+    return _send_data_factory_callback(FRAPI_base::command_factry("ServoJT",++_cmd_counter,para));
+}
+
+
+int ROS_API::ServoJTEnd(std::string para){
+    para.clear();
+    return _send_data_factory_callback(FRAPI_base::command_factry("ServoJTEnd",++_cmd_counter,para));
+}
+
+
 
 int ROS_API::SplineStart(std::string para){
     //empty para
@@ -1050,7 +1084,7 @@ int ROS_API::SplineStart(std::string para){
 
 int ROS_API::SplinePTP(std::string para){
     //JointPos *joint_pos, DescPose *desc_pos, int tool, int user, float vel, float acc, float ovl
-    //By default, JNT data comes in
+    //默认进来的都是JNT数据
     std::regex search_para(",");
     std::regex_token_iterator iter_data(para.begin(),para.end(),search_para,-1);
     std::smatch num_match;
@@ -1063,7 +1097,7 @@ int ROS_API::SplinePTP(std::string para){
         ovl = this->get_parameter("Spline_ovl").value_to_string();
         int index = atol(num_match[2].str().c_str());
         if(index > _cmd_jnt_pos_list.size()){
-            std::cout << "Command error: SplinePTP input location point number exceeds limit" << std::endl;
+            std::cout << "指令错误:SplinePTP输入位置点序号超限" << std::endl;
             return 0;
         }
         JointPos tmp_jnt_pos = _cmd_jnt_pos_list.at(index-1);
@@ -1076,8 +1110,8 @@ int ROS_API::SplinePTP(std::string para){
                 para2 += ",";
             }
         }
-        //std::cout << "SplinePTP data: " << FRAPI_base::command_factry("GetForwardKin",1,para2) << std::endl;
-        int res = _send_data_factory_callback(FRAPI_base::command_factry("GetForwardKin",++_cmd_counter,para2));//Solving Forward Kinematics
+        //std::cout << "SplinePTP数据: " << FRAPI_base::command_factry("GetForwardKin",1,para2) << std::endl;
+        int res = _send_data_factory_callback(FRAPI_base::command_factry("GetForwardKin",++_cmd_counter,para2));//求解正向运动学
         if(res == -2001){
             para.clear();
             for(int i=0;i<6;i++){
@@ -1090,11 +1124,11 @@ int ROS_API::SplinePTP(std::string para){
             //std::cout << FRAPI_base::command_factry("SplinePTP",1,para) << std::endl;
             return _send_data_factory_callback(FRAPI_base::command_factry("SplinePTP",++_cmd_counter,para));
         }else{
-            std::cout << "Command error:An error occurred when the Spline instruction called forward kinematics" << std::endl;
+            std::cout << "指令错误:Spline指令调用正向运动学发生错误" << std::endl;
             return 0;
         }
     }else{
-        std::cout << "Command error:Spline parameter input is illegal" << std::endl;
+        std::cout << "指令错误:Spline参数输入非法" << std::endl;
         return 0;
     }
 }
@@ -1112,7 +1146,7 @@ int ROS_API::NewSplineStart(std::string para){
 
 int ROS_API::NewSplinePoint(std::string para){
     //JointPos *joint_pos, DescPose *desc_pos, int tool, int user, float vel, float acc, float ovl float blendR uint8_t lastFlag
-    //Input parameters:pos,speed,lastflag
+    //输入参数:pos,speed,lastflag
     std::regex search_para(",");
     std::regex_token_iterator iter_data(para.begin(),para.end(),search_para,-1);
     std::smatch num_match;
@@ -1126,7 +1160,7 @@ int ROS_API::NewSplinePoint(std::string para){
         blendR = this->get_parameter("NewSpline_blendR").value_to_string();
         int index = atol(num_match[2].str().c_str());
         if(index > _cmd_cart_pos_list.size()){
-            std::cout << "Command error:NewSplinePoint输入位置点序号超限" << std::endl;
+            std::cout << "指令错误:NewSplinePoint输入位置点序号超限" << std::endl;
             return 0;
         }
         //std::cout << "cart index is: " << index_str << std::endl;
@@ -1145,7 +1179,7 @@ int ROS_API::NewSplinePoint(std::string para){
         para2 = para2 + std::to_string(tmp_cart_pos.rpy.ry) + ",";
         para2 = para2 + std::to_string(tmp_cart_pos.rpy.rz) + ",";
         para2 += "-1";
-        int res = _send_data_factory_callback(FRAPI_base::command_factry("GetInverseKin",++_cmd_counter,para2));//Solving Inverse Kinematics
+        int res = _send_data_factory_callback(FRAPI_base::command_factry("GetInverseKin",++_cmd_counter,para2));//求解逆向运动学
         if(res == -2001){
             para.clear();
             for(int i=0;i<6;i++){
@@ -1160,11 +1194,11 @@ int ROS_API::NewSplinePoint(std::string para){
             para = para + tool + "," + user + "," + speed + "," + acc + "," + ovl + "," + blendR + "," + lastflag;
             return _send_data_factory_callback(FRAPI_base::command_factry("NewSplinePoint",++_cmd_counter,para));
         }else{
-            std::cout << "Command error:An error occurred when the NewSplinePoint instruction invoked inverse kinematics" << std::endl;
+            std::cout << "指令错误:NewSplinePoint指令调用逆向运动学发生错误" << std::endl;
             return 0;
         }
     }else{
-        std::cout << "Command error:NewSplinePoint parameter input is illegal" << std::endl;
+        std::cout << "指令错误:NewSplinePoint参数输入非法" << std::endl;
         return 0;
     }
 }
@@ -1189,4 +1223,11 @@ int ROS_API::PointsOffsetEnable(std::string para){
 int ROS_API::PointsOffsetDisable(std::string para){
     //empty para
     return _send_data_factory_callback(FRAPI_base::command_factry("PointsOffsetDisable",++_cmd_counter,para));
+}
+
+
+int ROS_API::ProgramRun(std::string para){
+    //empty para
+    para.clear();
+    return _send_data_factory_callback(FRAPI_base::command_factry("ProgramRun",++_cmd_counter,para));
 }
