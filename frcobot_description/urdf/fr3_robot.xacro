@@ -1,7 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
-     Commit Version: 1.5.1-0-g916b5db  Build Version: 1.5.7152.31018
-     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+
 <robot
   name="fr3_robot_v_5_0">
 
@@ -34,7 +31,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://frcobot_description/meshes/fr3/visual/base_link.DAE" />
+          filename="/home/siw/ws/src/frcobot_ros2/frcobot_description/meshes/fr3/visual/base_link.DAE" />
       </geometry>
       <material
         name="">
@@ -48,7 +45,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://frcobot_description/meshes/fr3/collision/base_link.STL" />
+          filename="/home/siw/ws/src/frcobot_ros2/frcobot_description/meshes/fr3/collision/base_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -74,7 +71,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://frcobot_description/meshes/fr3/visual/shoulder_Link.DAE" />
+          filename="/home/siw/ws/src/frcobot_ros2/frcobot_description/meshes/fr3/visual/shoulder_Link.DAE" />
       </geometry>
       <material
         name="">
@@ -88,7 +85,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://frcobot_description/meshes/fr3/collision/shoulder_Link.STL" />
+          filename="/home/siw/ws/src/frcobot_ros2/frcobot_description/meshes/fr3/collision/shoulder_Link.STL" />
       </geometry>
     </collision>
   </link>
@@ -146,7 +143,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://frcobot_description/meshes/fr3/visual/upperarm_Link.DAE" />
+          filename="/home/siw/ws/src/frcobot_ros2/frcobot_description/meshes/fr3/visual/upperarm_Link.DAE" />
       </geometry>
       <material
         name="">
@@ -160,7 +157,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://frcobot_description/meshes/fr3/collision/upperarm_Link.STL" />
+          filename="/home/siw/ws/src/frcobot_ros2/frcobot_description/meshes/fr3/collision/upperarm_Link.STL" />
       </geometry>
     </collision>
   </link>
@@ -215,7 +212,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://frcobot_description/meshes/fr3/visual/forearm_Link.DAE" />
+          filename="/home/siw/ws/src/frcobot_ros2/frcobot_description/meshes/fr3/visual/forearm_Link.DAE" />
       </geometry>
       <material
         name="">
@@ -229,7 +226,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://frcobot_description/meshes/fr3/collision/forearm_Link.STL" />
+          filename="/home/siw/ws/src/frcobot_ros2/frcobot_description/meshes/fr3/collision/forearm_Link.STL" />
       </geometry>
     </collision>
   </link>
@@ -284,7 +281,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://frcobot_description/meshes/fr3/visual/wrist1_Link.DAE" />
+          filename="/home/siw/ws/src/frcobot_ros2/frcobot_description/meshes/fr3/visual/wrist1_Link.DAE" />
       </geometry>
       <material
         name="">
@@ -298,7 +295,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://frcobot_description/meshes/fr3/collision/wrist1_Link.STL" />
+          filename="/home/siw/ws/src/frcobot_ros2/frcobot_description/meshes/fr3/collision/wrist1_Link.STL" />
       </geometry>
     </collision>
   </link>
@@ -353,7 +350,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://frcobot_description/meshes/fr3/visual/wrist2_Link.DAE" />
+          filename="/home/siw/ws/src/frcobot_ros2/frcobot_description/meshes/fr3/visual/wrist2_Link.DAE" />
       </geometry>
       <material
         name="">
@@ -367,7 +364,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://frcobot_description/meshes/fr3/collision/wrist2_Link.STL" />
+          filename="/home/siw/ws/src/frcobot_ros2/frcobot_description/meshes/fr3/collision/wrist2_Link.STL" />
       </geometry>
     </collision>
   </link>
@@ -422,7 +419,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://frcobot_description/meshes/fr3/visual/wrist3_Link.DAE" />
+          filename="/home/siw/ws/src/frcobot_ros2/frcobot_description/meshes/fr3/visual/wrist3_Link.DAE" />
       </geometry>
       <material
         name="">
@@ -436,7 +433,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://frcobot_description/meshes/fr3/collision/wrist3_Link.STL" />
+          filename="/home/siw/ws/src/frcobot_ros2/frcobot_description/meshes/fr3/collision/wrist3_Link.STL" />
       </geometry>
     </collision>
   </link>
