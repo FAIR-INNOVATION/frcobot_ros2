@@ -8,13 +8,16 @@ state_recv_thread::state_recv_thread(const std::string node_name):rclcpp::Node(n
 {
     using namespace std::chrono_literals;
     _controller_ip = "192.168.58.2";//控制器默认ip地址
-    std::cout << "开始创建状态反馈TCP socket" << std::endl;
+    RCLCPP_INFO(rclcpp::get_logger("fairino_hardware"),"Start to create state feedback TCP socket.");
+    //std::cout << "开始创建状态反馈TCP socket" << std::endl;
     _socketfd1 = socket(AF_INET,SOCK_STREAM,0);//状态获取端口只有TCP
     if(_socketfd1 == -1){
-        std::cout << "错误: 创建socket失败！" << std::endl;
+        RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1001:Failed to create state feedback TCP socket");
+        //std::cout << "错误: 创建socket失败！" << std::endl;
         exit(0);//创建套字失败，丢出错误
     }else{
-        std::cout << "创建状态反馈socket成功，开始连接控制器..." << std::endl;
+        RCLCPP_INFO(rclcpp::get_logger("fairino_hardware"),"State feedback TCP socket created.");
+        //std::cout << "创建状态反馈socket成功，开始连接控制器..." << std::endl;
         struct sockaddr_in tcp_client1;
         tcp_client1.sin_family = AF_INET;
         tcp_client1.sin_port = htons(port1);//8083端口
@@ -23,10 +26,12 @@ state_recv_thread::state_recv_thread(const std::string node_name):rclcpp::Node(n
         //尝试连接控制器
         int res1 = connect(_socketfd1,(struct sockaddr *)&tcp_client1,sizeof(tcp_client1));
         if(res1){
-            std::cout << "错误:无法连接控制器数据端口，程序退出!" << std::endl;
+            RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1002:Can not connect to robot controller, program exit!");
+            //std::cout << "错误:无法连接控制器数据端口，程序退出!" << std::endl;
             exit(0);//连接失败，丢出错误并返回
         }else{
-            std::cout << "控制器状态端口连接成功" << std::endl;
+            RCLCPP_INFO(rclcpp::get_logger("fairino_hardware"),"Connected to robot controller.");
+            //std::cout << "控制器状态端口连接成功" << std::endl;
             //将socket设置成非阻塞模式
             int flags1 = fcntl(_socketfd1,F_GETFL,0);
             fcntl(_socketfd1,F_SETFL,flags1|SOCK_NONBLOCK);
@@ -48,7 +53,7 @@ state_recv_thread::~state_recv_thread(){
 }
 
 void state_recv_thread::_state_recv_callback(){
-    static char recv_buff[241];
+    static char recv_buff[sizeof(FR_nonrt_state)];
     static FR_nonrt_state state_data;
     memset(recv_buff,0,sizeof(recv_buff));
     if(recv(_socketfd1,recv_buff,sizeof(recv_buff),0) > -1){

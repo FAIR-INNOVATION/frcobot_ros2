@@ -4,6 +4,25 @@
 #include "string"
 
 #pragma pack(1)
+
+typedef struct _EXTERNALAXIS_STATU
+{
+	double exAxisPos;			//外部轴位置
+	double exAxisSpeedBack;		//外部轴速度
+	int exAxisErrorCode;		//外部轴故障码
+	unsigned char exAxisRDY;	//伺服准备好
+	unsigned char exAxisINPOS;	//伺服到位
+	unsigned char exAxisALM;	//伺服报警
+	unsigned char exAxisFLERR;	//跟随误差
+	unsigned char exAxisNLMT;	//到负限位
+	unsigned char exAxisPLMT;	//到正限位
+	unsigned char exAxisAbsOFLN;//驱动器485总线掉线
+	unsigned char exAxisOFLIN;	//通信超时，控制卡与控制箱板485通信超时
+	uint8_t	exAxisHomeStatus;	//外部轴回零状态
+} EXTERNALAXIS_STATUS;
+
+
+
 typedef struct _FR_nonrt_state{
     uint16_t head;
     uint8_t count;
@@ -49,6 +68,10 @@ typedef struct _FR_nonrt_state{
     uint8_t EMG;
     int robot_motion_done;
     uint8_t grip_motion_done;
+    EXTERNALAXIS_STATUS exaxis1;
+    EXTERNALAXIS_STATUS exaxis2;
+    EXTERNALAXIS_STATUS exaxis3;
+    EXTERNALAXIS_STATUS exaxis4;
     uint16_t check_sum;
 }FR_nonrt_state;
 
@@ -102,5 +125,6 @@ typedef struct{
     float rotaxis_add;
     unsigned int rot_direction;
 }SpiralParam;
+#pragma pack()
 
 #endif

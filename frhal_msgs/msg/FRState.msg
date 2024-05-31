@@ -14,6 +14,7 @@ float64 cart_a_cur_pos
 float64 cart_b_cur_pos
 float64 cart_c_cur_pos
 int32 tool_num
+int32 work_num
 float64 j1_cur_tor
 float64 j2_cur_tor
 float64 j3_cur_tor
@@ -39,4 +40,10 @@ uint8 ft_actstatus
 uint8 emg
 int32 robot_motion_done
 uint8 grip_motion_done
+float64 exaxispos1
+float64 exaxispos2
+float64 exaxispos3
+float64 exaxispos4
+uint8 check_sum
+string start_return
 
