@@ -87,15 +87,15 @@ ROS_API::ROS_API(const std::string node_name):FRAPI_base(),rclcpp::Node(node_nam
         std::bind(&ROS_API::_ParseROSCommandData_callback,this,std::placeholders::_1,std::placeholders::_2)
     );
 
-    _controller_ip = "192.168.58.2";//控制器默认ip地址
-    std::cout << "开始创建指令TCP socket" << std::endl;
+    _controller_ip = "192.168.58.2";//controller ip address
+    RCLCPP_INFO(rclcpp::get_logger("fairino_hardware"),"Start to create command TCP socket");
     _socketfd1 = socket(AF_INET,SOCK_STREAM,0);
     _socketfd2 = socket(AF_INET,SOCK_STREAM,0);
     if(_socketfd1 == -1 || _socketfd2 == -1){
-        std::cout << "错误: 创建socket失败！" << std::endl;
+        RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1001:Failed to create TCP socket");
         exit(0);//创建套字失败，丢出错误
     }else{
-        std::cout << "创建指令socket成功，开始连接控制器..." << std::endl;
+        RCLCPP_INFO(rclcpp::get_logger("fairino_hardware"),"TCP socket created! Start to connect robot controller");
         struct sockaddr_in tcp_client1,tcp_client2;
         tcp_client1.sin_family = AF_INET;
         tcp_client2.sin_family = AF_INET;
@@ -108,10 +108,10 @@ ROS_API::ROS_API(const std::string node_name):FRAPI_base(),rclcpp::Node(node_nam
         int res1 = connect(_socketfd1,(struct sockaddr *)&tcp_client1,sizeof(tcp_client1));
         int res2 = connect(_socketfd2,(struct sockaddr *)&tcp_client2,sizeof(tcp_client2));
         if(res1 || res2){
-            std::cout << "错误:无法连接控制器数据端口，程序退出!" << std::endl;
+            RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1002:Can not connect to robot controller, program exit!");
             exit(0);//连接失败，丢出错误并返回
         }else{
-            std::cout << "控制器指令端口连接成功" << std::endl;
+            RCLCPP_INFO(rclcpp::get_logger("fairino_hardware"),"Connected to robot controller!");
             int flags1 = fcntl(_socketfd1,F_GETFL,0);
             int flags2 = fcntl(_socketfd2,F_GETFL,0);
             fcntl(_socketfd1,F_SETFL,flags1|SOCK_NONBLOCK);
@@ -239,23 +239,17 @@ void ROS_API::_selectfunc(std::string func_name){
 int ROS_API::_send_data_factory_callback(std::string data){
     using namespace std::chrono_literals;
     static char recv_buff[128];
-    //std::cout << "发送指令信息..." << data << std::endl;
     send(_socketfd1,data.c_str(),data.size(),0);//发送指令信息
-    //std::cout << "发送指令成功!" << std::endl;
     memset(recv_buff,0,sizeof(recv_buff));
     if(!_skip_answer_flag) {//针对servoJT指令，不需要看反馈值直接发送
         rclcpp::sleep_for(30ms);
         if(recv(_socketfd1,recv_buff,sizeof(recv_buff),0) > -1){
-            //std::cout << "收到指令回复信息..." << std::string(recv_buff) << std::endl;
             if(_ParseRecvData(std::string(recv_buff))){
                 if(_recv_data_cmdid == 377){
-                    //std::cout << "运动学接口返回参数" << std::endl;
                     return -2001;
                 }else if(_recv_data_cmdcount == _cmd_counter){//id和帧计数器能对上，说明对应回复信息是正确的
-                    //std::cout << "设置函数接口返回参数" << std::endl;
                     return _recv_data_res;
                 }else{
-                    //std::cout << "未处理的情况,默认返回0" << std::endl;
                     return 0;
                 }
             }
@@ -264,7 +258,6 @@ int ROS_API::_send_data_factory_callback(std::string data){
         _skip_answer_flag = 0;
         return 0;
     }
-    //std::cout << "接受指令反馈超时" << std::endl;
 }
 
 
@@ -285,7 +278,7 @@ int ROS_API::_ParseRecvData(std::string str){
                     _kin_res[i] = atof(kin_match[i+1].str().c_str());
                 }
             }else{
-                std::cout << "解析错误:运动学接口返回信息错误" << std::endl;
+                RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1011: Kinematic computation failed, please check position data in motion command.");
                 return 0;
             }
             return 1;
@@ -295,7 +288,7 @@ int ROS_API::_ParseRecvData(std::string str){
         }
         //_mtx.unlock();
     }else{
-        std::cout << "解析错误：收到通讯信息不完整，丢弃该帧内容" << std::endl;
+        RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1012: The frame is not completed, give up this frame.");
         return 0;
     }
 }
@@ -318,18 +311,18 @@ void ROS_API::_ParseROSCommandData_callback(const std::shared_ptr<frhal_msgs::sr
             }else{
                 _selectfunc(func_name);
                 if(funcP == NULL){
-                    std::cout << "指令错误: 找不到该指令对应的函数" << std::endl;
+                    RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1021: Can not find corresponding command.");
                     res->cmd_res = std::string("0");
                 }else{
                     res->cmd_res = std::to_string((this->*(ROS_API::funcP))(para_list));
                 }
             }
         }else{
-            std::cout << "指令错误:函数参数输入不合法，参数列表由字母，数字和逗号组成，不能有空格出现" <<std::endl;
+            RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1022: Illegal command parameters, parameters must consist of alphabet, number and dot,space is not allowed.");
             res->cmd_res = std::string("0");
         }
     }else{
-        std::cout << "指令错误:函数输入形式错误，函数输入必须是 [函数名]() 这种输入形式，请重新输入" << std::endl;
+        RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1023: Illegal command function format, the function name must fllow fomart [function name](parameters).");
         res->cmd_res = std::string("0");
     }
 }
@@ -348,14 +341,14 @@ int ROS_API::_def_jnt_position(std::string pos){
             count++;
         }
         if(count != 7){
-            std::cout << "指令错误:关节位置参数为6个,参数输入个数请确认" << std::endl;
+            RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1031: JNTPoint command only take 7 parameters, please check number of parameters.");
             return 0;
         }
         iter_data = std::regex_token_iterator(pos.begin(),pos.end(),search_para,-1);
         int idx = atol(iter_data->str().c_str());//指令序号
         iter_data++;
         if(idx > _cmd_jnt_pos_list.size()+1 || idx <= 0){//如果大于当前容器最大值+1,那么要报错，因为序列容器中间无法留空
-            std::cout << "指令错误:容器序号超限" << std::endl;
+            RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1032: Point index is out of range.");
             return 0;
         }else if(idx <= _cmd_jnt_pos_list.size()){//如果是小于等于当前的容量，那么就是点位信息覆盖
             int i=0;
@@ -371,7 +364,7 @@ int ROS_API::_def_jnt_position(std::string pos){
             _cmd_jnt_pos_list.push_back(pos);
         }
     }else{
-        std::cout << "指令错误：关节点位输入参数规则为第一个为存储序号，后续为关节位置信息，以逗号隔开，不能出现空格" << std::endl;
+        RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1033: The role of parameter: the first para. is point index, the others is joint position values, split by comma, space is not allowed.");
         return 0;
     }
     return 1;
@@ -391,14 +384,14 @@ int ROS_API::_def_cart_position(std::string pos){
             count++;
         }
         if(count != 7){
-            std::cout << "指令错误:笛卡尔位置参数为6个,参数输入个数请确认" << std::endl;
+            RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1041: Point index is out of range.");
             return 0;
         }
         iter_data = std::regex_token_iterator(pos.begin(),pos.end(),search_para,-1);
         int idx = atol(iter_data->str().c_str());//指令序号
         iter_data++;
         if(idx > _cmd_cart_pos_list.size()+1 || idx <= 0){//如果大于当前容器最大值+1,那么要报错，因为序列容器中间无法留空
-            std::cout << "指令错误:容器序号超限" << std::endl;
+            RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1042: Point index is out of range.");
             return 0;
         }else if(idx <= _cmd_cart_pos_list.size()){//如果是小于等于当前的容量，那么就是点位信息覆盖
             _cmd_cart_pos_list.at(idx-1).tran.x = atof(iter_data->str().c_str());iter_data++;
@@ -418,7 +411,7 @@ int ROS_API::_def_cart_position(std::string pos){
             _cmd_cart_pos_list.push_back(add_pos);
         }
     }else{
-        std::cout << "指令错误：笛卡尔点位输入参数规则为第一个为存储序号，后续为笛卡尔位置信息，以逗号隔开，不能出现空格" << std::endl;
+        RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1043: The role of parameter: the first para. is point index, the others is cartesian position values, split by comma, space is not allowed.");
         return 0;
     }
     return 1;
@@ -440,7 +433,7 @@ std::string ROS_API::_get_variable(std::string para_list){
                                   std::to_string(pos.jPos[5]);
                 return res;
             }else{
-                std::cout << "指令错误:输入点的序号超出范围" << std::endl;
+                RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1051: Point index is out of range.");
             }
         }else if(para_match[1] == "CART"){
                 int idx = atol(para_match[2].str().c_str());
@@ -454,13 +447,15 @@ std::string ROS_API::_get_variable(std::string para_list){
                                           std::to_string(pos.rpy.rz);
                     return res;
                 }else{
-                    std::cout << "指令错误:输入点的序号超出范围" << std::endl;
+                    RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1052: Point index is out of range.");
                 }
         }else{
-            std::cout << "指令错误: 无效的GET指令参数" << std::endl;
+            RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1053: invalid parameter.");
+            //std::cout << "指令错误: 无效的GET指令参数" << std::endl;
         }
     }else{
-        std::cout << "指令错误: GET指令参数非法,参数形式为[JNT|CART],[序号]" << std::endl;
+        RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1054: Illegal command function format, the function name must fllow fomart [function name](parameters).");
+        //std::cout << "指令错误: GET指令参数非法,参数形式为[JNT|CART],[序号]" << std::endl;
     }
 }
 
@@ -703,7 +698,8 @@ int ROS_API::MoveJ(std::string para){
     if(std::regex_match(head_str,num_match,std::regex("(JNT)([0-9]*)"))){//第一个元素是否满足JNT1这种模式
         int index = atol(num_match[2].str().c_str());
         if(index > _cmd_jnt_pos_list.size()){
-            std::cout << "指令错误:MoveJ输入位置点序号超限" << std::endl;
+            RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1061: MoveJ command point index out of range.");
+            //std::cout << "指令错误:MoveJ输入位置点序号超限" << std::endl;
             return 0;
         }
         JointPos tmp_jnt_pos = _cmd_jnt_pos_list.at(index-1);
@@ -737,13 +733,15 @@ int ROS_API::MoveJ(std::string para){
             }
             return _send_data_factory_callback(FRAPI_base::command_factry("MoveJ",++_cmd_counter,para));
         }else{
-            std::cout << "指令错误:MoveJ指令调用正向运动学发生错误" << std::endl;
+            RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1062: Forward kinematic computation error.");
+            //std::cout << "指令错误:MoveJ指令调用正向运动学发生错误" << std::endl;
             return 0;
         }
     }else if(std::regex_match(head_str,num_match,std::regex("(CART)([0-9]*)"))){
         int index = atol(num_match[2].str().c_str());
         if(index > _cmd_cart_pos_list.size()){
-            std::cout << "指令错误:MoveJ输入位置点序号超限" << std::endl;
+            RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1063: MoveJ command point index out of range.");
+            //std::cout << "指令错误:MoveJ输入位置点序号超限" << std::endl;
             return 0;
         }
         DescPose tmp_cart_pos = _cmd_cart_pos_list.at(index-1);
@@ -777,11 +775,13 @@ int ROS_API::MoveJ(std::string para){
             //std::cout << "send movej req data: " << para;   
             return _send_data_factory_callback(FRAPI_base::command_factry("MoveJ",++_cmd_counter,para));
         }else{
-            std::cout << "指令错误:MoveJ指令调用逆向运动学发生错误" << std::endl;
+            RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1064: Inverse kinematic computation error.");
+            //std::cout << "指令错误:MoveJ指令调用逆向运动学发生错误" << std::endl;
             return 0;
         }
     }else{
-        std::cout << "指令错误:MoveJ参数输入非法,没有找到点位信息" << std::endl;
+        RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1065: Illegal MoveJ command parameters,valid point index");
+        //std::cout << "指令错误:MoveJ参数输入非法,没有找到点位信息" << std::endl;
         return 0;
     }
 
@@ -816,7 +816,8 @@ int ROS_API::MoveL(std::string para){
     if(std::regex_match(head_str,num_match,std::regex("(JNT)([0-9]*)"))){   
         int index = atol(num_match[2].str().c_str());
         if(index > _cmd_jnt_pos_list.size()){
-            std::cout << "指令错误:MoveL输入位置点序号超限" << std::endl;
+            RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1071: MoveL command point index out of range.");
+            //std::cout << "指令错误:MoveL输入位置点序号超限" << std::endl;
             return 0;
         }
         JointPos tmp_jnt_pos = _cmd_jnt_pos_list.at(index-1);
@@ -844,13 +845,15 @@ int ROS_API::MoveL(std::string para){
                    + offset_pos_ry + "," + offset_pos_rz;
             return _send_data_factory_callback(FRAPI_base::command_factry("MoveL",++_cmd_counter,para));
         }else{
-            std::cout << "指令错误:MoveL指令调用正向运动学发生错误" << std::endl;
+            RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1072: Forward kinematic computation error.");
+            //std::cout << "指令错误:MoveL指令调用正向运动学发生错误" << std::endl;
             return 0;
         }
     }else if(std::regex_match(head_str,num_match,std::regex("(CART)([0-9]*)"))){
         int index = atol(num_match[2].str().c_str());
         if(index > _cmd_cart_pos_list.size()){
-            std::cout << "指令错误:MoveL输入位置点序号超限" << std::endl;
+            RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1073: Point index out of range.");
+            //std::cout << "指令错误:MoveL输入位置点序号超限" << std::endl;
             return 0;
         }
         DescPose tmp_cart_pos = _cmd_cart_pos_list.at(index-1);
@@ -882,11 +885,13 @@ int ROS_API::MoveL(std::string para){
                    + offset_pos_ry + "," + offset_pos_rz;
             return _send_data_factory_callback(FRAPI_base::command_factry("MoveL",++_cmd_counter,para));
         }else{
-            std::cout << "指令错误:MoveL指令调用逆向运动学发生错误" << std::endl;
+            RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1074: Inverse kinematic computation error.");
+            //std::cout << "指令错误:MoveL指令调用逆向运动学发生错误" << std::endl;
             return 0;
         }
     }else{
-        std::cout << "指令错误:MoveL参数输入非法" << std::endl;
+        RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1075: Illegal MoveL command parameters,valid point index");
+        //std::cout << "指令错误:MoveL参数输入非法" << std::endl;
         return 0;
     }
 
@@ -923,7 +928,8 @@ int ROS_API::MoveC(std::string para){
         int index = atol(num_match[2].str().c_str());
         int index2 = atol(num_match2[2].str().c_str());
         if(index > _cmd_jnt_pos_list.size() || index2 > _cmd_jnt_pos_list.size()){
-            std::cout << "指令错误:MoveC输入位置点序号超限" << std::endl;
+            RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1081: MoveC command point index out of range.");
+            //std::cout << "指令错误:MoveC输入位置点序号超限" << std::endl;
             return 0;
         }
         JointPos tmp_jnt_pos = _cmd_jnt_pos_list.at(index-1);
@@ -970,14 +976,16 @@ int ROS_API::MoveC(std::string para){
                    + ovl + "," + blendR ;
             return _send_data_factory_callback(FRAPI_base::command_factry("MoveC",++_cmd_counter,para));
         }else{
-            std::cout << "指令错误:MoveC指令调用正向运动学发生错误" << std::endl;
+            RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1082: Forward kinematic computation error.");
+            //std::cout << "指令错误:MoveC指令调用正向运动学发生错误" << std::endl;
             return 0;
         }
     }else if(std::regex_match(head_str,num_match,std::regex("(CART)([0-9]*)")) && std::regex_match(second_str,num_match2,std::regex("(CART)([0-9]*)"))){
         int index = atol(num_match[2].str().c_str());
         int index2 = atol(num_match2[2].str().c_str());
         if(index > _cmd_cart_pos_list.size() || index2 > _cmd_cart_pos_list.size()){
-            std::cout << "指令错误:MoveC输入位置点序号超限" << std::endl;
+            RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1083: Point index out of range.");
+            //std::cout << "指令错误:MoveC输入位置点序号超限" << std::endl;
             return 0;
         }
         DescPose tmp_cart_pos = _cmd_cart_pos_list.at(index-1);
@@ -1035,11 +1043,13 @@ int ROS_API::MoveC(std::string para){
                    + ovl + "," + blendR ;
             return _send_data_factory_callback(FRAPI_base::command_factry("MoveC",++_cmd_counter,para));
         }else{
-            std::cout << "指令错误:MoveC指令调用逆向运动学发生错误" << std::endl;
+            RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1084: Inverse kinematic computation error.");
+            //std::cout << "指令错误:MoveC指令调用逆向运动学发生错误" << std::endl;
             return 0;
         }
     }else{
-        std::cout << "指令错误:MoveC参数输入非法" << std::endl;
+        RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1085: Illegal MoveL command parameters,valid point index");
+        //std::cout << "指令错误:MoveC参数输入非法" << std::endl;
         return 0;
     }
 }
@@ -1097,7 +1107,8 @@ int ROS_API::SplinePTP(std::string para){
         ovl = this->get_parameter("Spline_ovl").value_to_string();
         int index = atol(num_match[2].str().c_str());
         if(index > _cmd_jnt_pos_list.size()){
-            std::cout << "指令错误:SplinePTP输入位置点序号超限" << std::endl;
+            RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1091: Point out of index.");
+            //std::cout << "指令错误:SplinePTP输入位置点序号超限" << std::endl;
             return 0;
         }
         JointPos tmp_jnt_pos = _cmd_jnt_pos_list.at(index-1);
@@ -1124,11 +1135,13 @@ int ROS_API::SplinePTP(std::string para){
             //std::cout << FRAPI_base::command_factry("SplinePTP",1,para) << std::endl;
             return _send_data_factory_callback(FRAPI_base::command_factry("SplinePTP",++_cmd_counter,para));
         }else{
-            std::cout << "指令错误:Spline指令调用正向运动学发生错误" << std::endl;
+            RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1092: Forward kinematic computation error.");
+            //std::cout << "指令错误:Spline指令调用正向运动学发生错误" << std::endl;
             return 0;
         }
     }else{
-        std::cout << "指令错误:Spline参数输入非法" << std::endl;
+        RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1093: Illegal parameters.");
+        //std::cout << "指令错误:Spline参数输入非法" << std::endl;
         return 0;
     }
 }
@@ -1160,7 +1173,8 @@ int ROS_API::NewSplinePoint(std::string para){
         blendR = this->get_parameter("NewSpline_blendR").value_to_string();
         int index = atol(num_match[2].str().c_str());
         if(index > _cmd_cart_pos_list.size()){
-            std::cout << "指令错误:NewSplinePoint输入位置点序号超限" << std::endl;
+            RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1101: Point out of index.");
+            //std::cout << "指令错误:NewSplinePoint输入位置点序号超限" << std::endl;
             return 0;
         }
         //std::cout << "cart index is: " << index_str << std::endl;
@@ -1194,11 +1208,13 @@ int ROS_API::NewSplinePoint(std::string para){
             para = para + tool + "," + user + "," + speed + "," + acc + "," + ovl + "," + blendR + "," + lastflag;
             return _send_data_factory_callback(FRAPI_base::command_factry("NewSplinePoint",++_cmd_counter,para));
         }else{
-            std::cout << "指令错误:NewSplinePoint指令调用逆向运动学发生错误" << std::endl;
+            RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1102: Inverse kinematic computation error.");
+            //std::cout << "指令错误:NewSplinePoint指令调用逆向运动学发生错误" << std::endl;
             return 0;
         }
     }else{
-        std::cout << "指令错误:NewSplinePoint参数输入非法" << std::endl;
+        RCLCPP_ERROR(rclcpp::get_logger("fairino_hardware"),"-1103: Illegal parameters.");
+        //std::cout << "指令错误:NewSplinePoint参数输入非法" << std::endl;
         return 0;
     }
 }
