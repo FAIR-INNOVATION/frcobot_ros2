@@ -1,0 +1,23 @@
+moveit_setup_assistant_config:
+  urdf:
+    package: fairino_description
+    relative_path: urdf/fairino5_v6.urdf
+  srdf:
+    relative_path: config/fairino5_v6_robot.srdf
+  package_settings:
+    author_name: litao
+    author_email: litao@frtech.fr
+    generated_timestamp: 1721284151
+  control_xacro:
+    command:
+      - position
+    state:
+      - position
+  modified_urdf:
+    xacros:
+      - control_xacro
+  control_xacro:
+    command:
+      - position
+    state:
+      - position
