@@ -151,7 +151,7 @@ public:
     int  SetLimitPositive(std::string para);
     int  SetLimitNegative(std::string para);
     int  ResetAllError(std::string para);
-    std::string  FrictionCompensationOnOff(std::string para);
+    int  FrictionCompensationOnOff(std::string para);
     int  SetFrictionValue_level(std::string para);
     int  SetFrictionValue_wall(std::string para);
     int  SetFrictionValue_ceiling(std::string para);
@@ -244,8 +244,6 @@ private:
     int lose_connect_times = 0;
     int setKeepAlive(int fd, int idle_time, int interval_time, int probe_times);
     int reConnect_tcp(int fd,int port);
-
-    int (*funcP)(std::string para);
 
     int (robot_command_thread:: *funcP)(std::string para);//函数指针是有作用域的，所以全局函数的指针和类内成员函数的指针定义有很大不同，这里不能用typedef
     int _send_data_factory_callback(std::string data);//模板函数,用于指令字符串数据的发送和反馈接收确认
