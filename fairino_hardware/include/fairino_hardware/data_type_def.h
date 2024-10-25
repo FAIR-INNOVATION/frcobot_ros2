@@ -106,6 +106,14 @@ typedef struct _REMOTE_CTRL_INTERFACE_STATE
 	uint16_t errCode;				/* 错误码 */
 }REMOTE_CTRL_INTERFACE_STATE;
 
+/** 远程控制状态结构体 */
+typedef struct _REMOTE_CTRL_INF_STATE
+{
+	uint8_t robot_ctrl_mode;		/* 机器人控制模式，0：本地控制模式(手/自动模式)，1：远程控制模式 */
+	uint8_t errState;				/* 错误状态，0-运行正常，1-运行异常 */
+	uint16_t errCode;				/* 错误码 */
+}REMOTE_CTRL_INF_STATE;
+
 /** 8081端口运动控制器状态结构体 */
 typedef struct _CTRL_STATE
 {
@@ -175,7 +183,7 @@ typedef struct _CTRL_STATE
     uint8_t    strangePosFlag;          /**< 当前处于奇异位姿标志 */
     int        configStatus;            /**< 机器人关节配置状态  */
     uint8_t    aliveSlaveNumError;      /** 活动从站数量错误，1：数量错误；0：正常 */
-    uint8_t    slaveComError[MAXSLAVES]; /** 从站错误，0：正常；1：从站掉线；2：从站状态与设置值不一致；3：从站未配置；4：从站配置错误；5：从站初始化错误；6：从站邮箱通信初始化错误 */
+    uint8_t    slaveComError[MAXSLAVES];/** 从站错误，0：正常；1：从站掉线；2：从站状态与设置值不一致；3：从站未配置；4：从站配置错误；5：从站初始化错误；6：从站邮箱通信初始化错误 */
     uint8_t    cmdPointError;           /** 指令点关节位置与末端位姿不符错误，0：正常；1：直线指令点错误；2：圆弧指令点错误；3：TPD指令工具与当前工具不符；4：TPD当前指令与下一指令起始点偏差过大 ；5：TPD关节指令超限；6：PTP关节指令超限*/
     uint8_t    ioError;                 /** IO错误 */
     uint8_t    gripperError;            /** 夹爪错误 */
@@ -235,7 +243,7 @@ typedef struct _CTRL_STATE
     uint16_t   ctrlBoxError;             /* 控制箱错误 */
     uint8_t    BackToHomeState;          /* 倒带信号 */
     uint8_t    SlaveError[16];                        /* 从站故障,0：无故障，1：[0]-末端电源短路，[1]-控制箱电源短路 */
-    char       curLuaFileName[256];                    /* 当前解析的Lua文件名 */
+    char       curLuaFileName[256];                   /* 当前解析的Lua文件名 */
     uint8_t    ndf_layer;                             /* NewDofile 所在文件层 */
     int        ndf_row;                               /* NewDofile 所在文件行 */
     uint16_t   ndf_id;                                /* NewDofile所在文件层编号 */
@@ -249,16 +257,39 @@ typedef struct _CTRL_STATE
     float      welding_voltage;                       /** 焊接电压 */
     float      welding_current;                       /** 焊接电流 */
     AUXSERVO_STATE auxservo_state;                    /** 外部伺服状态 */
-    WELDING_BREAK_OFF_STATE welding_state;            /* 焊接状态 */
-    uint8_t    safety_data_state;                     /* 安全数据状态标志，0-正常，1-异常 */
-    char       curPointTableName[128];				  /* 当前应用的点位表信息 */
-    uint16_t modbusSlaveDI[8];      				  /** 从站DI0 - DI128 */
-    uint16_t modbusSlaveDO[8];      				  /** 从站DO0 - DI128 */
-    int modbusSlaveAI[64];          				  /** 从站AI uint16 AI0-AI15  int16 AI16-AI31  float AI32-AI63 */
-    int modbusSlaveAO[64];          				  /** 从站AO uint16 AO0-AO15  int16 AO16-AO31  float AO32-AO63 */
-    uint8_t modbusMasterConnectState;     			  /** 0-7位对应0-7主站连接状态  0-未连接   1-连接 */
-    float modbusMasterValue[8][128]; 	   			  /** modbusMaster的寄存器当前数值，每128个值为1个ModbusMaster寄存器的所有值 */
+    WELDING_BREAK_OFF_STATE welding_state;            /** 焊接状态 */
+    REMOTE_CTRL_INF_STATE remote_ctrl_state;          /** 远程控制状态 *///////////////////////////
+    uint8_t    safety_data_state;                     /** 安全数据状态标志，0-正常，1-异常 */
+    char       curPointTableName[128];				  /** 当前应用的点位表信息 */
+    int        jog_status;                            /** 点动运动状态 *///////////////////////////
+    uint16_t   modbusSlaveDI[8];      				  /** 从站DI0 - DI128 */
+    uint16_t   modbusSlaveDO[8];      				  /** 从站DO0 - DI128 */
+    int        modbusSlaveAI[64];          			  /** 从站AI uint16 AI0-AI15  int16 AI16-AI31  float AI32-AI63 */
+    int        modbusSlaveAO[64];          			  /** 从站AO uint16 AO0-AO15  int16 AO16-AO31  float AO32-AO63 */
+    uint8_t    modbusMasterConnectState;     		  /** 0-7位对应0-7主站连接状态  0-未连接   1-连接 */
+    float      modbusMasterValue[8][128]; 	   		  /** modbusMaster的寄存器当前数值，每128个值为1个ModbusMaster寄存器的所有值 */
+    uint8_t    shoulderConfig;                        /** 肩关节配置，0：左肩配置，1：右肩配置 */
+    uint8_t    elbowConfig;                           /** 肘关节配置，0：肘向下配置，1：肘向上配置 */
+    uint8_t    wristConfig;                           /** 腕关节配置，0：腕向下配置，1：腕向上配置 */
+    uint32_t   motionCount;                           /** 运送计数 */
     double     flange_cur_pos[6];                     /** 末端法兰当前位姿 */
+    uint16_t   endLuaErrCode;                         /** 末端Lua文件异常状态 0-正常；1-异常 */
+    uint8_t    mdbsSlaveConnect;                      /** Modbus从站连接状态 0-未连接；1-已连接 */
+    uint16_t   mdbsSlaveFuncDIState[6];               /** Modbus从站功能DI输入状态 bit0-bit10分别对应“暂停” ～ “清除所有故障” */
+    int        mdbsSlaveDOCtrlDIState;                /** Modbus从站控制DO输出功能的DI输入状态 bit0-bit7为DO0-DO7；bit8-bit15为CO0-CO7；bit16-bit17为DO0-DO1 */
+    int        safetyBoardComSendCount;               /** 安全板通信发送数据包计数 */
+    int        safetyBoardComRecvCount;               /** 安全板通信接收数据包计数 */
+    int        toolNoSRL;                             /** 工具编号, [-1~19] */
+    int        frameNOSRL;                            /** 工件编号, [-1~19] */
+    double     robposCartTF[6];                       /** 对应工具工件下的笛卡尔位姿 */
+    double     robposJointTF[6];                      /** 对应工具工件下的关节位置 */
+    uint8_t    turn_num[4];                           /** 关节圈数 */
+    uint8_t    robot_config;                          /** 关节配置 */
+    uint8_t    forceSensorErrState;                   /** 力传感器连接超时故障；bit0-bit1对应力传感器ID1-ID2 */
+    uint8_t    ctrlOpenLuaRunningState;               /** 控制器开放协议运行状态，bit0-bit3对应协议编号0-3的运行状态，0-未运行，1-运行中 */
+    uint8_t    ctrlOpenLuaErrCode[4];                 /** 4个控制器外设协议错误码(500错误码) */
+    uint8_t    safetyBoxSignal[6];                    /** 按钮盒按钮信号 */
+    float      jointIdentifyData;                     /** 单关节模型辨识时实时曲线显示数据 */
 	char end[7];
 } CTRL_STATE;
 /***********end 8081 data*******************/

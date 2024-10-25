@@ -107,7 +107,13 @@ private:
     {"AuxServoSetTargetTorque", 787},
     {"AuxServoHoming", 788},
     {"AuxServoClearError", 789},
-    {"AuxServoSetStatusID", 790}
+    {"AuxServoSetStatusID", 790},
+    {"GetInverseKin", 377},//逆向运动学
+    {"GetForwardKin", 377},//正向运动学
+    {"GetTCPOffset",377},//获取当前工件坐标系
+    {"GetDHCompensation",842},
+    {"GetTCPOffseta",377},
+    {"getbuff",000}
     };
 
     const std::map<std::string,int> _fr_script_id{
@@ -115,11 +121,11 @@ private:
     {"ScriptContent",106}
     };
 
-    const std::map<std::string,int> _fr_get_id{
-    {"GetTCPOffset",377},
-    {"GetDHCompensation",842},
-    {"GetTCPOffseta",377}
-    };
+    // const std::map<std::string,int> _fr_get_id{
+    // {"GetTCPOffset",377},
+    // {"GetDHCompensation",842},
+    // {"GetTCPOffseta",377}
+    // };
 };
 
 
@@ -130,92 +136,99 @@ public:
     
 
     //普通设置类
-    int  DragTeachSwitch(std::string para);//拖动示教模式切换
-    int  RobotEnable(std::string para);//机械臂使能
-    int  Mode(std::string para);//手动模式，自动模式切换
-    int  SetSpeed(std::string para);
-    int  SetToolCoord(std::string para);
-    int  SetToolList(std::string para);
-    int  SetExToolCoord(std::string para);
-    int  SetExToolList(std::string para);
-    int  SetWObjCoord(std::string para);
-    int  SetWObjList(std::string para);
-    int  SetLoadWeight(std::string para);
-    int  SetLoadCoord(std::string para);
-    int  SetRobotInstallPos(std::string para);
-    int  SetRobotInstallAngle(std::string para);
+    std::string  DragTeachSwitch(std::string para);//拖动示教模式切换
+    std::string  RobotEnable(std::string para);//机械臂使能
+    std::string  Mode(std::string para);//手动模式，自动模式切换
+    std::string  SetSpeed(std::string para);
+    std::string  SetToolCoord(std::string para);
+    std::string  SetToolList(std::string para);
+    std::string  SetExToolCoord(std::string para);
+    std::string  SetExToolList(std::string para);
+    std::string  SetWObjCoord(std::string para);
+    std::string  SetWObjList(std::string para);
+    std::string  SetLoadWeight(std::string para);
+    std::string  SetLoadCoord(std::string para);
+    std::string  SetRobotInstallPos(std::string para);
+    std::string  SetRobotInstallAngle(std::string para);
 
     //安全配置
-    int  SetAnticollision(std::string para);
-    int  SetCollisionStrategy(std::string para);
-    int  SetLimitPositive(std::string para);
-    int  SetLimitNegative(std::string para);
-    int  ResetAllError(std::string para);
-    int  FrictionCompensationOnOff(std::string para);
-    int  SetFrictionValue_level(std::string para);
-    int  SetFrictionValue_wall(std::string para);
-    int  SetFrictionValue_ceiling(std::string para);
-    int  SetFrictionValue_freedom(std::string para);
+    std::string  SetAnticollision(std::string para);
+    std::string  SetCollisionStrategy(std::string para);
+    std::string  SetLimitPositive(std::string para);
+    std::string  SetLimitNegative(std::string para);
+    std::string  ResetAllError(std::string para);
+    std::string  FrictionCompensationOnOff(std::string para);
+    std::string  SetFrictionValue_level(std::string para);
+    std::string  SetFrictionValue_wall(std::string para);
+    std::string  SetFrictionValue_ceiling(std::string para);
+    std::string  SetFrictionValue_freedom(std::string para);
 
     //外设控制
-    int  ActGripper(std::string para);
-    int  MoveGripper(std::string para);
+    std::string  ActGripper(std::string para);
+    std::string  MoveGripper(std::string para);
     
     //IO控制
-    int  SetDO(std::string para);
-    int  SetToolDO(std::string para);
-    int  SetAO(std::string para);
-    int  SetToolAO(std::string para);
-    int  SetAuxDO(std::string para);
-    int  SetAuxAO(std::string para);
+    std::string  SetDO(std::string para);
+    std::string  SetToolDO(std::string para);
+    std::string  SetAO(std::string para);
+    std::string  SetToolAO(std::string para);
+    std::string  SetAuxDO(std::string para);
+    std::string  SetAuxAO(std::string para);
 
     //外部轴控制
-    int ExtAxisLoadModbusTCPDriver(std::string para);
-    int ExtAxisServoOn(std::string para);
-    int ExtAxisStartJog(std::string para);
-    int ExtAxisSetHoming(std::string para);
-    int StopExtAxisJog(std::string para);
+    std::string ExtAxisLoadModbusTCPDriver(std::string para);
+    std::string ExtAxisServoOn(std::string para);
+    std::string ExtAxisStartJog(std::string para);
+    std::string ExtAxisSetHoming(std::string para);
+    std::string StopExtAxisJog(std::string para);
     
     //运动指令
-    int  StartJOG(std::string para);
-    int  StopJOG(std::string para);
-    int  StopLine(std::string para);
-    int  StopTool(std::string para);
-    int  ImmStopJOG(std::string para);
-    int  MoveJ(std::string para);
-    int  MoveL(std::string para);
-    int  MoveC(std::string para);
-    int  Circle(std::string para);
+    std::string  StartJOG(std::string para);
+    std::string  StopJOG(std::string para);
+    std::string  StopLine(std::string para);
+    std::string  StopTool(std::string para);
+    std::string  ImmStopJOG(std::string para);
+    std::string  MoveJ(std::string para);
+    std::string  MoveL(std::string para);
+    std::string  MoveC(std::string para);
+    std::string  Circle(std::string para);
     //int  NewSpiral(std::string para);
-    int  ServoJ(JointPos *joint_pos, float acc, float vel, float cmdT, float filterT, float gain);
+    std::string  ServoJ(JointPos *joint_pos, float acc, float vel, float cmdT, float filterT, float gain);
     //int  ServoCart(int mode, DescPose *desc_pose, float pos_gain[6], float acc, float vel, float cmdT, float filterT, float gain);
-    int  SplineStart(std::string para);
-    int  SplinePTP(std::string para);
-    int  SplineEnd(std::string para);
-    int  NewSplineStart(std::string para);
-    int  NewSplinePoint(std::string para);
-    int  NewSplineEnd(std::string para);
-    int  StopMotion(std::string para);
-    int  PointsOffsetEnable(std::string para);
-    int  PointsOffsetDisable(std::string para);
+    std::string  SplineStart(std::string para);
+    std::string  SplinePTP(std::string para);
+    std::string  SplineEnd(std::string para);
+    std::string  NewSplineStart(std::string para);
+    std::string  NewSplinePoint(std::string para);
+    std::string  NewSplineEnd(std::string para);
+    std::string  StopMotion(std::string para);
+    std::string  PointsOffsetEnable(std::string para);
+    std::string  PointsOffsetDisable(std::string para);
 
     //扩展轴控制
-    int AuxServoSetParam(std::string para);
-    int AuxServoEnable(std::string para);
-    int AuxServoSetControlMode(std::string para);
-    int AuxServoSetTargetPos(std::string para);
-    int AuxServoSetTargetSpeed(std::string para);
-    int AuxServoSetTargetTorque(std::string para);
-    int AuxServoHoming(std::string para);
-    int AuxServoClearError(std::string para);
-    int AuxServoSetStatusID(std::string para);
+    std::string AuxServoSetParam(std::string para);
+    std::string AuxServoEnable(std::string para);
+    std::string AuxServoSetControlMode(std::string para);
+    std::string AuxServoSetTargetPos(std::string para);
+    std::string AuxServoSetTargetSpeed(std::string para);
+    std::string AuxServoSetTargetTorque(std::string para);
+    std::string AuxServoHoming(std::string para);
+    std::string AuxServoClearError(std::string para);
+    std::string AuxServoSetStatusID(std::string para);
 
     //脚本控制指令
-    int ScriptStart(std::string para);
-    int ScriptStart_return(std::string para);
-    int ScriptStop(std::string para);
-    int ScriptPause(std::string para);
-    int ScriptResume(std::string para);
+    std::string ScriptStart(std::string para);
+    std::string ScriptStart_return(std::string para);
+    std::string ScriptStop(std::string para);
+    std::string ScriptPause(std::string para);
+    std::string ScriptResume(std::string para);
+
+    //正逆向运动学
+    std::string GetForwardKin(std::string para);
+    std::string GetInverseKin(std::string para);
+
+    
+    
 
     /**
 	 *@brief  获取当前工件坐标系
@@ -240,24 +253,27 @@ public:
     
     void write();//用于ros2_control调用servoj的接口，未来还需要支持扭矩指令的输入
 
+
+    std::string getbuff(std::string para);
+
 private:
     int lose_connect_times = 0;
     int setKeepAlive(int fd, int idle_time, int interval_time, int probe_times);
     int reConnect_tcp(int fd,int port);
 
     int (robot_command_thread:: *funcP)(std::string para);//函数指针是有作用域的，所以全局函数的指针和类内成员函数的指针定义有很大不同，这里不能用typedef
-    int _send_data_factory_callback(std::string data);//模板函数,用于指令字符串数据的发送和反馈接收确认
-    int _send_script_data_callback(std::string data);//用于发送程序名称及程序内容
+    std::string _send_data_factory_callback(std::string data);//模板函数,用于指令字符串数据的发送和反馈接收确认
+    std::string _send_script_data_callback(std::string data);//用于发送程序名称及程序内容
     std::string _send_get_data_factory_callback(std::string data);//模板函数,用于Get指令字符串数据的发送和反馈接收确认
-    int _ParseRecvData(std::string str);//反馈值解析函数
+    std::string _ParseRecvData(std::string str);//反馈值解析函数
     std::string _ParseGetRecvData(std::string str);//Get类指令反馈值解析函数
 
     void _ParseROSCommandData_callback(const std::shared_ptr<remote_cmd_server_srv_msg::Request> req,
                                              std::shared_ptr<remote_cmd_server_srv_msg::Response> res);//用于解析用户发送的ROS接口指令
     void _ParseROSScript_callback(const std::shared_ptr<remote_script_srv_msg::Request> req,
                                         std::shared_ptr<remote_script_srv_msg::Response> res);//用于解析用户发送的脚本
-    int _def_jnt_position(std::string pos);
-    int _def_cart_position(std::string pos);
+    std::string _def_jnt_position(std::string pos);
+    std::string _def_cart_position(std::string pos);
     std::string _get_variable(std::string para_list);
     uint16_t _cmd_counter;//指令数据帧计数器
     uint16_t _script_counter;//脚本数据帧计数器
@@ -284,7 +300,7 @@ private:
     
 
     //TODO 把cpp文件中的if else结构搜索函数写成map函数，提高搜索效率
-    const std::map<std::string,int(robot_command_thread::*)(std::string)> _fr_function_list{
+    const std::map<std::string,std::string(robot_command_thread::*)(std::string)> _fr_function_list{
     {"JNTPoint",&robot_command_thread::_def_jnt_position},
     {"CARTPoint",&robot_command_thread::_def_cart_position},
     {"DragTeachSwitch",&robot_command_thread::DragTeachSwitch},
@@ -349,6 +365,9 @@ private:
     {"ScriptPause",&robot_command_thread::ScriptPause},
     {"ScriptResume",&robot_command_thread::ScriptResume},
 
+    {"GetForwardKin",&robot_command_thread::GetForwardKin},
+    {"GetInverseKin",&robot_command_thread::GetInverseKin},
+
     {"AuxServoSetParam", &robot_command_thread::AuxServoSetParam},
     {"AuxServoEnable", &robot_command_thread::AuxServoEnable},
     {"AuxServoSetControlMode", &robot_command_thread::AuxServoSetControlMode},
@@ -357,14 +376,19 @@ private:
     {"AuxServoSetTargetTorque", &robot_command_thread::AuxServoSetTargetTorque},
     {"AuxServoHoming", &robot_command_thread::AuxServoHoming},
     {"AuxServoClearError", &robot_command_thread::AuxServoClearError},
-    {"AuxServoSetStatusID", &robot_command_thread::AuxServoSetStatusID}
-    };
-
-    const std::map<std::string,std::string(robot_command_thread::*)(std::string)> _fr_get_list{
+    {"AuxServoSetStatusID", &robot_command_thread::AuxServoSetStatusID},
     {"GetTCPOffset",&robot_command_thread::GetTCPOffset},
     {"GetDHCompensation",&robot_command_thread::GetDHCompensation},    
-    {"GetTCPOffseta",&robot_command_thread::GetTCPOffseta}
+    {"GetTCPOffseta",&robot_command_thread::GetTCPOffseta},
+    //获取buff中数据
+    {"getbuff",&robot_command_thread::getbuff}
     };
+
+    // const std::map<std::string,std::string(robot_command_thread::*)(std::string)> _fr_get_list{
+    // {"GetTCPOffset",&robot_command_thread::GetTCPOffset},
+    // {"GetDHCompensation",&robot_command_thread::GetDHCompensation},    
+    // {"GetTCPOffseta",&robot_command_thread::GetTCPOffseta}
+    // };
 };
 
 
