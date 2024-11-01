@@ -174,11 +174,14 @@ void fairino_robot::write(double cmd[6]){
         for(int i=0;i<6;i++){
             Args[0][i] = cmd[i];//赋值位置指令
         }
-        Args[1] = 0.;
+        for(int i=0;i<4;i++){
+            Args[1][i] = 0.;//赋值位置指令
+        }
         Args[2] = 0.;
-        Args[3] = 0.008;//8ms
-        Args[4] = 0.;
+        Args[3] = 0.;
+        Args[4] = 0.008;//8ms
         Args[5] = 0.;
+        Args[6] = 0.;
         try{
             //RCLCPP_INFO(rclcpp::get_logger("FrHardwareInterface"),"发送servoJ: %f,%f,%f,%f,%f,%f",cmd[0],cmd[1],cmd[2],cmd[3],cmd[4],cmd[5]);    
             if (_xml_client_ptr->execute("ServoJ", Args, result)){
