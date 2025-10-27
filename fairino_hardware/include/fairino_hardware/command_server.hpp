@@ -275,6 +275,9 @@ private:
     std::string _def_jnt_position(std::string pos);
     std::string _def_cart_position(std::string pos);
     std::string _get_variable(std::string para_list);
+    // Helpers for point ID management
+    std::string GetNextJNTID(std::string para);
+    std::string GetNextCARTID(std::string para);
     uint16_t _cmd_counter;//指令数据帧计数器
     uint16_t _script_counter;//脚本数据帧计数器
     std::string _cur_func_name;
@@ -303,6 +306,9 @@ private:
     const std::map<std::string,std::string(robot_command_thread::*)(std::string)> _fr_function_list{
     {"JNTPoint",&robot_command_thread::_def_jnt_position},
     {"CARTPoint",&robot_command_thread::_def_cart_position},
+    // Point ID helpers
+    {"NextJNTID",&robot_command_thread::GetNextJNTID},
+    {"NextCARTID",&robot_command_thread::GetNextCARTID},
     {"DragTeachSwitch",&robot_command_thread::DragTeachSwitch},
     {"RobotEnable",&robot_command_thread::RobotEnable},
     {"SetSpeed",&robot_command_thread::SetSpeed},
