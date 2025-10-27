@@ -672,6 +672,10 @@ std::string robot_command_thread::_def_jnt_position(std::string pos){
         }std::cout<<_recv_data_res<<std::endl;
         iter_data = std::regex_token_iterator<std::string::iterator>(pos.begin(),pos.end(),search_para,-1);
         int idx = atol(iter_data->str().c_str());//指令序号
+        // 支持 id=0 自动追加到末尾
+        if(idx == 0){
+            idx = static_cast<int>(_cmd_jnt_pos_list.size()) + 1;
+        }
         iter_data++;
         if(idx > _cmd_jnt_pos_list.size()+1 || idx <= 0){//如果大于当前容器最大值+1,那么要报错,因为序列容器中间无法留空
             RCLCPP_INFO(rclcpp::get_logger("fairino_hardware"),"Instruction error: Container sequence number is out of limit.");
@@ -718,6 +722,10 @@ std::string robot_command_thread::_def_cart_position(std::string pos){
         }
         iter_data = std::regex_token_iterator<std::string::iterator>(pos.begin(),pos.end(),search_para,-1);
         int idx = atol(iter_data->str().c_str());//指令序号
+        // 支持 id=0 自动追加到末尾
+        if(idx == 0){
+            idx = static_cast<int>(_cmd_cart_pos_list.size()) + 1;
+        }
         iter_data++;
         if(idx > _cmd_cart_pos_list.size()+1 || idx <= 0){//如果大于当前容器最大值+1,那么要报错,因为序列容器中间无法留空
             RCLCPP_INFO(rclcpp::get_logger("fairino_hardware"),"Instruction error: Container sequence number is out of limit.");
@@ -766,6 +774,7 @@ std::string robot_command_thread::_get_variable(std::string para_list){
             }else{
                 RCLCPP_INFO(rclcpp::get_logger("fairino_hardware"),"Instruction error: The sequence number of the input point is out of range.");
                 // std::cout << "指令错误:输入点的序号超出范围" << std::endl;
+                return std::string("0");
             }
         }else if(para_match[1] == "CART"){
                 int idx = atol(para_match[2].str().c_str());
@@ -781,15 +790,30 @@ std::string robot_command_thread::_get_variable(std::string para_list){
                 }else{
                     RCLCPP_INFO(rclcpp::get_logger("fairino_hardware"),"Instruction error: The sequence number of the input point is out of range.");
                     // std::cout << "指令错误:输入点的序号超出范围" << std::endl;
+                    return std::string("0");
                 }
         }else{
             RCLCPP_INFO(rclcpp::get_logger("fairino_hardware"),"Instruction error: Invalid GET instruction parameter.");
             // std::cout << "指令错误: 无效的GET指令参数" << std::endl;
+            return std::string("0");
         }
     }else{
         RCLCPP_INFO(rclcpp::get_logger("fairino_hardware"),"Instruction error: GET instruction parameter is invalid, parameter form is [JNT|CART],[serial number].");
         // std::cout << "指令错误: GET指令参数非法,参数形式为[JNT|CART],[序号]" << std::endl;
+        return std::string("0");
     }
+}
+
+// 获取下一个可用的JNT点ID（当前数量+1）
+std::string robot_command_thread::GetNextJNTID(std::string /*para*/){
+    const auto next_id = static_cast<int>(_cmd_jnt_pos_list.size()) + 1;
+    return std::to_string(next_id);
+}
+
+// 获取下一个可用的CART点ID（当前数量+1）
+std::string robot_command_thread::GetNextCARTID(std::string /*para*/){
+    const auto next_id = static_cast<int>(_cmd_cart_pos_list.size()) + 1;
+    return std::to_string(next_id);
 }
 
 std::string  robot_command_thread::DragTeachSwitch(std::string para){//拖动示教模式切换
