@@ -9,8 +9,10 @@
 #include "hardware_interface/types/hardware_interface_type_values.hpp"
 #include "visibility_control.h"
 #include <vector>
-#include "fairino_robot.hpp"
+#include "libfairino/include/robot.h"
 
+
+#define CONTROLLER_IP_ADDRESS "192.168.58.2"
 
 namespace fairino_hardware
 {
@@ -57,7 +59,9 @@ private:
   double _jnt_position_state[6];
   double _jnt_velocity_state[6];
   double _jnt_torque_state[6];
-  std::unique_ptr<fairino_robot> _ptr_robot;
+  int _control_mode;
+  std::string _controller_ip = CONTROLLER_IP_ADDRESS;
+  std::unique_ptr<FRRobot> _ptr_robot;
 };
 
 } //end namespace

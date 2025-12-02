@@ -1,0 +1,9 @@
+#ifndef VERSION_CONTROL_H_
+#define VERSION_CONTROL_H_
+
+//版本号规则：V(VERSION_MAJOR).(VESION_MINOR)
+#define VERSION_MAJOR 3
+#define VERSION_MINOR 0.0
+
+
+#endif
