@@ -1,7 +1,16 @@
 #pragma once
-#define     ERR_UPLOAD_FILE_NOT_FOUND              -7
-#define     ERR_SAVE_FILE_PATH_NOT_FOUND           -6
-#define     ERR_LUA_FILE_NOT_FOUND                 -5
+#define     ERR_SOCKET_RECV_FAILED                 -16    /* socket接收失败 */
+#define     ERR_SOCKET_SEND_FAILED                 -15    /* socket发送失败 */
+#define     ERR_FILE_OPEN_FAILED                   -14    /* 文件打开失败 */
+#define     ERR_FILE_TOO_LARGE                     -13    /* 文件大小超限 */
+#define     ERR_UPLOAD_FILE_ERROR                  -12    /* 上传文件异常 */
+#define     ERR_FILE_NAME                          -11    /* 文件名称异常 */
+#define     ERR_DOWN_LOAD_FILE_WRITE_FAILED        -10    /* 下载文件写入失败 */
+#define     ERR_DOWN_LOAD_FILE_CHECK_FAILED        -9     /* 文件下载校验失败 */
+#define     ERR_DOWN_LOAD_FILE_FAILED              -8     /* 文件下载失败 */
+#define     ERR_UPLOAD_FILE_NOT_FOUND              -7     /* 上传文件存在 */
+#define     ERR_SAVE_FILE_PATH_NOT_FOUND           -6     /* 保存文件路径不存在 */
+#define     ERR_LUA_FILE_NOT_FOUND                 -5     /* LUA文件不存在 */
 #define     ERR_XMLRPC_CMD_FAILED                  -4      /* xmlrpc接口执行失败，请联系售后工程师 */
 #define     ERR_XMLRPC_COM_FAILED                  -3      /*xmlrpc通讯失败，请检查网络连接以及服务器IP地址是否正确*/
 #define     ERR_SOCKET_COM_FAILED                  -2      /*网络通讯异常*/

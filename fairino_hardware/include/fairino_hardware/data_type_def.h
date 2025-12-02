@@ -21,6 +21,9 @@
 #define RECV_BUFF 512
 /******************************/
 
+/*用于到为判断关节和笛卡尔位置指令与反馈差距的阈值*/
+#define JNT_ERROR_THREASHOLD 0.2
+
 /*8081端口状态反馈结构体宏定义*/
 #define REG_VAR_NB_MAX_NUM 20	/** 数值型变量个数 */
 #define REG_VAR_STR_MAX_NUM 10	/** 字符型变量个数 */
@@ -34,6 +37,18 @@
 #define _CTRL_STATE_SIZE sizeof(_CTRL_STATE)
 /******************************/
 
+/*SHM共享内存使用的交互数据结构*/
+#define SHM_SHARED_DATA_SIZE 10000
+#pragma pack(1)
+typedef struct _ShmData{
+	uint64_t timestamp;
+	double jnt_cur_pos[6];
+	double exaxis_cur_pos[4];
+	double tcp_cur_pos[6];
+	double flange_cur_pos[6];
+}ShmData;
+#pragma pack()
+/******************************/
 
 
 /*********8081端口结构体数据部分********/
@@ -41,71 +56,70 @@
 /** 外部轴状态结构体 */
 typedef struct _REG_VAR
 {
-	uint8_t	num_full;			//数值型变量监控个数已满, 1:代表已满 0:代表未满
-	uint8_t	str_full;			//字符型变量监控个数已满, 1:代表已满 0:代表未满
-	uint8_t	num_cnt;			//数值型变量使用个数
-	uint8_t	str_cnt;			//字符型变量使用个数
-	double	num[REG_VAR_NB_MAX_NUM];			//数值型变量值
-	char	str[REG_VAR_STR_MAX_NUM][100];		//字符型变量值
-	char	num_name[REG_VAR_NB_MAX_NUM][20];	//数值型变量名
-	char	str_name[REG_VAR_STR_MAX_NUM][20];	//字符型变量名
-} REG_VAR;
+	uint8_t  num_full;  /* 变量监控个数已满 */
+	uint8_t  str_full;
+	uint8_t  num_cnt; /* 数值型变量个数 */
+	uint8_t  str_cnt; /* 字符型变量个数 */
+	double   num[REG_VAR_NB_MAX_NUM];            /* 数值型变量值 */
+	char     str[REG_VAR_STR_MAX_NUM][100];      /* 字符型变量值 */
+	char     num_name[REG_VAR_NB_MAX_NUM][20];   /* 数值型变量名 */
+	char     str_name[REG_VAR_STR_MAX_NUM][20];  /* 字符型变量名 */
+}REG_VAR;
 
-typedef struct _EXTERNALAXIS_STATUS_EXHAL
-{
-	double exAxisPos;			//外部轴位置
-	double exAxisSpeedBack;		//外部轴速度
-	int exAxisErrorCode;		//外部轴故障码
-	unsigned char exAxisRDY;	//伺服准备好
-	unsigned char exAxisINPOS;	//伺服到位
-	unsigned char exAxisALM;	//伺服报警
-	unsigned char exAxisFLERR;	//跟随误差
-	unsigned char exAxisNLMT;	//到负限位
-	unsigned char exAxisPLMT;	//到正限位
-	unsigned char exAxisAbsOFLN;//驱动器485总线掉线
-	unsigned char exAxisOFLIN;	//通信超时，控制卡与控制箱板485通信超时
-	uint8_t	exAxisHomeStatus;	//外部轴回零状态
+typedef struct _EXTERNALAXIS_STATUS_EXHAL {
+	double exAxisPosBack;     /** 外部轴位置 */
+	double exAxisSpeedBack;   /** 外部轴速度 */
+	int exAxisErrorCode;      /** 外部轴故障码 */
+	unsigned char exAxisRDY;  /** 伺服准备好 */
+	unsigned char exAxisINPOS;/** 伺服到位 */
+	unsigned char exAxisALM;  /** 伺服报警 */
+	unsigned char exAxisFLERR;/** 跟随误差 */
+	unsigned char exAxisNLMT; /** 到负限位 */
+	unsigned char exAxisPLMT; /** 到正限位 */
+	unsigned char exAxisAbsOFLN;/** 驱动器485总线掉线 */
+	unsigned char exAxisOFLIN;/** 通信超时，控制卡与控制箱板485通信超时 */
+	uint8_t  exAxisHomeStatus;/** 外部轴回零状态 */
 } EXTERNALAXIS_STATUS_EXHAL;
 
 /** 扩展轴外部伺服状态结构体 */
 typedef struct _AUXSERVO_STATE
 {
-	uint8_t servo_id;			// 伺服驱动器 ID 号
-	int32_t servo_errcode; 		// 伺服驱动器故障码
-	int32_t servo_state; 		// 伺服驱动器状态
-	double servo_actual_pos; 	// 伺服当前位置
-	float servo_actual_speed;	// 伺服当前速度
-	float servo_actual_torque;  // 伺服当前转矩
+	uint8_t servo_id;            /** 伺服驱动器ID号 */
+	int32_t servo_errcode;       /** 伺服驱动器故障码 */
+	int32_t servo_state;         /** 伺服器驱动器状态 */
+	double  servo_actual_pos;    /** 伺服当前位置 */
+	float   servo_actual_speed;  /** 伺服当前速度 */
+	float   servo_actual_torque; /** 伺服当前转矩 */
 }AUXSERVO_STATE;
 
 /** 打磨头状态结构体 */
-typedef struct _POLISHING_STATE
+typedef struct _POLISHING_STATE     
 {
-	uint16_t StatusWord;		//状态字
-	int16_t	ActualVel;			//实际速度，单位 rpm
-	int16_t	ActualTorque;		//实际接触力，单位 N
-	int16_t	Temperature;		//实际内部温度， 单位 °C
-	float	ActualPos;			//实际位置，单位 0.01mm
-	uint16_t ErrorCode;			//错误码
-	uint16_t OperationMode;		//当前模式 , 1-回零模式，2-位置模式，4-力矩模式 
-	uint8_t WarningState;		//报警状态：0-无报警,1-报警(打磨头通讯异常)
-	uint8_t Arrive;
-	uint8_t Emergency;
+	uint16_t StatusWord;            /** 状态字 */
+    int16_t ActualVel;              /** 实际速度，单位rpm */
+    int16_t ActualTorque;           /** 实际接触力，单位N */
+    int16_t Temperature;            /** 实际内部温度，单位°C */
+    float   ActualPos;              /** 实际位置，单位0.01mm */
+    uint16_t ErrorCode;             /** 错误码 */
+    uint16_t OperationMode;         /** 当前模式，1-回零模式，2-位置模式，4-力矩模式 */
+    uint8_t WarningState;           /** 报警状态，0-无报警，1-报警 */
+    uint8_t Arrive;                 /** 主轴到位状态，0-未到位；1-到位 */
+    uint8_t Emergency;              /** 急停状态 */
 } POLISHING_STATE;
 
 /** 焊接中断状态结构体 */
 typedef struct _WELDING_BREAK_OFF_STATE
 {
-	uint8_t breakOffState;		//焊接中断状态信息：0-未中断,1-已中断
-	uint8_t weldArcState;		//焊接电弧状态信息：0-电弧未中断,1-电弧中断
-} WELDING_BREAK_OFF_STATE;
+    uint8_t breakOffState;              /** 焊接中断状态：0-焊接未中断   1-焊接中断 */
+    uint8_t weldArcState;               /** 焊接电弧状态 0-电弧未中断 1-电弧已中断 */
+}WELDING_BREAK_OFF_STATE;
 
 /** 远程控制接口结构体 */
 typedef struct _REMOTE_CTRL_INF_STATE
 {
-	uint8_t robot_ctrl_mode;		/* 机器人控制模式，0：本地控制模式(手/自动模式)，1：远程控制模式 */
-	uint8_t errState;				/* 错误状态，0-运行正常，1-运行异常 */
-	uint16_t errCode;				/* 错误码 */
+	uint8_t robot_ctrl_mode;  /* 机器人控制模式，0-本地控制模式（手/自动模式），1-远程控制模式 */
+	uint8_t err_state;        /* 错误状态，0-无错误，1-有错误 */
+	uint16_t err_code;        /* 错误码 */
 }REMOTE_CTRL_INF_STATE;
 
 
@@ -122,6 +136,21 @@ typedef struct _GRIPPER_STATUS_FB
 	uint8_t	curRotSpd;		/**当前旋转速度（百分比）*/
 	uint8_t	curRotTor;		/**当前旋转力矩（百分比）*/
 }GRIPPER_STATUS_FB;
+
+/** CNC机床状态 */
+typedef struct _CNC_SYS_STATE
+{
+    uint16_t device_manucfactor;     /** 设备厂商     1-FANUC */
+    short com_state;                 /** faocs通信状态，0-正常，其他-断开 */
+    char  CNC_type[2];               /** '15' : Series 150/150i ;'16' : Series 160/160i ;'18' : Series 180/180i ;'21' : Series 210/210i ;'30' : Series 300i ;'31' : Series 310i ;'32' : Series 320i ' 0' : Series 0i ;'PD' : Power Mate i-D ;'PH' : Power Mate i-H */
+    short run_state;                 /** 运行状态，0-停止，1-运行 */
+	short emergency_state;           /** 急停状态，0-触发急停 ，其他-未触发急停  */
+    short alarm_state;               /** 告警状态，0-无告警 ，其他-存在告警  */
+	short door_state;                /** 控制门状态，0-开门，1-关门 */
+	short axis4_state;               /** 卡盘状态，0-松开， 1-加紧*/
+    char read_value[5];              /** focas 读地址回复*/
+    uint8_t disConnectState;         /** 机床通讯异常断开故障；0-未断开；1-异常断开 */
+}CNC_SYS_STATE;
 
 
 /** 8081端口运动控制器状态结构体 */
@@ -218,7 +247,7 @@ typedef struct _CTRL_STATE
 	double     weldTrackSpeed;          /** 焊缝跟踪速度   mm/s */
 	uint8_t    drag_alarm;              /** 拖动警告，当前处于自动模式,0-不报警，1-报警 ，2-位置反馈异常不切换 */
 	double     LoadIdentifyData[4];     /** 负载辨识结果（weight,x,y,z） */
-	int        conveyor_encoder_pos;    /** 传送带编码器位置 */
+	int       conveyor_encoder_pos;    /** 传送带编码器位置 */
 	double     conveyor_speed;          /** 传送带速度 mm/s */
 	double     conveyorWorkPiecePos;    /** 传送带工件当前位置，单位mm */
 	uint8_t    btn_box_stop_signal;     /** 按钮盒急停信号 ，1-按下急停*/
@@ -304,7 +333,38 @@ typedef struct _CTRL_STATE
 	float user_var[128];							  /** 用户变量，默认值0 */
 	uint8_t run_status[8];							  /** 后台程序线程状态，0停止（未配置），1运行，2暂停 */
 	GRIPPER_STATUS_FB gripper_status; 				  /** 夹爪状态反馈结构体*/
-	uint8_t bootModeState;							  /** boot模式状态 0-未进入;1-进入*/
+	uint8_t bootModeState;							  /** boot模式状态*/
+    CNC_SYS_STATE cnc_state;                          /** CNC机床状态反馈 */
+    uint16_t laserState; 				 			  /** laser sensor state*/
+    uint16_t UDPCmdState; 				 			  /** UDP Cmd state*/
+	uint8_t entryInterfere[6];        					//J1-J6进入干涉区标志
+	uint8_t entry_cube_interference;  					//进入立方体干涉区，0-未进入，1-进入
+	uint8_t entry_safety_planes[8];   					//进入8安全墙，0-未进入，1-进入
+	double descarj1[7];           						//关节1笛卡尔坐标位置
+	double descarj2[7];          						//关节2笛卡尔坐标位置
+	double descarj3[7];           						//关节3笛卡尔坐标位置
+	double descarj4[7];          						//关节4笛卡尔坐标位置
+	double descarj5[7];          						//关节5笛卡尔坐标位置
+	double descarj6[7];           						//关节6笛卡尔坐标位置
+	double desring1[7];           						//关节1限位环笛卡尔坐标位置及姿态
+	double desring2[7];          						//关节2限位环笛卡尔坐标位置及姿态
+	double desring3[7];           						//关节3限位环笛卡尔坐标位置及姿态
+	double desring4[7];          						//关节4限位环笛卡尔坐标位置及姿态
+	double desring5[7];          						//关节5限位环笛卡尔坐标位置及姿态
+	double desring6[7];           						//关节6限位环笛卡尔坐标位置及姿态
+    uint8_t modbsRTUSlaveComState; 	                    //Modbus从站连接数据 0-未连接；1-已连接
+    uint8_t modbusRTUSlaveDI[8];                        /** 从站DI0 - DI63 */
+    uint8_t modbusRTUSlaveDO[8];                        /** 从站DO0 - DO63 */
+    int modbusRTUSlaveAI[32];                           /** 从站AI int16 AI0-AI15  float AI16-AI31 (此处为float值 * 1000后得到的int值) */
+    int modbusRTUSlaveAO[32];                           /** 从站AO int16 AO0-AO15  int16 AO16-AO31（此处为float值 * 1000后得到的int值） */
+    int mdbsRTUSlaveCtrlValue;                          //ModbusRTU 机器人控制寄存器状态：    bit0-bit7为DO0-DO7；bit8-bit15为CO0-CO7；bit16-bit17为工具DO0-DO1； bit18-bit27分别对应“暂停”  ~  “清除所有故障”； bit28-bit31预留；
+    int mdbsRTUSlavectrlRobotState; 					//bit0-bit10分别对应“暂停”  ~  “清除所有故障”；
+    uint8_t robotNetTypeError;							//网络版机器人：0-正常   1-网络版机器人不可匹配宽电压控制箱
+	uint8_t loadNum;         							//web2.0负载ID
+	double loadWeight;       							//web2.0负载重量
+	double loadCoord[3];     							//web2.0负载质心
+	uint8_t robotpreHeatingState;						//关节低温预热状态
+	uint8_t limitRingFlag;                              //限位环状态
 	char end[7];
 } CTRL_STATE;
 #pragma pack()
