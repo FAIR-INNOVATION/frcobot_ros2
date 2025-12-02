@@ -3,13 +3,9 @@
 #include <sys/socket.h>
 #include "fairino_hardware/version_control.h"
 
-std::mutex _reconnect_mutex;
+std::atomic_bool _reconnect_flag;
 
-#define LOSE_TCP_CONNECT_TIME_MAX 10
 #define LOGGER_NAME "fairino_ros2_command_server"
-
-int  _program_state;//程序运行状态：1-停止、2-运行、3-暂停、4-拖动
-
 
 /**
  * @brief 构造函数，用于初始化参数服务器中的变量，加载SDK库并连接机械臂
@@ -75,16 +71,23 @@ robot_command_thread::robot_command_thread(const std::string node_name):rclcpp::
 
     /********************************尝试使用SDK库连接机械臂******************************************/
     _controller_ip = CONTROLLER_IP;//控制器默认ip地址
-    RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"ROS2指令服务器创建成功，准备连接机械臂  版本号:V%d.%f",\
-        VERSION_MAJOR,\
-        VERSION_MINOR);
-    _ptr_robot = std::make_shared<FRRobot>();
+
+    //打印输出版本信息及其他前置信息
+    RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"ROS2指令服务器创建成功,准备连接机械臂");
+    RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"fairino_hardware版本号:V%i.%i.%i,机械臂软件版本号:V%i.%i.%i",\
+        VERSION_MAJOR,VERSION_MINOR,VERSION_MINOR2,VERSION_ROBOT_MARJOR,VERSION_ROBOT_MINOR,VERSION_ROBOT_MINOR2);
+    RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"构建时间:%s,%s",__TIME__,__DATE__);    
+    
+    
+    //开始初始化
+    _ptr_robot = std::make_unique<FRRobot>();
     error_t returncode = _ptr_robot->RPC(_controller_ip.c_str());
     if(returncode !=0 ){
         RCLCPP_ERROR(rclcpp::get_logger(LOGGER_NAME),"连接机械臂失败，程序即将退出！");
         exit(0);
     }
     RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"连接机械臂成功！");
+    _sdk_connection_check_timer =  this->create_wall_timer(1s,std::bind(&robot_command_thread::_timer_callback,this));
     /*********************************************************************************************/
 }
 
@@ -94,11 +97,21 @@ robot_command_thread::robot_command_thread(const std::string node_name):rclcpp::
  */
 robot_command_thread::~robot_command_thread()
 {
-    _ptr_robot->CloseRPC();
+    //_ptr_robot->CloseRPC();
     _ptr_robot->~FRRobot();
 }
 
 
+void robot_command_thread::_timer_callback(){
+    static std::atomic_bool last_flag = _reconnect_flag.load();
+    if(_reconnect_flag && !last_flag){
+        _ptr_robot->CloseRPC();
+    }
+    if(!_reconnect_flag && last_flag){
+        _ptr_robot->RPC(_controller_ip.c_str());
+    }
+    last_flag.store(_reconnect_flag.load());
+}
 
 
 /**
@@ -207,6 +220,19 @@ void robot_command_thread::_fillDescTran(std::list<std::string>& data,DescTran& 
     trans.x = std::stod(data.front().c_str());data.pop_front();
     trans.y = std::stod(data.front().c_str());data.pop_front();
     trans.z = std::stod(data.front().c_str());data.pop_front();
+}
+
+
+/**
+ * @brief 私有函数，用于将list中开头6个数据填充到JointPos对象中
+ * @param [in] data-list数据，用于存储字符串列表
+ * @param [out] pos-输出的JointPos对象
+ */
+void robot_command_thread::_fillJointPose(std::list<std::string>& data,JointPos pos){
+    for(int i=0;i<6;i++){
+        pos.jPos[i] = std::stod(data.front().c_str());
+        data.pop_front();
+    }
 }
 
 
@@ -540,13 +566,19 @@ std::string robot_command_thread::SetWObjList(std::string para){
 
 /**
  * @brief 设置末端负载重量
- * @param [in] para-重量值，单位kg
+ * @param [in] para-loadNum,weight
  * @return 指令执行是否成功
  * @retval 0-成功，其他-错误码 
  */
 std::string robot_command_thread::SetLoadWeight(std::string para){
-    //float weight
-    return std::to_string(_ptr_robot->SetLoadWeight(std::stof(para)));
+    //int loadNum,float weight
+    std::list<std::string> list;
+    _splitString2List(para,list);
+
+    int id = std::stoi(list.front().c_str());list.pop_front();
+    float weight = std::stof(list.front().c_str());
+    //return std::to_string(_ptr_robot->SetLoadWeight(id));
+    return std::to_string(_ptr_robot->SetLoadWeight(id,weight));//V378
 }
 
 /**
@@ -586,7 +618,7 @@ std::string robot_command_thread::SetRobotInstallAngle(std::string para){
     //double yangle, double zangle
     std::list<std::string> list;
     _splitString2List(para,list);
-    double yangle = std::stod(list.front().c_str());
+    double yangle = std::stod(list.front().c_str());list.pop_front();
     double zangle = std::stod(list.front().c_str());
     return std::to_string(_ptr_robot->SetRobotInstallAngle(yangle,zangle));
 }
@@ -619,14 +651,20 @@ std::string robot_command_thread::SetAnticollision(std::string para){
 
 /**
  * @brief 设置防碰撞等级
- * @param [in] para-strategy碰撞等级
+ * @param [in] para-strategy,safedisntance,safevel
  * @return 指令执行是否成功
  * @retval 0-成功，其他-错误码 
  */
 std::string robot_command_thread::SetCollisionStrategy(std::string para){
-    //int strategy
+    //int strategy int safetime,int safedistance,int safevel,int* safemargin
+    std::list<std::string> list;
+    _splitString2List(para,list);
+    int strategy = std::stoi(list.front().c_str());list.pop_front();
+    int safedistance = std::stoi(list.front().c_str());list.pop_front();
+    int safevel = std::stoi(list.front().c_str());
     int margin[6]{1,1,1,1,1,1};
-    return std::to_string(_ptr_robot->SetCollisionStrategy(std::stoi(para),1000,150,margin));
+    //return std::to_string(_ptr_robot->SetCollisionStrategy(std::stoi(para),1000,safedistance,margin));
+    return std::to_string(_ptr_robot->SetCollisionStrategy(std::stoi(para),1000,safedistance,safevel,margin));//V378
 }
 
 /**
@@ -1323,6 +1361,31 @@ std::string robot_command_thread::Circle(std::string para){
 }
 
 /**
+ * @brief 机械臂关节伺服指令，该指令对于实时性要求较高
+ * @param [in] jntpos-六个关节的位置指令，单位为度，eaxispos-4个外部轴位置指令，单位为度，deltaT-指令时间间隔，范围0.001~0.0016
+ * @return 指令执行是否成功
+ * @retval 0-成功，其他-错误码 
+ */
+std::string robot_command_thread::ServoJ(std::string para){
+    std::list<std::string> datalist;
+    _splitString2List(para,datalist);
+
+    JointPos jpos;
+    _fillJointPose(datalist,jpos);
+
+    ExaxisPos eaxispos;
+    eaxispos.ePos[0] = std::stod(datalist.front().c_str());datalist.pop_front();
+    eaxispos.ePos[1] = std::stod(datalist.front().c_str());datalist.pop_front();
+    eaxispos.ePos[2] = std::stod(datalist.front().c_str());datalist.pop_front();
+    eaxispos.ePos[3] = std::stod(datalist.front().c_str());datalist.pop_front();
+
+    int deltaT = std::stod(datalist.front().c_str());
+    return std::to_string(_ptr_robot->ServoJ(&jpos,&eaxispos,0,0,deltaT,0,0));
+}
+
+
+
+/**
  * @brief 机械臂关节空间样条运动开始
  * @return 指令执行是否成功
  * @retval 0-成功，其他-错误码 
@@ -1742,6 +1805,49 @@ std::string robot_command_thread::ScriptResume(std::string para){
 }
 
 /**
+ * @brief 获取fairino_hardware版本号
+ * @return 错误码及版本号
+ * @retval res,version
+ */
+std::string robot_command_thread::GetVersion(std::string para){
+    std::string ver = "fairino_hardware:V" + std::to_string(VERSION_MAJOR) + "." + \
+        std::to_string(VERSION_MINOR) + "." + std::to_string(VERSION_MINOR2);
+    return std::string("0," + ver);
+}
+
+/**
+ * @brief 获取fairino_msg版本号
+ * @return 错误码及版本号
+ * @retval res,version
+ */
+std::string robot_command_thread::GetMsgVersion(std::string para){
+    std::string ver = "fairino_msgs:V" + std::to_string(VERSION_MSG_MARJOR) + "." + \
+        std::to_string(VERSION_MSG_MINOR) + "." + std::to_string(VERSION_MSG_MINOR2);
+    return std::string("0," + ver);
+}
+/**
+ * @brief 获取机械臂版本号
+ * @return 错误码及版本号
+ * @retval res,softwareversion
+ */
+std::string robot_command_thread::GetRobotVersion(std::string para){
+    char robotmodel[64],softversion[64],ctrversion[64];
+    int res = _ptr_robot->GetSoftwareVersion(robotmodel,softversion,ctrversion);
+    return std::string(std::to_string(res) + ",robot:" + std::string(softversion));
+}
+
+/**
+ * @brief 获取机械臂控制器版本号
+ * @return 错误码及版本号
+ * @retval res,sofewareversion
+ */
+std::string robot_command_thread::GetControllerVersion(std::string para){
+    char robotmodel[64],softversion[64],ctrversion[64];
+    int res = _ptr_robot->GetSoftwareVersion(robotmodel,softversion,ctrversion);
+    return std::string(std::to_string(res) + ",robot_controller:" + std::string(ctrversion));
+}
+
+/**
  * @brief 获取工具标定值
  * @return TCP标定值
  * @retval res,x,y,z,rx,ry,rz 
@@ -1775,6 +1881,24 @@ std::string robot_command_thread::GetDHCompensation(std::string para){
             std::to_string(dhcomp[4]) + "," + \
             std::to_string(dhcomp[5]);
 }
+
+/**
+ * @brief 获取焊接中断状态
+ * @return 焊接中断状态结构体信息
+ * @retval breakOffState,weldArcState
+ */
+std::string robot_command_thread::GetWeldingBreakOffState(std::string para){
+    // static WELDING_BREAKOFF_STATE state;
+    // int res = _ptr_robot->GetRobotRealTimeState(&_robot_realtime_state);
+    // state = _robot_realtime_state.weldingBreakOffState;
+    // RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"焊接状态参数:%i,%i",\
+    //     _robot_realtime_state.weldingBreakOffState.breakOffState,
+    //     _robot_realtime_state.weldingBreakOffState.weldArcState);
+    // return std::string(std::to_string(res) + "," + std::to_string(state.breakOffState) + \
+    //         "," + std::to_string(state.weldArcState));
+}
+
+
 
 /**
  * @brief 可移动设备使能
@@ -1967,7 +2091,9 @@ std::string robot_command_thread::LuaDownLoad(std::string para){
  */
 std::string robot_command_thread::LuaUpload(std::string para){
     //string filepath
-    return std::to_string(_ptr_robot->LuaUpload(para));
+    int res = _ptr_robot->LuaUpload(para);
+    RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"上传LUA脚本调用SDK的结果为:%i",res);
+    return std::to_string(0);
 }
 
 /**
@@ -2001,10 +2127,130 @@ std::string robot_command_thread::GetLuaList(std::string para){
     }
 }
 
+/**
+ * @brief 根据点位信息计算工具坐标系
+ * @param [in] method,pos
+ * @return 工具坐标系结果及错误码
+ * @retval errorcode,x,y,z,rx,ry,rz
+ */
+std::string robot_command_thread::ComputeToolCoordWithPoints(std::string para){
+    //int method,Jointpos pos
+    std::list<std::string> list;
+    _splitString2List(para,list);
 
+    int method = std::stoi(list.front().c_str());list.pop_front();
+    JointPos pos;
+    _fillJointPose(list,pos);
+    DescPose cartpos;
+    int res = _ptr_robot->ComputeToolCoordWithPoints(method,&pos,cartpos);
+    return std::string(std::to_string(res) + "," + std::to_string(cartpos.tran.x) + "," + \
+            std::to_string(cartpos.tran.y) + "," + std::to_string(cartpos.tran.z) + "," + \
+            std::to_string(cartpos.rpy.rx) + "," + std::to_string(cartpos.rpy.ry) + "," + \
+            std::to_string(cartpos.rpy.rz));
+}
 
+/**
+ * @brief 根据点位信息计算工件坐标系
+ * @param [in] method,pos,reframe
+ * @return 工件坐标系结果及错误码
+ * @retval errorcode,x,y,z,rx,ry,rz
+ */
+std::string robot_command_thread::ComputeWObjCoordWithPoints(std::string para){
+    //int method,descpos pos,int refframe
+    std::list<std::string> list;
+    _splitString2List(para,list);
 
+    int method = std::stoi(list.front().c_str());list.pop_front();
+    DescPose posin,posout;
+    _fillDescPose(list,posin);
+    int reframe = std::stoi(list.front().c_str());
+    int res = _ptr_robot->ComputeWObjCoordWithPoints(method,&posin,reframe,posout);
+    return std::string(std::to_string(res) + "," + std::to_string(posout.tran.x) + "," + \
+            std::to_string(posout.tran.y) + "," + std::to_string(posout.tran.z) + "," + \
+            std::to_string(posout.rpy.rx) + "," + std::to_string(posout.rpy.ry) + "," + \
+            std::to_string(posout.rpy.rz));
+}
 
+/**
+ * @brief 设置机器人焊接电弧意外中断检测参数
+ * @param [in] checkEnable 是否使能检测；0-不使能；1-使能
+ * @param [in] arcInterruptTimeLength 电弧中断确认时长(ms)
+ * @return 指令执行是否成功
+ * @retval 0-成功，其他-错误码 
+ */
+std::string robot_command_thread::WeldingSetCheckArcInterruptionParam(std::string para){
+    std::list<std::string> list;
+    _splitString2List(para,list);
+
+    int checkenable = std::stoi(list.front().c_str());list.pop_front();
+    int arcInterruptTimeLength  = std::stoi(list.front().c_str());
+    return std::to_string(_ptr_robot->WeldingSetCheckArcInterruptionParam(\
+            checkenable,arcInterruptTimeLength));
+}
+
+/**
+ * @brief 获取机器人焊接电弧意外中断检测参数
+ * @return 错误码及返回参数
+ * @retval errorcode,checkenable,arcInterruptTimeLength
+ */
+std::string robot_command_thread::WeldingGetCheckArcInterruptionParam(std::string para){
+    int checkenable,arcInterruptTimeLength;
+    int res = _ptr_robot->WeldingGetCheckArcInterruptionParam(&checkenable,&arcInterruptTimeLength);
+    return std::string(std::to_string(res) + "," + std::to_string(checkenable) + "," \
+            + std::to_string(arcInterruptTimeLength));
+}
+
+/**
+ * @brief 设置机器人焊接中断恢复参数
+ * @param [in] enable 是否使能焊接中断恢复
+ * @param [in] length 焊缝重叠距离(mm)
+ * @param [in] velocity 机器人回到再起弧点速度百分比(0-100)
+ * @param [in] moveType 机器人运动到再起弧点方式；0-LIN；1-PTP
+ * @return 指令执行是否成功
+ * @retval 0-成功，其他-错误码
+ */
+std::string robot_command_thread::WeldingSetReWeldAfterBreakOffParam(std::string para){
+    std::list<std::string> list;
+    _splitString2List(para,list);
+
+    int enable = std::stoi(list.front().c_str());list.pop_front();
+    double length = std::stod(list.front().c_str());list.pop_front();
+    double velocity = std::stod(list.front().c_str());list.pop_front();
+    int moveType = std::stoi(list.front().c_str());
+    return std::to_string(_ptr_robot->WeldingSetReWeldAfterBreakOffParam(enable,length,velocity,moveType));
+}
+
+/**
+ * @brief 获取机器人焊接中断恢复参数
+ * @return 错误码及返回参数
+ * @retval errorcode,enable,length,velocity,movetype
+ */
+std::string robot_command_thread::WeldingGetReWeldAfterBreakOffParam(std::string para){
+    int enable,moveType;
+    double length,velocity;
+    int res = _ptr_robot->WeldingGetReWeldAfterBreakOffParam(&enable,&length,&velocity,&moveType);
+    return std::string(std::to_string(res) + "," + std::to_string(enable) + "," + \
+            std::to_string(length) + "," + std::to_string(velocity) + "," + \
+            std::to_string(moveType));
+}
+
+/**
+ * @brief 开始机器人焊接电弧意外中断
+ * @return 指令执行是否成功
+ * @retval 0-成功，其他-错误码 
+ */
+std::string robot_command_thread::WeldingStartReWeldAfterBreakOff(std::string para){
+    return std::to_string(_ptr_robot->WeldingStartReWeldAfterBreakOff());
+}
+
+/**
+ * @brief 停止机器人焊接电弧意外中断
+ * @return 指令执行是否成功
+ * @retval 0-成功，其他-错误码 
+ */
+std::string robot_command_thread::WeldingAbortWeldAfterBreakOff(std::string para){
+    return std::to_string(_ptr_robot->WeldingAbortWeldAfterBreakOff());
+}
 
 
 
@@ -2021,7 +2267,6 @@ robot_recv_thread::robot_recv_thread(const std::string node_name):rclcpp::Node(n
     RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"开始创建状态反馈TCP socket");
 
     //只保留8081端口的连接，8083连接传输的数据已经不用
-    // _socketfd1 = socket(AF_INET,SOCK_STREAM,0);//状态获取端口只有TCP
     _socketfd1 = socket(AF_INET,SOCK_STREAM,0);//状态获取端口只有TCP
 
     if(_socketfd1 == -1){
@@ -2053,9 +2298,9 @@ robot_recv_thread::robot_recv_thread(const std::string node_name):rclcpp::Node(n
 
             _state_publisher = this->create_publisher<robot_feedback_msg>(
                 "nonrt_state_data",
-                10
+                1
             );
-            _locktimer = this->create_wall_timer(100ms,std::bind(&robot_recv_thread::_state_recv_callback,this));//创建一个定时器任务用于获取非实时状态数据,触发间隔为100ms
+            _locktimer = this->create_wall_timer(10ms,std::bind(&robot_recv_thread::_state_recv_callback,this));//创建一个定时器任务用于获取非实时状态数据,触发间隔为100ms
         }
 
         //连接成功，创建守护线程,如果该连接端掉，则自动发起重连接;生命周期随该节点
@@ -2070,9 +2315,8 @@ void robot_recv_thread::_try_to_reconnect(){
     auto _reconnect_func = [this](){
         while ((1 != _robot_recv_exit)){
             do{
-                std::lock_guard<std::mutex> _lock(_reconnect_mutex);
                 /* try to re-connect 58.2 8081*/
-                if (1 == _is_reconnect){
+                if (_reconnect_flag){
                     // 关闭旧连接
                     shutdown(_socketfd1, SHUT_RDWR);
                     close(_socketfd1);
@@ -2114,7 +2358,7 @@ void robot_recv_thread::_try_to_reconnect(){
                             }
                             // return sock_fd;
                             _socketfd1 = sock_fd;
-                            _is_reconnect = 0;
+                            _reconnect_flag.store(false);
                             break;
                         }
                     }
@@ -2122,7 +2366,6 @@ void robot_recv_thread::_try_to_reconnect(){
             }while(0);
             /* 以3s的频率检查 */
             std::this_thread::sleep_for(std::chrono::seconds(3));
-            // std::cout << "thread " << std::this_thread::get_id() << " check connect end" << std::endl;
         }
             
     };
@@ -2190,182 +2433,220 @@ int robot_recv_thread::setKeepAlive(int fd, int idle_time, int interval_time, in
  * @brief 8081反馈数据端口topic监听回调函数
 */
 void robot_recv_thread::_state_recv_callback(){
+    static bool concatante_flag = 0;//帧数据拼接flag
+    static std::once_flag oneflag;
     static _CTRL_STATE ctrl_state;
-    _CTRL_STATE state_data_store;
+    static uint32_t delta_length = 0;
+    static int length_left = 0;
+    static uint32_t begin_index = 0;
     static std::queue<_CTRL_STATE> ctrl_state_store_buff;//用于存储缓存区多余的数据，需要限制长度
     static char ctrl_state_temp_buff[_CTRL_STATE_SIZE] = {0};//用于临时存储不完整帧的数据，之后用于数据拼接
-    static int ctrl_state_future_recv = _CTRL_STATE_SIZE ;//接受到不完整帧数据后用于存储下一帧头部需要接收的剩余数据长度
-    int ctrl_state_datalen = _CTRL_STATE_SIZE ;
-    uint32_t* ctrl_state_head_ptr;
-    uint8_t* checksum_ptr;
-    uint16_t checksum = 0;
 
-    while(ctrl_state_datalen > 0){//如果缓存区还有数据，那么就一直循环取出     
-        char recv_buff[ctrl_state_future_recv] = {0};
-        ctrl_state_datalen = recv(_socketfd1,recv_buff,sizeof(recv_buff),0);//取出固定长度的数据   
-         //std::cout<<"ctrl_state_datalen "<<ctrl_state_datalen<<std::endl;
-         //std::cout<<"data_len_expected: "<<_CTRL_STATE_SIZE << std::endl;
+   /* 如果处于重连流程，不需要再读取，直接返回 */
+    if(_reconnect_flag){
+        //RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"重连中，请等待......");
+        return;
+    }
+
+    if(!concatante_flag){//不需要数据拼接的情况
+        char recv_buff[_CTRL_STATE_SIZE] = {0};
+        int length_read = 0;
 
         /* 如果处于重连流程，不需要再读取，直接返回 */
-        {
-            std::lock_guard<std::mutex> _lock(_reconnect_mutex);
-            if(_is_reconnect == 1){
-                RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"重连中，请等待......");
-                return;
+        do{
+            length_read = recv(_socketfd1,recv_buff,1,0);
+            // 这里是非阻塞读，开启探针后，当recv失败时，通过errno查看结果
+            if ((length_read == 0) || ((length_read == -1) && (errno != EINTR )&&\
+            (errno != EWOULDBLOCK) && (errno != EAGAIN))){
+                _reconnect_flag.store(true);
+                RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"网络可能已经断开，请检查网络连接 ......");
+                break;
             }
-        }
-        // 这里是非阻塞读，开启探针后，当recv失败时，通过errno查看结果
-        if ((ctrl_state_datalen == 0) || ((ctrl_state_datalen == -1) && (errno != EINTR )&& (errno != EWOULDBLOCK) && (errno != EAGAIN)))
-        {
-            {
-                std::lock_guard<std::mutex> _lock(_reconnect_mutex);
-                _is_reconnect = 1;
+            if(length_read == 1 && recv_buff[0] == '/'){
+                length_read = recv(_socketfd1,&recv_buff[1],3,0);
+                std::string head_str(recv_buff,4); 
+                if(length_read == 3 && head_str == "/f/b"){
+                    break;
+                }
             }
-            RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"网络可能已经断开，请检查网络连接 ......");
+        }while(1);
+
+        if(_reconnect_flag){//等待重连，while中无法使用return
             return;
         }
 
-        //std::cout << ctrl_state_datalen << " 开始取数据  " << _is_reconnect << " " << strerror(errno) << std::endl;
-        ctrl_state_head_ptr = (uint32_t*)(recv_buff);//通过指针访问的方法取出frame_head
-        if(*ctrl_state_head_ptr == 0x622F662F){//检测包头
-            if(ctrl_state_datalen == _CTRL_STATE_SIZE)
-            {//有时候缓冲区尾部数据不是一个完整的帧，因此需要保存不完整的信息用于下一帧数据拼接
-                 uint8_t* data_len_ptr = (uint8_t*)(recv_buff);
-                 data_len_ptr += 7;
-                  //std::cout << "信息完整无需拼接,8081数据校验长度: " << _CTRL_STATE_SIZE << "," <<  *((int*)(data_len_ptr)) << std::endl;
-                    memcpy(&ctrl_state, recv_buff, sizeof(ctrl_state));
-                    if(ctrl_state_store_buff.size() < 10)
-                    {
-                        ctrl_state_store_buff.emplace(ctrl_state);//将数据放入队列中
-                    }
-                    else
-                    {//如果队列中数据满10个，那么删掉队列头部数据然后队尾再插入数据
-                        ctrl_state_store_buff.pop();//弹出队首的元素
-                        ctrl_state_store_buff.emplace(ctrl_state);
-                    }
-                    checksum = 0;
-            }
-            // 需要拼接的情况
-            else {
-                uint8_t* data_len_ptr = (uint8_t*)(recv_buff);
-                data_len_ptr += 7;
-                //std::cout << "有包头但是数据长度不正确,8081数据校验长度: "<< _CTRL_STATE_SIZE << "," << *((int*)(data_len_ptr))  << std::endl;
-                memset(ctrl_state_temp_buff, 0, sizeof(ctrl_state_temp_buff));//清空临时存放变量
-                memcpy(ctrl_state_temp_buff, recv_buff, ctrl_state_datalen);//只复制接收到的数据部分
-                ctrl_state_future_recv = _CTRL_STATE_SIZE - ctrl_state_datalen;
-            }
+        int len = recv(_socketfd1,&recv_buff[4],7,0);
+        if(len == -1){
+            return;
+        }
+        int32_t* ptr_frame_length = (int32_t*)(&recv_buff[7]);
+        if(*ptr_frame_length < (_CTRL_STATE_SIZE-14)){//帧长度小于等于预期，直接填装
+            std::call_once(oneflag,[&](){
+                RCLCPP_ERROR(rclcpp::get_logger(LOGGER_NAME),\
+                    "反馈状态数据帧长度小于预期,差距为%i,请对齐fairino_hardware功能包与机械臂软件版本。",\
+                    _CTRL_STATE_SIZE-14-*ptr_frame_length
+                );
+            });
+            delta_length = 0;
+        }else if(*ptr_frame_length > (_CTRL_STATE_SIZE-14)){//帧长度大于预期，需要削去多余数据，默认削去尾部数据
+            std::call_once(oneflag,[&](){
+                RCLCPP_ERROR(rclcpp::get_logger(LOGGER_NAME),\
+                    "反馈状态数据帧长度大于预期,差距为%i,请对齐fairino_hardware功能包与机械臂软件版本。",\
+                    *ptr_frame_length - _CTRL_STATE_SIZE+14
+                );
+            });
+            delta_length = *ptr_frame_length - _CTRL_STATE_SIZE+14;
         }else{
-            if(ctrl_state_datalen == -1){
-                int error_code = 0;
-                socklen_t len1 = sizeof(error_code);
-                getsockopt(_socketfd1,SOL_SOCKET,SO_ERROR,&error_code,&len1);
+            delta_length = 0;
+        }
+        //std::cout << ctrl_state_datalen << " 开始取数据  " << _is_reconnect << " " << strerror(errno) << std::endl;
+        int future_len = *ptr_frame_length + 3;//注意别漏掉帧尾的数据，需要考虑到已经读了frame_length
+        char oneshot_buff[future_len] = {0};
+        int recv_length = recv(_socketfd1,oneshot_buff,future_len,0);
+        if(recv_length < future_len){//获取长度小于预期，说明帧数据需要进行拼接
+            if(recv_length != -1){
+                concatante_flag = 1;
+                memset(ctrl_state_temp_buff,0,_CTRL_STATE_SIZE);
+                memcpy(&recv_buff[11],oneshot_buff,recv_length);//如果是数据长度差太多，执行这句可能出现数组越界的情况
+                memcpy(ctrl_state_temp_buff,recv_buff,_CTRL_STATE_SIZE);
+                length_left = future_len - recv_length;
+                begin_index = recv_length + 11;
+                //std::cout << "有包头但是数据长度不正确,8081数据校验长度: "<< _CTRL_STATE_SIZE << "," << *((int*)(data_len_ptr))  << std::endl;
+            }
+            return;
+        }else{
+            memcpy(&recv_buff[11],oneshot_buff,future_len-delta_length);
+            memcpy(&ctrl_state, recv_buff, sizeof(ctrl_state));
+            if(ctrl_state_store_buff.size() < 3){
+                ctrl_state_store_buff.emplace(ctrl_state);//将数据放入队列中
+            }else{//如果队列中数据满3个，那么删掉队列头部数据然后队尾再插入数据
+                ctrl_state_store_buff.pop();//弹出队首的元素
+                ctrl_state_store_buff.emplace(ctrl_state);
+            }
+        }
+    }else{//需要数据拼接的情况
+        //RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"进入拼接状态,%i",length_left);
+        char concatante_buff[length_left] = {0};
+        int length_concatante = recv(_socketfd1,concatante_buff,length_left,0);
+        if ((length_concatante == 0) || ((length_concatante == -1) && (errno != EINTR )&&\
+        (errno != EWOULDBLOCK) && (errno != EAGAIN))){
+            _reconnect_flag.store(true);
+            RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"网络可能已经断开，请检查网络连接 ......");
+            return;
+        }
+        if(length_concatante < length_left){
+            if(length_concatante != -1){
+                memcpy(&ctrl_state_temp_buff[begin_index],concatante_buff,length_concatante);
+                begin_index += length_concatante;
+                length_left -= length_concatante;
                 //break;//已经没有数据了，退出循环
-                // std::cout << "请检查网络连接 " << strerror(errno) << "  " << errno << std::endl;                
-            }            
-            else{//进行数据拼接
-                memset(ctrl_state_temp_buff, 0, sizeof(ctrl_state_temp_buff));//清空临时存放变量
-                memcpy(ctrl_state_temp_buff, recv_buff, ctrl_state_datalen);//只复制接收到的数据部分
-                ctrl_state_future_recv = _CTRL_STATE_SIZE - ctrl_state_datalen;
-                 //std::cout << "获得不完整头部数据 " << ctrl_state_datalen  << std::endl;
-                if(ctrl_state_store_buff.size() < 10){
+            }
+            return;
+        }else{//length_concatante == length_left
+            concatante_flag = 0;
+            //RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"获得最后一段帧数据：%i",length_concatante);
+            std::string tail(&concatante_buff[length_left-7],7);
+            if(tail == "III/b/f"){
+                memcpy(&ctrl_state_temp_buff[begin_index],concatante_buff,length_concatante);
+                memcpy(&ctrl_state,ctrl_state_temp_buff,_CTRL_STATE_SIZE);
+                if(ctrl_state_store_buff.size() < 3){
                     ctrl_state_store_buff.emplace(ctrl_state);//将数据放入队列中
                 }else{//队列长度等于10的时候，弹出队首的元素，在队尾加入元素
                     ctrl_state_store_buff.pop();
                     ctrl_state_store_buff.emplace(ctrl_state);
                 }
-                ctrl_state_future_recv = _CTRL_STATE_SIZE;
+            }else{
+                RCLCPP_ERROR(rclcpp::get_logger(LOGGER_NAME),"帧数据拼接失败，帧尾数据校验失败，重新寻找帧头,%i,%i",length_concatante,length_left);
+                return;
             }
         }
     }//end while
 
     //下面是从队列中读取数据
-    if(!ctrl_state_store_buff.empty())
-        {
-            ctrl_state = ctrl_state_store_buff.front();
-            ctrl_state_store_buff.pop();
+    if(!ctrl_state_store_buff.empty()){
+        ctrl_state = ctrl_state_store_buff.front();
+        ctrl_state_store_buff.pop();
 
-            auto msg = robot_feedback_msg();
-            auto cur_clock = rclcpp::Clock();
+        auto msg = robot_feedback_msg();
+        auto cur_clock = rclcpp::Clock();
 
-            msg.error_code = 0;
-            msg.robot_motion_done = ctrl_state.motion_done;
-            msg.robot_mode = ctrl_state.robot_mode;
-            msg.emg = ctrl_state.btn_box_stop_signal;
-            msg.grip_motion_done = ctrl_state.gripperMotionDone;
+        msg.error_code = 0;
+        msg.robot_motion_done = ctrl_state.motion_done;
+        msg.robot_mode = ctrl_state.robot_mode;
+        msg.emg = ctrl_state.btn_box_stop_signal;
+        msg.grip_motion_done = ctrl_state.gripperMotionDone;
 
-            msg.j1_cur_pos = ctrl_state.jt_cur_pos[0];
-            msg.j2_cur_pos = ctrl_state.jt_cur_pos[1];
-            msg.j3_cur_pos = ctrl_state.jt_cur_pos[2];
-            msg.j4_cur_pos = ctrl_state.jt_cur_pos[3];
-            msg.j5_cur_pos = ctrl_state.jt_cur_pos[4];
-            msg.j6_cur_pos = ctrl_state.jt_cur_pos[5];
+        msg.j1_cur_pos = ctrl_state.jt_cur_pos[0];
+        msg.j2_cur_pos = ctrl_state.jt_cur_pos[1];
+        msg.j3_cur_pos = ctrl_state.jt_cur_pos[2];
+        msg.j4_cur_pos = ctrl_state.jt_cur_pos[3];
+        msg.j5_cur_pos = ctrl_state.jt_cur_pos[4];
+        msg.j6_cur_pos = ctrl_state.jt_cur_pos[5];
 
-            msg.cart_x_cur_pos = ctrl_state.tl_cur_pos_base[0];
-            msg.cart_y_cur_pos = ctrl_state.tl_cur_pos_base[1];
-            msg.cart_z_cur_pos = ctrl_state.tl_cur_pos_base[2];
-            msg.cart_a_cur_pos = ctrl_state.tl_cur_pos_base[3];
-            msg.cart_b_cur_pos = ctrl_state.tl_cur_pos_base[4];
-            msg.cart_c_cur_pos = ctrl_state.tl_cur_pos_base[5];
+        msg.cart_x_cur_pos = ctrl_state.tl_cur_pos_base[0];
+        msg.cart_y_cur_pos = ctrl_state.tl_cur_pos_base[1];
+        msg.cart_z_cur_pos = ctrl_state.tl_cur_pos_base[2];
+        msg.cart_a_cur_pos = ctrl_state.tl_cur_pos_base[3];
+        msg.cart_b_cur_pos = ctrl_state.tl_cur_pos_base[4];
+        msg.cart_c_cur_pos = ctrl_state.tl_cur_pos_base[5];
 
-            msg.flange_x_cur_pos = ctrl_state.flange_cur_pos[0];
-            msg.flange_y_cur_pos = ctrl_state.flange_cur_pos[1];
-            msg.flange_z_cur_pos = ctrl_state.flange_cur_pos[2];
-            msg.flange_a_cur_pos = ctrl_state.flange_cur_pos[3];
-            msg.flange_b_cur_pos = ctrl_state.flange_cur_pos[4];
-            msg.flange_c_cur_pos = ctrl_state.flange_cur_pos[5];
+        msg.flange_x_cur_pos = ctrl_state.flange_cur_pos[0];
+        msg.flange_y_cur_pos = ctrl_state.flange_cur_pos[1];
+        msg.flange_z_cur_pos = ctrl_state.flange_cur_pos[2];
+        msg.flange_a_cur_pos = ctrl_state.flange_cur_pos[3];
+        msg.flange_b_cur_pos = ctrl_state.flange_cur_pos[4];
+        msg.flange_c_cur_pos = ctrl_state.flange_cur_pos[5];
 
-            msg.work_num = ctrl_state.workPieceNum;
-            msg.tool_num = ctrl_state.toolNum;
+        msg.work_num = ctrl_state.workPieceNum;
+        msg.tool_num = ctrl_state.toolNum;
 
-            // msg.exaxispos1 = ctrl_state.exaxis_status[0].exAxisPos;=
-            msg.exaxispos1 = ctrl_state.auxservo_state.servo_actual_pos;
-            msg.exaxispos2 = ctrl_state.exaxis_status[1].exAxisPos;
-            msg.exaxispos3 = ctrl_state.exaxis_status[2].exAxisPos;
-            msg.exaxispos4 = ctrl_state.exaxis_status[3].exAxisPos;
+        // msg.exaxispos1 = ctrl_state.exaxis_status[0].exAxisPos;=
+        msg.exaxispos1 = ctrl_state.auxservo_state.servo_actual_pos;
+        msg.exaxispos2 = ctrl_state.exaxis_status[1].exAxisPos;
+        msg.exaxispos3 = ctrl_state.exaxis_status[2].exAxisPos;
+        msg.exaxispos4 = ctrl_state.exaxis_status[3].exAxisPos;
 
-            msg.j1_cur_tor = ctrl_state.jt_cur_tor[0];
-            msg.j2_cur_tor = ctrl_state.jt_cur_tor[1];
-            msg.j3_cur_tor = ctrl_state.jt_cur_tor[2];
-            msg.j4_cur_tor = ctrl_state.jt_cur_tor[3];
-            msg.j5_cur_tor = ctrl_state.jt_cur_tor[4];
-            msg.j6_cur_tor = ctrl_state.jt_cur_tor[5];
+        msg.j1_cur_tor = ctrl_state.jt_cur_tor[0];
+        msg.j2_cur_tor = ctrl_state.jt_cur_tor[1];
+        msg.j3_cur_tor = ctrl_state.jt_cur_tor[2];
+        msg.j4_cur_tor = ctrl_state.jt_cur_tor[3];
+        msg.j5_cur_tor = ctrl_state.jt_cur_tor[4];
+        msg.j6_cur_tor = ctrl_state.jt_cur_tor[5];
 
-            msg.prg_state = ctrl_state.program_state;
-            msg.abnormal_stop = ctrl_state.abnormal_stop;
-            msg.prg_name = std::string(ctrl_state.curLuaFileName);
-            msg.prg_total_line = 0;
-            msg.prg_cur_line = 0;
+        msg.prg_state = ctrl_state.program_state;
+        msg.abnormal_stop = ctrl_state.abnormal_stop;
+        msg.prg_name = std::string(ctrl_state.curLuaFileName);
+        msg.prg_total_line = 0;
+        msg.prg_cur_line = ctrl_state.line_number;
 
-            msg.dgt_output_h = ctrl_state.cl_dgt_output_h;
-            msg.dgt_output_l = ctrl_state.cl_dgt_output_l;
-            msg.tl_dgt_output_l = ctrl_state.tl_dgt_output_l;
-            msg.dgt_input_h = ctrl_state.cl_dgt_input_h;
-            msg.dgt_input_l = ctrl_state.cl_dgt_input_l;
-            msg.tl_dgt_input_l = ctrl_state.tl_dgt_input_l;
+        msg.dgt_output_h = ctrl_state.cl_dgt_output_h;
+        msg.dgt_output_l = ctrl_state.cl_dgt_output_l;
+        msg.tl_dgt_output_l = ctrl_state.tl_dgt_output_l;
+        msg.dgt_input_h = ctrl_state.cl_dgt_input_h;
+        msg.dgt_input_l = ctrl_state.cl_dgt_input_l;
+        msg.tl_dgt_input_l = ctrl_state.tl_dgt_input_l;
 
-            msg.ft_fx_data = ctrl_state.FT_data[0];
-            msg.ft_fy_data = ctrl_state.FT_data[1];
-            msg.ft_fz_data = ctrl_state.FT_data[2];
-            msg.ft_tx_data = ctrl_state.FT_data[3];
-            msg.ft_ty_data = ctrl_state.FT_data[4];
-            msg.ft_tz_data = ctrl_state.FT_data[5];
-            msg.ft_actstatus = ctrl_state.FT_ActStatus;
-            
-            msg.timestamp = RCL_NS_TO_S(cur_clock.now().nanoseconds());
-            for(int i=0;i<6;i++){
-                msg.safetyboxsig[i] = ctrl_state.safetyBoxSignal[i];
-            }
-            _state_publisher->publish(msg);
-        }
-    //下面是从队列中读取数据
-    // if(!store_buff.empty() && 0){//如果队列不为空，那就读取数据，否则auxservo_state就跳过本次callback
-    //     state_data = store_buff.front();
-    //     store_buff.pop();
-    //     auto msg = robot_feedback_msg();
-
-    //     _state_publisher->publish(msg);
-    //     //std::cout <<_start_return_data<<std::endl;
+        msg.ft_fx_data = ctrl_state.FT_data[0];
+        msg.ft_fy_data = ctrl_state.FT_data[1];
+        msg.ft_fz_data = ctrl_state.FT_data[2];
+        msg.ft_tx_data = ctrl_state.FT_data[3];
+        msg.ft_ty_data = ctrl_state.FT_data[4];
+        msg.ft_tz_data = ctrl_state.FT_data[5];
+        msg.ft_actstatus = ctrl_state.FT_ActStatus;
         
-
-    // }
+        msg.weldbreakoffstate = ctrl_state.welding_state.breakOffState;
+        msg.weldarcstate = ctrl_state.welding_state.weldArcState;
+        msg.weldtrackspeed = ctrl_state.weldTrackSpeed;
+        msg.welding_voltage = ctrl_state.welding_voltage;
+        msg.welding_current = ctrl_state.welding_current;
+        
+        //V3.0.2 - 20250212新增weldingvlotage wledingcurrent和weldtrackspped项
+        msg.version = "V" + std::to_string(VERSION_MSG_MARJOR) + "." + \
+                    std::to_string(VERSION_MSG_MINOR) + std::to_string(VERSION_MSG_MINOR2);
+        msg.timestamp = RCL_NS_TO_S(cur_clock.now().nanoseconds());
+        for(int i=0;i<6;i++){
+            msg.safetyboxsig[i] = ctrl_state.safetyBoxSignal[i];
+        }
+        _state_publisher->publish(msg);
+    }
 }

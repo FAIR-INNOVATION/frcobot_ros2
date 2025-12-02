@@ -223,6 +223,15 @@ typedef struct _EXT_AXIS_STATUS
 }EXT_AXIS_STATUS;
 #pragma pack(pop)
 
+#pragma pack(push)
+#pragma pack(1)
+typedef struct _WELDING_BREAKOFF_STATE
+{
+	uint8_t breakOffState;  //焊接中断状态
+	uint8_t weldArcState;   //焊接电弧中断状态
+}WELDING_BREAKOFF_STATE;
+#pragma pack(pop)
+
 
 
 #pragma pack(push)
@@ -286,9 +295,11 @@ typedef struct _ROBOT_STATE_PKG
 	int rbtEnableState;            //机器人使能状态                robot enable state
 	double   jointDriverTorque[6];        //机器人关节驱动器扭矩    Robot joint drive torque
 	double   jointDriverTemperature[6];   //机器人关节驱动器温度    Robot joint drive temperature
-	RobotTime robotTime;           //机器人系统时间                 Robot System time
-	int softwareUpgradeState;  //机器人软件升级状态              Robot Software Upgrade State
-	uint16_t endLuaErrCode;    //末端LUA运行状态 
+	RobotTime robotTime;           //机器人系统时间                Robot System time
+	int softwareUpgradeState;      //机器人软件升级状态             Robot Software Upgrade State
+	uint16_t endLuaErrCode;        //末端LUA运行状态            
+	uint16_t cl_analog_output[2];  //控制箱模拟量输出				
+	uint16_t tl_analog_output;     //工具模拟量输出			
 	uint16_t check_sum;            /* 和校验 */
 }ROBOT_STATE_PKG;
 

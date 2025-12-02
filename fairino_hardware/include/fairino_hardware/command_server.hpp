@@ -37,9 +37,13 @@ public:
     std::string getVariable(std::string para_list);
 
     //信息获取类
+    std::string GetVersion(std::string para);
+    std::string GetMsgVersion(std::string para);
+    std::string GetRobotVersion(std::string para);
+    std::string GetControllerVersion(std::string para);
     std::string GetTCPOffset(std::string para);
     std::string GetDHCompensation(std::string para);
-
+    std::string GetWeldingBreakOffState(std::string para);
 
     //普通设置类
     std::string DragTeachSwitch(std::string para);//拖动示教模式切换
@@ -95,7 +99,7 @@ public:
     std::string MoveL(std::string para);
     std::string MoveC(std::string para);
     std::string Circle(std::string para);
-    //std::string ServoJ(JointPos *joint_pos, float acc, float vel, float cmdT, float filterT, float gain);
+    std::string ServoJ(std::string para);
     std::string SplineStart(std::string para);
     std::string SplinePTP(std::string para);
     std::string SplineEnd(std::string para);
@@ -146,21 +150,35 @@ public:
     std::string LuaDelete(std::string para);
     std::string GetLuaList(std::string para);
 
+    //点位换算功能
+    std::string ComputeToolCoordWithPoints(std::string para);
+    std::string ComputeWObjCoordWithPoints(std::string para);
+
+    //焊接中断恢复功能
+    std::string WeldingSetCheckArcInterruptionParam(std::string para);
+    std::string WeldingGetCheckArcInterruptionParam(std::string para);
+    std::string WeldingSetReWeldAfterBreakOffParam(std::string para);
+    std::string WeldingGetReWeldAfterBreakOffParam(std::string para);
+    std::string WeldingStartReWeldAfterBreakOff(std::string para);
+    std::string WeldingAbortWeldAfterBreakOff(std::string para);
 
 private:
-    std::shared_ptr<FRRobot> _ptr_robot;//机械臂SDK库指针
+    std::unique_ptr<FRRobot> _ptr_robot;//机械臂SDK库指针
+    ROBOT_STATE_PKG _robot_realtime_state;//从SDK获取的机械臂实时状态结构体
     int lose_connect_times = 0;
-
+    rclcpp::TimerBase::SharedPtr _sdk_connection_check_timer;
     //函数指针是有作用域的，所以全局函数的指针和类内成员函数的指针定义有很大不同，这里不能用typedef
     int (robot_command_thread:: *funcP)(std::string para);
 
     //用于解析用户发送的ROS接口指令
     void _parseROSCommandData_callback(const std::shared_ptr<remote_cmd_server_srv_msg::Request> req,
                                     std::shared_ptr<remote_cmd_server_srv_msg::Response> res);
+    void _timer_callback();
     void _splitString2List(std::string str,std::list<std::string> &list_data);
     void _splitString2Vec(std::string str,std::vector<std::string> &vector_data);
     void _fillDescPose(std::list<std::string>& data,DescPose& pose);
     void _fillDescTran(std::list<std::string>& data,DescTran& trans);
+    void _fillJointPose(std::list<std::string>& data,JointPos pos);
     //TODO 使用可变参数模板函数去填装SDK函数所需参数
     // template<typename T,typename ... Ts>
     // void _recurseVar(T& first_arg,Ts&... args);
@@ -178,11 +196,15 @@ private:
     std::vector<JointPos> _cmd_jnt_pos_list;//存储关节数据点
     std::vector<DescPose> _cmd_cart_pos_list;//存储笛卡尔数据点
     std::string _controller_ip;
-    
     const std::map<std::string,std::string(robot_command_thread::*)(std::string)> _fr_function_list{
     {"JNTPoint",&robot_command_thread::defJntPosition},
     {"CARTPoint",&robot_command_thread::defCartPosition},
     {"GET",&robot_command_thread::getVariable},
+    {"GetVersion",&robot_command_thread::GetVersion},
+    {"GetMsgVersion",&robot_command_thread::GetMsgVersion},
+    {"GetRobotVersion",&robot_command_thread::GetRobotVersion},
+    {"GetControllerVersion",&robot_command_thread::GetControllerVersion},
+    {"GetWeldingBreakOffState",&robot_command_thread::GetWeldingBreakOffState},
     {"DragTeachSwitch",&robot_command_thread::DragTeachSwitch},
     {"RobotEnable",&robot_command_thread::RobotEnable},
     {"SetSpeed",&robot_command_thread::SetSpeed},
@@ -226,6 +248,7 @@ private:
     {"MoveL",&robot_command_thread::MoveL},
     {"MoveC",&robot_command_thread::MoveC},
     {"Circle",&robot_command_thread::Circle},
+    {"ServoJ",&robot_command_thread::ServoJ},
     {"SplineStart",&robot_command_thread::SplineStart},
     {"SplinePTP",&robot_command_thread::SplinePTP},
     {"SplineEnd",&robot_command_thread::SplineEnd},
@@ -266,7 +289,15 @@ private:
     {"LuaDownLoad",&robot_command_thread::LuaDownLoad},
     {"LuaUpload",&robot_command_thread::LuaUpload},
     {"LuaDelete",&robot_command_thread::LuaDelete},
-    {"GetLuaList",&robot_command_thread::GetLuaList}
+    {"GetLuaList",&robot_command_thread::GetLuaList},
+    {"ComputeToolCoordWithPoints",&robot_command_thread::ComputeToolCoordWithPoints},
+    {"ComputeWObjCoordWithPoints",&robot_command_thread::ComputeWObjCoordWithPoints},
+    {"WeldingSetCheckArcInterruptionParam",&robot_command_thread::WeldingSetCheckArcInterruptionParam},
+    {"WeldingGetCheckArcInterruptionParam",&robot_command_thread::WeldingGetCheckArcInterruptionParam},
+    {"WeldingSetReWeldAfterBreakOffParam",&robot_command_thread::WeldingSetReWeldAfterBreakOffParam},
+    {"WeldingGetReWeldAfterBreakOffParam",&robot_command_thread::WeldingGetReWeldAfterBreakOffParam},
+    {"WeldingStartReWeldAfterBreakOff",&robot_command_thread::WeldingStartReWeldAfterBreakOff},
+    {"WeldingAbortWeldAfterBreakOff",&robot_command_thread::WeldingAbortWeldAfterBreakOff}
     };
 };
 
@@ -281,7 +312,6 @@ public:
 private:
     int setKeepAlive(int fd, int idle_time, int interval_time, int probe_times);
     int _socketfd1;
-    int _is_reconnect = 0;              //1 尝试重连中；
     int _robot_recv_exit = 0;           //类即将析构，通知重连线程退出.
     std::thread _reconnect_thread;
     void _try_to_reconnect();

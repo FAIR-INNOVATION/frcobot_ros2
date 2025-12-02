@@ -1,6 +1,4 @@
-#ifndef   ROBOTERROR_H_
-#define   ROBOTERROR_H_
-
+#pragma once
 #define     ERR_UPLOAD_FILE_NOT_FOUND              -7
 #define     ERR_SAVE_FILE_PATH_NOT_FOUND           -6
 #define     ERR_LUA_FILE_NOT_FOUND                 -5
@@ -41,8 +39,9 @@
 #define     ERR_TPD_CMD_POINT                      82      /*TPD指令点错误*/
 #define     ERR_TPD_CMD_TOOL                       83      /*TPD工具号错误*/
 #define     ERR_SPLINE_POINT                       94      /*样条指令点错误*/
+#define     ERR_SAFETY_STOP                        99	   /*安全停止已触发*/;
 #define     ERR_SPIRAL_START_POINT                 108     /*螺旋线起始点错误*/
 #define     ERR_TARGET_POSE_CANNOT_REACHED         112     /*目标位姿无法到达*/
 #define     ERR_POINTTABLE_NOTFOUND                130
 
-#endif
+
