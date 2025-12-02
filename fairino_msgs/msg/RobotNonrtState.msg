@@ -56,7 +56,8 @@ uint8 weldarcstate
 float64 welding_voltage
 float64 welding_current
 float64 weldtrackspeed
-uint8 error_code
+uint32 main_error_code
+uint32 sub_error_code
 uint8 check_sum
 uint64 timestamp
 string version
