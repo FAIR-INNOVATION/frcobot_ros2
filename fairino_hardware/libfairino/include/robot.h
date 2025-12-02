@@ -15,6 +15,7 @@
 #include <iostream>
 #include <list>
 #include <vector>
+#include <memory>
 
 class FRTcpClient;
 
@@ -2555,9 +2556,11 @@ public:
 	  * @param  [in] referSampleStartUd 上下基准电流采样开始计数(反馈);，cyc
 	  * @param  [in] referSampleCountUd 上下基准电流采样循环计数(反馈);，cyc
 	  * @param  [in] referenceCurrent 上下基准电流mA
+	  * @param  [in] offsetType 偏置跟踪类型，0-不偏置；1-采样；2-百分比
+	  * @param  [in] offsetParameter 偏置参数；采样(偏置采样开始时间，默认采一周期)；百分比(偏置百分比(-100 ~ 100))
 	  * @return  错误码
 	  */
-	 errno_t ArcWeldTraceControl(int flag, double delaytime, int isLeftRight, double klr, double tStartLr, double stepMaxLr, double sumMaxLr, int isUpLow, double kud, double tStartUd, double stepMaxUd, double sumMaxUd, int axisSelect, int referenceType, double referSampleStartUd, double referSampleCountUd, double referenceCurrent);
+	 errno_t ArcWeldTraceControl(int flag, double delaytime, int isLeftRight, double klr, double tStartLr, double stepMaxLr, double sumMaxLr, int isUpLow, double kud, double tStartUd, double stepMaxUd, double sumMaxUd, int axisSelect, int referenceType, double referSampleStartUd, double referSampleCountUd, double referenceCurrent, int offsetType = 0, int offsetParameter = 0);
 
 
 	 /**
@@ -2573,6 +2576,7 @@ public:
 	  * @param  [in] status 控制状态，0-关闭；1-开启
 	  * @param  [in] asaptiveFlag 自适应开启标志，0-关闭；1-开启
 	  * @param  [in] interfereDragFlag 干涉区拖动标志，0-关闭；1-开启
+	  * @param  [in] ingularityConstraintsFlag 奇异点策略，0-规避；1-穿越
 	  * @param  [in] M 惯性系数
 	  * @param  [in] B 阻尼系数
 	  * @param  [in] K 刚度系数
@@ -2581,7 +2585,7 @@ public:
 	  * @param  [in] Vmax 最大关节速度限制
 	  * @return  错误码
 	  */
-	 errno_t EndForceDragControl(int status, int asaptiveFlag, int interfereDragFlag, std::vector<double> M, std::vector<double> B, std::vector<double> K, std::vector<double> F, double Fmax, double Vmax);
+	 errno_t EndForceDragControl(int status, int asaptiveFlag, int interfereDragFlag, int ingularityConstraintsFlag, std::vector<double> M, std::vector<double> B, std::vector<double> K, std::vector<double> F, double Fmax, double Vmax);
 
 
 	 /**
@@ -3372,6 +3376,55 @@ public:
 	errno_t LaserTrackingSearchStop();
 
 	/**
+	 * @brief  摆动渐变开始
+	 * @param  [in] weaveNum 摆动编号
+	 * @return  错误码
+	 */
+	errno_t WeaveChangeStart(int weaveNum);
+
+	/**
+	 * @brief  摆动渐变结束
+	 * @return  错误码
+	 */
+	errno_t WeaveChangeEnd();
+
+	/**
+	 * @brief  轨迹预处理(轨迹前瞻)
+	 * @param  [in] name  轨迹文件名
+	 * @param  [in] mode 采样模式，0-不进行采样；1-等数据间隔采样；2-等误差限制采样
+	 * @param  [in] errorLim 误差限制，使用直线拟合生效
+	 * @param  [in] type 平滑方式，0-贝塞尔平滑
+	 * @param  [in] precision 平滑精度，使用贝塞尔平滑时生效
+	 * @param  [in] vamx 设定的最大速度，mm/s
+	 * @param  [in] amax 设定的最大加速度，mm/s2
+	 * @param  [in] jmax 设定的最大加加速度，mm/s3
+	 * @return  错误码
+	 */
+	errno_t LoadTrajectoryLA(char name[30], int mode, double errorLim, int type, double precision, double vamx, double amax, double jmax);
+
+	/**
+	 * @brief  轨迹复现(轨迹前瞻)
+	 * @return  错误码
+	 */
+	errno_t MoveTrajectoryLA();
+
+	/**
+	 * @brief  自定义碰撞检测阈值功能开始，设置关节端和TCP端的碰撞检测阈值
+	 * @param  [in] flag 1-仅关节检测开启；2-仅TCP检测开启；3-关节和TCP检测同时开启
+	 * @param  [in] jointDetectionThreshould 关节碰撞检测阈值 j1-j6
+	 * @param  [in] tcpDetectionThreshould TCP碰撞检测阈值，xyzabc
+	 * @param  [in] block 0-非阻塞；1-阻塞
+	 * @return  错误码
+	 */
+	errno_t CustomCollisionDetectionStart(int flag, double jointDetectionThreshould[6], double tcpDetectionThreshould[6], int block);
+
+	/**
+	 * @brief  自定义碰撞检测阈值功能关闭
+	 * @return  错误码
+	 */
+	errno_t CustomCollisionDetectionEnd();
+
+	/**
 	* @brief  设置与机器人通讯重连参数
 	* @param  [in] enable  网络故障时使能重连 true-使能 false-不使能
 	* @param  [in] reconnectTime 重连时间，单位ms
@@ -3447,10 +3500,9 @@ private:
 	double fileUploadPercent;
 
 	char robot_ip[64];
-	ROBOT_STATE_PKG robot_state_pkg;
-
-	FRTcpClient* rtClient = nullptr;
-	FRTcpClient* cmdClient = nullptr;
+	std::shared_ptr<ROBOT_STATE_PKG> robot_state_pkg;
+	std::shared_ptr<FRTcpClient> rtClient;
+	std::shared_ptr<FRTcpClient> cmdClient;
 
 };
 

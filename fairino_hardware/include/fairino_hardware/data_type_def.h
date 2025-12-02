@@ -51,7 +51,7 @@ typedef struct _REG_VAR
 	char	str_name[REG_VAR_STR_MAX_NUM][20];	//字符型变量名
 } REG_VAR;
 
-typedef struct _EXTERNALAXIS_STATU
+typedef struct _EXTERNALAXIS_STATUS_EXHAL
 {
 	double exAxisPos;			//外部轴位置
 	double exAxisSpeedBack;		//外部轴速度
@@ -65,7 +65,7 @@ typedef struct _EXTERNALAXIS_STATU
 	unsigned char exAxisAbsOFLN;//驱动器485总线掉线
 	unsigned char exAxisOFLIN;	//通信超时，控制卡与控制箱板485通信超时
 	uint8_t	exAxisHomeStatus;	//外部轴回零状态
-} EXTERNALAXIS_STATUS;
+} EXTERNALAXIS_STATUS_EXHAL;
 
 /** 扩展轴外部伺服状态结构体 */
 typedef struct _AUXSERVO_STATE
@@ -128,7 +128,7 @@ typedef struct _GRIPPER_STATUS_FB
 typedef struct _CTRL_STATE
 {
 	char       head[7];
-int        frame_len;               /* 消息帧长度                                     */
+	int        frame_len;               /* 消息帧长度                                     */
 	double     runtime;                 /* 控制器启动时间,断电清零    */
 	double 	   jt_tgt_pos[6];           /* 关节1-6目标位置                */
 	double     jt_tgt_vel[6];           /* 关节1-6目标速度                */
@@ -200,7 +200,7 @@ int        frame_len;               /* 消息帧长度                          
 	uint8_t    fileError;               /** 文件错误 */
 	uint8_t    paraError;               /** 参数错误 */
 	uint8_t    exaxis_out_slimit_error; /** 外部轴超出软限位错误 */
-	EXTERNALAXIS_STATUS exaxis_status[MAXAUXJNTS];  /** 外部轴状态 */
+	EXTERNALAXIS_STATUS_EXHAL exaxis_status[MAXAUXJNTS];  /** 外部轴状态 */
 	uint8_t    exAxisActiveFlag;        /** 外部轴激活标志 */
 	uint8_t    exAxisMotionStatus;      /** 外部轴运动状态，0：完成，1：运动中，2：暂停中，3：暂停完成 */
 	uint8_t    alarm;                   /** 警告 */
@@ -300,12 +300,14 @@ int        frame_len;               /* 消息帧长度                          
 	uint8_t ctrlOpenLuaErrCode[4];   				  /** 4个控制器外设协议错误码(500错误码)；*/
 	uint8_t safetyBoxSignal[6];                       /** 按钮盒按钮信号 */
 	float jointIdentifyData;  						  /** 单关节模型辨识时实时曲线显示数据 */
-	uint8_t UDPConnState;                             /** UDP通讯连接状态：0-连接断开；1-连接成功 */ 
+	uint8_t UDPConnState;                             /** UDP通讯连接状态：0-连接断开；1-连接成功 */
 	float user_var[128];							  /** 用户变量，默认值0 */
 	uint8_t run_status[8];							  /** 后台程序线程状态，0停止（未配置），1运行，2暂停 */
 	GRIPPER_STATUS_FB gripper_status; 				  /** 夹爪状态反馈结构体*/
+	uint8_t bootModeState;							  /** boot模式状态 0-未进入;1-进入*/
 	char end[7];
 } CTRL_STATE;
+#pragma pack()
 /***********end 8081 data*******************/
 
 #endif

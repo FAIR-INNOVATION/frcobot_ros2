@@ -300,6 +300,10 @@ typedef struct _ROBOT_STATE_PKG
 	uint16_t endLuaErrCode;        //末端LUA运行状态            
 	uint16_t cl_analog_output[2];  //控制箱模拟量输出				
 	uint16_t tl_analog_output;     //工具模拟量输出			
+	float gripperRotNum;           //旋转夹爪当前旋转圈数	
+	uint8_t gripperRotSpeed;       //旋转夹爪当前旋转速度百分比
+	uint8_t gripperRotTorque;	   //旋转夹爪当前旋转力矩百分比
+	WELDING_BREAKOFF_STATE weldingBreakOffState;  //焊接中断状态
 	uint16_t check_sum;            /* 和校验 */
 }ROBOT_STATE_PKG;
 

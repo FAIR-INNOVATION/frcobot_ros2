@@ -8,14 +8,18 @@
 
 //用于记录对应机械臂软件版本号
 #define VERSION_ROBOT_MARJOR 3
-#define VERSION_ROBOT_MINOR 7
-#define VERSION_ROBOT_MINOR2 8
+#define VERSION_ROBOT_MINOR 8
+#define VERSION_ROBOT_MINOR2 0
 
 
 //用于记录fairino_msgs版本号
+/*
+V3.0.3 将error_code拆分成main_error_code和sub_error_code并实现反馈
+*/
 #define VERSION_MSG_MARJOR 3
 #define VERSION_MSG_MINOR 0
-#define VERSION_MSG_MINOR2 2
+#define VERSION_MSG_MINOR2 3
 
+#define ENG_VERSION
 
 #endif

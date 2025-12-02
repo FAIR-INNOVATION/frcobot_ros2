@@ -18,6 +18,7 @@
 #include "data_type_def.h"
 #include <queue>
 #include "libfairino/include/robot.h"
+#include <atomic>
 
 using remote_cmd_server_srv_msg = fairino_msgs::srv::RemoteCmdInterface;
 using remote_script_srv_msg = fairino_msgs::srv::RemoteScriptContent;
@@ -44,6 +45,7 @@ public:
     std::string GetTCPOffset(std::string para);
     std::string GetDHCompensation(std::string para);
     std::string GetWeldingBreakOffState(std::string para);
+    std::string GetErrorCode(std::string para);
 
     //普通设置类
     std::string DragTeachSwitch(std::string para);//拖动示教模式切换
@@ -165,20 +167,22 @@ public:
 private:
     std::unique_ptr<FRRobot> _ptr_robot;//机械臂SDK库指针
     ROBOT_STATE_PKG _robot_realtime_state;//从SDK获取的机械臂实时状态结构体
+    rclcpp::TimerBase::SharedPtr _locktimer;
+
     int lose_connect_times = 0;
-    rclcpp::TimerBase::SharedPtr _sdk_connection_check_timer;
+
     //函数指针是有作用域的，所以全局函数的指针和类内成员函数的指针定义有很大不同，这里不能用typedef
     int (robot_command_thread:: *funcP)(std::string para);
 
     //用于解析用户发送的ROS接口指令
     void _parseROSCommandData_callback(const std::shared_ptr<remote_cmd_server_srv_msg::Request> req,
                                     std::shared_ptr<remote_cmd_server_srv_msg::Response> res);
-    void _timer_callback();
     void _splitString2List(std::string str,std::list<std::string> &list_data);
     void _splitString2Vec(std::string str,std::vector<std::string> &vector_data);
     void _fillDescPose(std::list<std::string>& data,DescPose& pose);
     void _fillDescTran(std::list<std::string>& data,DescTran& trans);
     void _fillJointPose(std::list<std::string>& data,JointPos pos);
+    void _getRobotRTState();
     //TODO 使用可变参数模板函数去填装SDK函数所需参数
     // template<typename T,typename ... Ts>
     // void _recurseVar(T& first_arg,Ts&... args);
@@ -205,6 +209,7 @@ private:
     {"GetRobotVersion",&robot_command_thread::GetRobotVersion},
     {"GetControllerVersion",&robot_command_thread::GetControllerVersion},
     {"GetWeldingBreakOffState",&robot_command_thread::GetWeldingBreakOffState},
+    {"GetErrorCode",&robot_command_thread::GetErrorCode},
     {"DragTeachSwitch",&robot_command_thread::DragTeachSwitch},
     {"RobotEnable",&robot_command_thread::RobotEnable},
     {"SetSpeed",&robot_command_thread::SetSpeed},
@@ -312,6 +317,7 @@ public:
 private:
     int setKeepAlive(int fd, int idle_time, int interval_time, int probe_times);
     int _socketfd1;
+    std::atomic_bool _reconnect_flag;
     int _robot_recv_exit = 0;           //类即将析构，通知重连线程退出.
     std::thread _reconnect_thread;
     void _try_to_reconnect();
