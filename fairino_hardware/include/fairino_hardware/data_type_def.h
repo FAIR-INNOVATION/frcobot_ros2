@@ -108,11 +108,27 @@ typedef struct _REMOTE_CTRL_INF_STATE
 	uint16_t errCode;				/* 错误码 */
 }REMOTE_CTRL_INF_STATE;
 
+
+/** 夹爪状态监控反馈结构体 */
+typedef struct _GRIPPER_STATUS_FB
+{
+	uint8_t isShow;		/**前端是否展示结构体信息，0-不展示，1-展示*/
+	uint8_t gripID;			/**夹爪id*/
+	uint8_t gripType;		/**夹爪类型：0-平行夹爪；1-旋转夹爪*/
+	uint8_t curPos;			/**当前位置（百分比）*/
+	uint8_t curSpd;			/**当前速度（百分比）*/
+	uint8_t curTor;			/**当前扭矩（百分比）*/
+	float curRotNum;		/**当前旋转圈数*/
+	uint8_t	curRotSpd;		/**当前旋转速度（百分比）*/
+	uint8_t	curRotTor;		/**当前旋转力矩（百分比）*/
+}GRIPPER_STATUS_FB;
+
+
 /** 8081端口运动控制器状态结构体 */
 typedef struct _CTRL_STATE
 {
 	char       head[7];
-   	int        frame_len;               /* 消息帧长度                                     */
+int        frame_len;               /* 消息帧长度                                     */
 	double     runtime;                 /* 控制器启动时间,断电清零    */
 	double 	   jt_tgt_pos[6];           /* 关节1-6目标位置                */
 	double     jt_tgt_vel[6];           /* 关节1-6目标速度                */
@@ -202,7 +218,7 @@ typedef struct _CTRL_STATE
 	double     weldTrackSpeed;          /** 焊缝跟踪速度   mm/s */
 	uint8_t    drag_alarm;              /** 拖动警告，当前处于自动模式,0-不报警，1-报警 ，2-位置反馈异常不切换 */
 	double     LoadIdentifyData[4];     /** 负载辨识结果（weight,x,y,z） */
-	int        conveyor_encoder_pos;    /** 传送带编码器位置 */
+	int       conveyor_encoder_pos;    /** 传送带编码器位置 */
 	double     conveyor_speed;          /** 传送带速度 mm/s */
 	double     conveyorWorkPiecePos;    /** 传送带工件当前位置，单位mm */
 	uint8_t    btn_box_stop_signal;     /** 按钮盒急停信号 ，1-按下急停*/
@@ -287,6 +303,7 @@ typedef struct _CTRL_STATE
 	uint8_t UDPConnState;                             /** UDP通讯连接状态：0-连接断开；1-连接成功 */ 
 	float user_var[128];							  /** 用户变量，默认值0 */
 	uint8_t run_status[8];							  /** 后台程序线程状态，0停止（未配置），1运行，2暂停 */
+	GRIPPER_STATUS_FB gripper_status; 				  /** 夹爪状态反馈结构体*/
 	char end[7];
 } CTRL_STATE;
 /***********end 8081 data*******************/

@@ -1041,6 +1041,22 @@ public:
 	errno_t MoveTPD(char name[30], uint8_t blend, float ovl);
 
 	/**
+	 * @brief 上传轨迹J文件
+	 * @param [in] filePath 上传轨迹文件的全路径名   C://test/testJ.txt
+	 * @return 错误码
+	 */
+	errno_t TrajectoryJUpLoad(const std::string& filePath);
+
+
+	/**
+	 * @brief 删除轨迹J文件
+	 * @param [in] fileName 文件名称 testJ.txt
+	 * @return 错误码
+	 */
+	errno_t TrajectoryJDelete(const std::string& fileName);
+
+
+	/**
 	 * @brief  轨迹预处理
 	 * @param  [in] name  轨迹文件名
 	 * @param  [in] ovl 速度缩放百分比，范围[0~100]

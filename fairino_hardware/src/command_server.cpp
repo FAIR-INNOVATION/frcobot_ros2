@@ -78,7 +78,7 @@ robot_command_thread::robot_command_thread(const std::string node_name):rclcpp::
     RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"ROS2指令服务器创建成功，准备连接机械臂  版本号:V%d.%f",\
         VERSION_MAJOR,\
         VERSION_MINOR);
-    _ptr_robot = std::make_unique<FRRobot>();
+    _ptr_robot = std::make_shared<FRRobot>();
     error_t returncode = _ptr_robot->RPC(_controller_ip.c_str());
     if(returncode !=0 ){
         RCLCPP_ERROR(rclcpp::get_logger(LOGGER_NAME),"连接机械臂失败，程序即将退出！");
@@ -117,7 +117,7 @@ void robot_command_thread::_parseROSCommandData_callback(
             func_name.c_str(),para_list.c_str());
 
         //校验参数的内容,参数部分必须是字母,数字和逗号,负号组成,出现其他字符包括空格都会导致校验失败
-        std::regex para_pattern("[A-Z|a-z|\\.\\d|\\d|,|-]*");
+        std::regex para_pattern(".*");
         if(std::regex_match(para_list,para_pattern)){//检查参数输入是否合法
             auto find_idx = _fr_function_list.find(func_name);
             if(find_idx == _fr_function_list.end()){
@@ -1685,6 +1685,22 @@ std::string robot_command_thread::AuxServoSetStatusID(std::string para){
     return std::to_string(_ptr_robot->AuxServosetStatusID(std::stoi(para)));
 }
 
+/**
+ * @brief 加载脚本
+ * @param [in] para-program_name[64]
+ * @return 指令执行是否成功
+ * @retval 0-成功，其他-错误码 
+ */
+std::string robot_command_thread::ScriptLoad(std::string para){
+    //program_name[64]
+    char name[64];
+    if(para.length() < 64){
+        para.copy(name,para.length());
+        name[para.length()] = '\0';
+    }
+    return std::to_string(_ptr_robot->ProgramLoad(name));
+}
+
 
 /**
  * @brief 开始执行脚本
@@ -1728,22 +1744,19 @@ std::string robot_command_thread::ScriptResume(std::string para){
 /**
  * @brief 获取工具标定值
  * @return TCP标定值
- * @retval x,y,z,rx,ry,rz 
+ * @retval res,x,y,z,rx,ry,rz 
  */
 std::string robot_command_thread::GetTCPOffset(std::string para){
     uint8_t index = std::stoi(para);
     DescPose cartpos;
-    if(_ptr_robot->GetTCPOffset(index,&cartpos) == 0){
-        return std::to_string(cartpos.tran.x) + "," + \
-               std::to_string(cartpos.tran.y) + "," + \
-               std::to_string(cartpos.tran.z) + "," + \
-               std::to_string(cartpos.rpy.rx) + "," + \
-               std::to_string(cartpos.rpy.ry) + "," + \
-               std::to_string(cartpos.rpy.rz);
-    }else{
-        RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"获取工具标定值失败");
-        return "0,0,0,0,0,0";
-    }
+    int res = _ptr_robot->GetTCPOffset(index,&cartpos);
+    return std::to_string(res) + "," + \
+            std::to_string(cartpos.tran.x) + "," + \
+            std::to_string(cartpos.tran.y) + "," + \
+            std::to_string(cartpos.tran.z) + "," + \
+            std::to_string(cartpos.rpy.rx) + "," + \
+            std::to_string(cartpos.rpy.ry) + "," + \
+            std::to_string(cartpos.rpy.rz);
 }
 
 /**
@@ -1753,17 +1766,14 @@ std::string robot_command_thread::GetTCPOffset(std::string para){
  */
 std::string robot_command_thread::GetDHCompensation(std::string para){
     double dhcomp[6];
-    if(_ptr_robot->GetDHCompensation(dhcomp) == 0){
-        return std::to_string(dhcomp[0]) + "," + \
-               std::to_string(dhcomp[1]) + "," + \
-               std::to_string(dhcomp[2]) + "," + \
-               std::to_string(dhcomp[3]) + "," + \
-               std::to_string(dhcomp[4]) + "," + \
-               std::to_string(dhcomp[5]);
-    }else{
-        RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"获取DH补偿值失败");
-        return "0,0,0,0,0,0";
-    }
+    int res = _ptr_robot->GetDHCompensation(dhcomp);
+    return std::to_string(res) + "," + \
+            std::to_string(dhcomp[0]) + "," + \
+            std::to_string(dhcomp[1]) + "," + \
+            std::to_string(dhcomp[2]) + "," + \
+            std::to_string(dhcomp[3]) + "," + \
+            std::to_string(dhcomp[4]) + "," + \
+            std::to_string(dhcomp[5]);
 }
 
 /**
@@ -1790,6 +1800,7 @@ std::string robot_command_thread::TractorHoming(std::string para){
 
 /**
  * @brief 可移动设备直线运动
+ * @param [in] para-distance,vel
  * @return 指令执行是否成功
  * @retval 0-成功，其他-错误码 
  */
@@ -1805,6 +1816,7 @@ std::string robot_command_thread::TractorMoveL(std::string para){
 
 /**
  * @brief 可移动设备圆弧运动
+ * @param [in] para-ratio,angle,vel
  * @return 指令执行是否成功
  * @retval 0-成功，其他-错误码 
  */
@@ -1830,6 +1842,169 @@ std::string robot_command_thread::TractorStop(std::string para){
 }
 
 
+/**
+ * @brief 上传轨迹J文件
+ * @param [in] para-filepath
+ * @return 指令执行是否成功
+ * @retval 0-成功，其他-错误码 
+ */
+std::string robot_command_thread::TrajectoryJUpLoad(std::string para){
+    //string filepath
+    return std::to_string(_ptr_robot->TrajectoryJUpLoad(para));
+}
+
+/**
+ * @brief 删除轨迹J文件
+ * @param [in] para-filename
+ * @return 指令执行是否成功
+ * @retval 0-成功，其他-错误码 
+ */
+std::string robot_command_thread::TrajectoryJDelete(std::string para){
+    //const string filename
+    return std::to_string(_ptr_robot->TrajectoryJDelete(para));
+}
+
+/**
+ * @brief 加载轨迹J文件
+ * @param [in] para-name[30],ovl
+ * @return 指令执行是否成功
+ * @retval 0-成功，其他-错误码 
+ */
+std::string robot_command_thread::LoadTrajectoryJ(std::string para){
+    //char name[30], float ovl
+    std::list<std::string> list;
+    _splitString2List(para,list);
+    char name[30];
+    list.front().copy(name,list.front().size());list.pop_front();
+    float ovl = std::stof(list.front());
+    return std::to_string(_ptr_robot->LoadTrajectoryJ(name,ovl,1));
+}
+
+/**
+ * @brief 运行轨迹J文件
+ * @return 指令执行是否成功
+ * @retval 0-成功，其他-错误码 
+ */
+std::string robot_command_thread::MoveTrajectoryJ(std::string para){
+    //empty para
+    return std::to_string(_ptr_robot->MoveTrajectoryJ());
+}
+
+/**
+ * @brief 获取轨迹J文件第一个点的初始位姿
+ * @param [in] para-name[30]
+ * @return 初始点位姿 
+ * @retval x,y,z,rx,ry,rz
+ */
+std::string robot_command_thread::GetTrajectoryStartPose(std::string para){
+    //char name[30]
+    char name[30];
+    if(para.length() <= 29){
+        para.copy(name,para.length());
+        name[para.length()] = '\0';
+    }
+    DescPose pos;
+    if(_ptr_robot->GetTrajectoryStartPose(name,&pos) == 0){
+        return std::to_string(pos.tran.x) + "," +\
+                std::to_string(pos.tran.y) + "," +\
+                std::to_string(pos.tran.z) + "," +\
+                std::to_string(pos.rpy.rx) + "," +\
+                std::to_string(pos.rpy.ry) + "," +\   
+                std::to_string(pos.rpy.rz);
+    }else{
+        return std::string("0,0,0,0,0,0");
+    }
+}
+
+/**
+ * @brief 获取轨迹J文件点数量
+ * @return 点数
+ * @retval num
+ */
+std::string robot_command_thread::GetTrajectoryPointNum(std::string para){
+    //empty para
+    int num;
+    if(_ptr_robot->GetTrajectoryPointNum(&num) == 0){
+        return std::to_string(num);
+    }else{
+        return "-1";
+    }
+}
+
+/**
+ * @brief 设置轨迹J运行速度
+ * @param [in] para-vel
+ * @return 指令执行是否成功
+ * @retval 0-成功，其他-错误码 
+ */
+std::string robot_command_thread::SetTrajectoryJSpeed(std::string para){
+    //double vel
+    return std::to_string(_ptr_robot->SetTrajectoryJSpeed(std::stod(para)));
+}
+
+
+/**
+ * @brief 下载LUA脚本
+ * @param [in] para-filename,filepath
+ * @return 指令执行是否成功
+ * @retval 0-成功，其他-错误码 
+ */
+std::string robot_command_thread::LuaDownLoad(std::string para){
+    //string filename,string filepath
+    std::list<std::string> list;
+    _splitString2List(para,list);
+
+    std::string name = list.front();list.pop_front();
+    std::string path = list.front();
+    return std::to_string(_ptr_robot->LuaDownLoad(name,path));
+}
+
+/**
+ * @brief 上传LUA脚本
+ * @param [in] para-filepath
+ * @return 指令执行是否成功
+ * @retval 0-成功，其他-错误码 
+ */
+std::string robot_command_thread::LuaUpload(std::string para){
+    //string filepath
+    return std::to_string(_ptr_robot->LuaUpload(para));
+}
+
+/**
+ * @brief 删除LUA脚本
+ * @param [in] para-filename
+ * @return 指令执行是否成功
+ * @retval 0-成功，其他-错误码 
+ */
+std::string robot_command_thread::LuaDelete(std::string para){
+    //string filename
+    return std::to_string(_ptr_robot->LuaDelete(para));
+}
+
+/**
+ * @brief 获取LUA脚本列表
+ * @param [in] para-filename
+ * @return LUA脚本名称列表
+ * @retval name1,name2,name3...
+ */
+std::string robot_command_thread::GetLuaList(std::string para){
+    std::list<std::string> list;
+    if(_ptr_robot->GetLuaList(&list) == 0){
+        std::string str = "";
+        for(auto item : list){
+            str += item;
+            str += ",";
+        }
+        return str;
+    }else{
+        return "-1";
+    }
+}
+
+
+
+
+
 
 
 
@@ -1846,6 +2021,7 @@ robot_recv_thread::robot_recv_thread(const std::string node_name):rclcpp::Node(n
     RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"开始创建状态反馈TCP socket");
 
     //只保留8081端口的连接，8083连接传输的数据已经不用
+    // _socketfd1 = socket(AF_INET,SOCK_STREAM,0);//状态获取端口只有TCP
     _socketfd1 = socket(AF_INET,SOCK_STREAM,0);//状态获取端口只有TCP
 
     if(_socketfd1 == -1){
@@ -1855,7 +2031,7 @@ robot_recv_thread::robot_recv_thread(const std::string node_name):rclcpp::Node(n
         RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"创建状态反馈socket成功,开始连接控制器...");
         struct sockaddr_in tcp_client1;
         tcp_client1.sin_family = AF_INET;
-        tcp_client1.sin_port = htons(port1);//8083端口
+        tcp_client1.sin_port = htons(port1);//8081端口
         tcp_client1.sin_addr.s_addr = inet_addr(_controller_ip.c_str());
 
 
@@ -1877,9 +2053,9 @@ robot_recv_thread::robot_recv_thread(const std::string node_name):rclcpp::Node(n
 
             _state_publisher = this->create_publisher<robot_feedback_msg>(
                 "nonrt_state_data",
-                1
+                10
             );
-            _locktimer = this->create_wall_timer(10ms,std::bind(&robot_recv_thread::_state_recv_callback,this));//创建一个定时器任务用于获取非实时状态数据,触发间隔为100ms
+            _locktimer = this->create_wall_timer(100ms,std::bind(&robot_recv_thread::_state_recv_callback,this));//创建一个定时器任务用于获取非实时状态数据,触发间隔为100ms
         }
 
         //连接成功，创建守护线程,如果该连接端掉，则自动发起重连接;生命周期随该节点
@@ -1896,7 +2072,7 @@ void robot_recv_thread::_try_to_reconnect(){
             do{
                 std::lock_guard<std::mutex> _lock(_reconnect_mutex);
                 /* try to re-connect 58.2 8081*/
-                if (_reconnect_flag){
+                if (1 == _is_reconnect){
                     // 关闭旧连接
                     shutdown(_socketfd1, SHUT_RDWR);
                     close(_socketfd1);
@@ -1938,7 +2114,7 @@ void robot_recv_thread::_try_to_reconnect(){
                             }
                             // return sock_fd;
                             _socketfd1 = sock_fd;
-                            _reconnect_flag.store(false);
+                            _is_reconnect = 0;
                             break;
                         }
                     }
@@ -2014,142 +2190,102 @@ int robot_recv_thread::setKeepAlive(int fd, int idle_time, int interval_time, in
  * @brief 8081反馈数据端口topic监听回调函数
 */
 void robot_recv_thread::_state_recv_callback(){
-    static bool concatante_flag = 0;//帧数据拼接flag
-    static std::once_flag oneflag;
     static _CTRL_STATE ctrl_state;
-    static uint32_t delta_length = 0;
-    static int length_left = 0;
-    static uint32_t begin_index = 0;
+    _CTRL_STATE state_data_store;
     static std::queue<_CTRL_STATE> ctrl_state_store_buff;//用于存储缓存区多余的数据，需要限制长度
     static char ctrl_state_temp_buff[_CTRL_STATE_SIZE] = {0};//用于临时存储不完整帧的数据，之后用于数据拼接
+    static int ctrl_state_future_recv = _CTRL_STATE_SIZE ;//接受到不完整帧数据后用于存储下一帧头部需要接收的剩余数据长度
+    int ctrl_state_datalen = _CTRL_STATE_SIZE ;
+    uint32_t* ctrl_state_head_ptr;
+    uint8_t* checksum_ptr;
+    uint16_t checksum = 0;
 
-   /* 如果处于重连流程，不需要再读取，直接返回 */
-    if(_reconnect_flag){
-        //RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"重连中，请等待......");
-        return;
-    }
-
-    if(!concatante_flag){//不需要数据拼接的情况
-        char recv_buff[_CTRL_STATE_SIZE] = {0};
-        int length_read = 0;
+    while(ctrl_state_datalen > 0){//如果缓存区还有数据，那么就一直循环取出     
+        char recv_buff[ctrl_state_future_recv] = {0};
+        ctrl_state_datalen = recv(_socketfd1,recv_buff,sizeof(recv_buff),0);//取出固定长度的数据   
+         //std::cout<<"ctrl_state_datalen "<<ctrl_state_datalen<<std::endl;
+         //std::cout<<"data_len_expected: "<<_CTRL_STATE_SIZE << std::endl;
 
         /* 如果处于重连流程，不需要再读取，直接返回 */
-        do{
-            length_read = recv(_socketfd1,recv_buff,1,0);
-            // 这里是非阻塞读，开启探针后，当recv失败时，通过errno查看结果
-            if ((length_read == 0) || ((length_read == -1) && (errno != EINTR )&&\
-            (errno != EWOULDBLOCK) && (errno != EAGAIN))){
-                _reconnect_flag.store(true);
-                RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"网络可能已经断开，请检查网络连接 ......");
-                break;
-            }
-            if(length_read == 1 && recv_buff[0] == '/'){
-                length_read = recv(_socketfd1,&recv_buff[1],3,0);
-                std::string head_str(recv_buff,4); 
-                if(length_read == 3 && head_str == "/f/b"){
-                    break;
-                }
-            }
-        }while(1);
-
-        if(_reconnect_flag){//等待重连，while中无法使用return
-            return;
-        }
-
-        int len = recv(_socketfd1,&recv_buff[4],7,0);
-        if(len == -1){
-            return;
-        }
-        int32_t* ptr_frame_length = (int32_t*)(&recv_buff[7]);
-        if(*ptr_frame_length < (_CTRL_STATE_SIZE-14)){//帧长度小于等于预期，直接填装
-            std::call_once(oneflag,[&](){
-                RCLCPP_ERROR(rclcpp::get_logger(LOGGER_NAME),\
-                    "反馈状态数据帧长度小于预期,差距为%i,请对齐fairino_hardware功能包与机械臂软件版本。",\
-                    _CTRL_STATE_SIZE-14-*ptr_frame_length
-                );
-            });
-            delta_length = 0;
-        }else if(*ptr_frame_length > (_CTRL_STATE_SIZE-14)){//帧长度大于预期，需要削去多余数据，默认削去尾部数据
-            std::call_once(oneflag,[&](){
-                RCLCPP_ERROR(rclcpp::get_logger(LOGGER_NAME),\
-                    "反馈状态数据帧长度大于预期,差距为%i,请对齐fairino_hardware功能包与机械臂软件版本。",\
-                    *ptr_frame_length - _CTRL_STATE_SIZE+14
-                );
-            });
-            delta_length = *ptr_frame_length - _CTRL_STATE_SIZE+14;
-        }else{
-            delta_length = 0;
-        }
-        // std::cout << ctrl_state_datalen << " 开始取数据  " << _is_reconnect << " " << strerror(errno) << std::endl;
-        int future_len = *ptr_frame_length + 3;//注意别漏掉帧尾的数据，需要考虑到已经读了frame_length
-        char oneshot_buff[future_len] = {0};
-        int recv_length = recv(_socketfd1,oneshot_buff,future_len,0);
-        if(recv_length < future_len){//获取长度小于预期，说明帧数据需要进行拼接
-            if(recv_length != -1){
-                concatante_flag = 1;
-                memset(ctrl_state_temp_buff,0,_CTRL_STATE_SIZE);
-                memcpy(&recv_buff[11],oneshot_buff,recv_length);//如果是数据长度差太多，执行这句可能出现数组越界的情况
-                memcpy(ctrl_state_temp_buff,recv_buff,_CTRL_STATE_SIZE);
-                length_left = future_len - recv_length;
-                begin_index = recv_length + 11;
-                //std::cout << "有包头但是数据长度不正确,8081数据校验长度: "<< _CTRL_STATE_SIZE << "," << *((int*)(data_len_ptr))  << std::endl;
-            }
-            return;
-        }else{
-            memcpy(&recv_buff[11],oneshot_buff,future_len-delta_length);
-            memcpy(&ctrl_state, recv_buff, sizeof(ctrl_state));
-            if(ctrl_state_store_buff.size() < 3){
-                ctrl_state_store_buff.emplace(ctrl_state);//将数据放入队列中
-            }else{//如果队列中数据满10个，那么删掉队列头部数据然后队尾再插入数据
-                ctrl_state_store_buff.pop();//弹出队首的元素
-                ctrl_state_store_buff.emplace(ctrl_state);
+        {
+            std::lock_guard<std::mutex> _lock(_reconnect_mutex);
+            if(_is_reconnect == 1){
+                RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"重连中，请等待......");
+                return;
             }
         }
-    }else{//需要数据拼接的情况
-        //RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"进入拼接状态,%i",length_left);
-        char concatante_buff[length_left] = {0};
-        int length_concatante = recv(_socketfd1,concatante_buff,length_left,0);
-        if ((length_concatante == 0) || ((length_concatante == -1) && (errno != EINTR )&&\
-        (errno != EWOULDBLOCK) && (errno != EAGAIN))){
-            _reconnect_flag.store(true);
+        // 这里是非阻塞读，开启探针后，当recv失败时，通过errno查看结果
+        if ((ctrl_state_datalen == 0) || ((ctrl_state_datalen == -1) && (errno != EINTR )&& (errno != EWOULDBLOCK) && (errno != EAGAIN)))
+        {
+            {
+                std::lock_guard<std::mutex> _lock(_reconnect_mutex);
+                _is_reconnect = 1;
+            }
             RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"网络可能已经断开，请检查网络连接 ......");
             return;
         }
-        if(length_concatante < length_left){
-            if(length_concatante != -1){
-                memcpy(&ctrl_state_temp_buff[begin_index],concatante_buff,length_concatante);
-                begin_index += length_concatante;
-                length_left -= length_concatante;
-                //break;//已经没有数据了，退出循环
+
+        //std::cout << ctrl_state_datalen << " 开始取数据  " << _is_reconnect << " " << strerror(errno) << std::endl;
+        ctrl_state_head_ptr = (uint32_t*)(recv_buff);//通过指针访问的方法取出frame_head
+        if(*ctrl_state_head_ptr == 0x622F662F){//检测包头
+            if(ctrl_state_datalen == _CTRL_STATE_SIZE)
+            {//有时候缓冲区尾部数据不是一个完整的帧，因此需要保存不完整的信息用于下一帧数据拼接
+                 uint8_t* data_len_ptr = (uint8_t*)(recv_buff);
+                 data_len_ptr += 7;
+                  //std::cout << "信息完整无需拼接,8081数据校验长度: " << _CTRL_STATE_SIZE << "," <<  *((int*)(data_len_ptr)) << std::endl;
+                    memcpy(&ctrl_state, recv_buff, sizeof(ctrl_state));
+                    if(ctrl_state_store_buff.size() < 10)
+                    {
+                        ctrl_state_store_buff.emplace(ctrl_state);//将数据放入队列中
+                    }
+                    else
+                    {//如果队列中数据满10个，那么删掉队列头部数据然后队尾再插入数据
+                        ctrl_state_store_buff.pop();//弹出队首的元素
+                        ctrl_state_store_buff.emplace(ctrl_state);
+                    }
+                    checksum = 0;
             }
-            return;
-        }else{//length_concatante == length_left
-            concatante_flag = 0;
-            //RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"获得最后一段帧数据：%i",length_concatante);
-            std::string tail(&concatante_buff[length_left-7],7);
-            if(tail == "III/b/f"){
-                memcpy(&ctrl_state_temp_buff[begin_index],concatante_buff,length_concatante);
-                memcpy(&ctrl_state,ctrl_state_temp_buff,_CTRL_STATE_SIZE);
-                if(ctrl_state_store_buff.size() < 3){
+            // 需要拼接的情况
+            else {
+                uint8_t* data_len_ptr = (uint8_t*)(recv_buff);
+                data_len_ptr += 7;
+                //std::cout << "有包头但是数据长度不正确,8081数据校验长度: "<< _CTRL_STATE_SIZE << "," << *((int*)(data_len_ptr))  << std::endl;
+                memset(ctrl_state_temp_buff, 0, sizeof(ctrl_state_temp_buff));//清空临时存放变量
+                memcpy(ctrl_state_temp_buff, recv_buff, ctrl_state_datalen);//只复制接收到的数据部分
+                ctrl_state_future_recv = _CTRL_STATE_SIZE - ctrl_state_datalen;
+            }
+        }else{
+            if(ctrl_state_datalen == -1){
+                int error_code = 0;
+                socklen_t len1 = sizeof(error_code);
+                getsockopt(_socketfd1,SOL_SOCKET,SO_ERROR,&error_code,&len1);
+                //break;//已经没有数据了，退出循环
+                // std::cout << "请检查网络连接 " << strerror(errno) << "  " << errno << std::endl;                
+            }            
+            else{//进行数据拼接
+                memset(ctrl_state_temp_buff, 0, sizeof(ctrl_state_temp_buff));//清空临时存放变量
+                memcpy(ctrl_state_temp_buff, recv_buff, ctrl_state_datalen);//只复制接收到的数据部分
+                ctrl_state_future_recv = _CTRL_STATE_SIZE - ctrl_state_datalen;
+                 //std::cout << "获得不完整头部数据 " << ctrl_state_datalen  << std::endl;
+                if(ctrl_state_store_buff.size() < 10){
                     ctrl_state_store_buff.emplace(ctrl_state);//将数据放入队列中
                 }else{//队列长度等于10的时候，弹出队首的元素，在队尾加入元素
                     ctrl_state_store_buff.pop();
                     ctrl_state_store_buff.emplace(ctrl_state);
                 }
-            }else{
-                RCLCPP_ERROR(rclcpp::get_logger(LOGGER_NAME),"帧数据拼接失败，帧尾数据校验失败，重新寻找帧头,%i,%i",length_concatante,length_left);
-                return;
+                ctrl_state_future_recv = _CTRL_STATE_SIZE;
             }
         }
     }//end while
 
     //下面是从队列中读取数据
-    if(!ctrl_state_store_buff.empty()){
-        ctrl_state = ctrl_state_store_buff.front();
-        ctrl_state_store_buff.pop();
+    if(!ctrl_state_store_buff.empty())
+        {
+            ctrl_state = ctrl_state_store_buff.front();
+            ctrl_state_store_buff.pop();
 
-        auto msg = robot_feedback_msg();
-        auto cur_clock = rclcpp::Clock();
+            auto msg = robot_feedback_msg();
+            auto cur_clock = rclcpp::Clock();
 
             msg.error_code = 0;
             msg.robot_motion_done = ctrl_state.motion_done;
@@ -2198,7 +2334,7 @@ void robot_recv_thread::_state_recv_callback(){
             msg.abnormal_stop = ctrl_state.abnormal_stop;
             msg.prg_name = std::string(ctrl_state.curLuaFileName);
             msg.prg_total_line = 0;
-            msg.prg_cur_line = ctrl_state.line_number;
+            msg.prg_cur_line = 0;
 
             msg.dgt_output_h = ctrl_state.cl_dgt_output_h;
             msg.dgt_output_l = ctrl_state.cl_dgt_output_l;
