@@ -289,19 +289,19 @@ typedef struct _CTRL_STATE
 	uint8_t    safety_data_state;                     /* 安全数据状态标志，0-正常，1-异常 */
 	char       curPointTableName[128];				  /* 当前应用的点位表信息 */
 	int        jog_status;                            /* 点动运动状态 */
-	uint16_t modbusSlaveDI[8];      				  /** 从站DI0 - DI128 */
-	uint16_t modbusSlaveDO[8];      				  /** 从站DO0 - DI128 */
-	int modbusSlaveAI[64];          				  /** 从站AI uint16 AI0-AI15  int16 AI16-AI31  float AI32-AI63 */
-	int modbusSlaveAO[64];          				  /** 从站AO uint16 AO0-AO15  int16 AO16-AO31  float AO32-AO63 */
-	uint8_t modbusMasterConnectState;     			  /** 0-7位对应0-7主站连接状态  0-未连接   1-连接 */
-	float modbusMasterValue[8][128]; 	   			  /** modbusMaster的寄存器当前数值，每128个值为1个ModbusMaster寄存器的所有值 */
+	uint16_t modbusSlaveDI[8];      				  /* 从站DI0 - DI128 */
+	uint16_t modbusSlaveDO[8];      				  /* 从站DO0 - DI128 */
+	int modbusSlaveAI[64];          				  /* 从站AI uint16 AI0-AI15  int16 AI16-AI31  float AI32-AI63 */
+	int modbusSlaveAO[64];          				  /* 从站AO uint16 AO0-AO15  int16 AO16-AO31  float AO32-AO63 */
+	uint8_t modbusMasterConnectState;     			  /* 0-7位对应0-7主站连接状态  0-未连接   1-连接 */
+	float modbusMasterValue[8][128]; 	   			      /** modbusMaster的寄存器当前数值，每128个值为1个ModbusMaster寄存器的所有值 */
 	uint8_t shoulderConfig;                              /* 肩关节配置，0：左肩配置，1：右肩配置*/
 	uint8_t elbowConfig;                                 /* 肘关节配置，0：肘向下配置，1：肘向上配置*/
 	uint8_t wristConfig;                                 /* 腕关节配置，0：腕向下配置，1：腕向上配置*/
 	uint32_t motionCount;                                /* 运动计数 */
 	double     flange_cur_pos[6];                     /** 末端法兰当前位姿 */
 	uint16_t endLuaErrCode;                           /** 末端Lua文件异常状态 0-正常；1-异常 */
-	uint8_t mdbsSlaveConnect; 						  /** Modbus从站连接状态 0-未连接；1-已连接 */
+    uint8_t mdbsSlaveConnect; 						  /** Modbus从站连接状态 0-未连接；1-已连接 */
 	uint16_t mdbsSlaveFuncDIState[6]; 				  /** Modbus从站功能DI输入状态；bit0-bit10分别对应“暂停”  ~  “清除所有故障” */
 	int mdbsSlaveDOCtrlDIState; 					  /** Modbus从站控制DO输出功能的DI输入状态，bit0-bit7为DO0-DO7；bit8-bit15为CO0-CO7；bit16-bit17为工具DO0-DO1 */
 	int safetyBoardComSendCount;                      /* 安全板通信发送数据包计数 */
@@ -352,7 +352,17 @@ typedef struct _CTRL_STATE
 	double loadWeight;       							//web2.0负载重量
 	double loadCoord[3];     							//web2.0负载质心
 	uint8_t robotpreHeatingState;						//关节低温预热状态
-	uint8_t limitRingFlag;                              //限位环状态
+	uint8_t limitRingFlag;						        //限位环状态
+	uint8_t fieldBusSlaveDI[16];                        /** 从站DI0 - DI128 */
+	uint8_t fieldBusSlaveDO[16];						/** 从站DO0 - DI128 */
+	int fieldBusSlaveAI[32];							/** 从站AI uint16 AI0-AI15  float AI16-AI31 */
+	int fieldBusSlaveAO[32];							/** 从站AO uint16 AO0-AO15  float AO16-AO31 */
+	uint8_t fieldBusConnectState;						/**板卡从站： 0-未连接, 1-连接 */
+	uint8_t fieldBusboardType;                			/* 板卡从站： 板卡厂商  0-未识别的板卡 1-骥远 */
+    uint8_t fieldBusprotocolType;             			/* 板卡从站： 协议类型  1-PN；2-CCLink； 3-Ethercat； 4-EIP*/
+    uint8_t fieldBusversion;                  			/* 板卡从站： 版本号  1*/
+	float wideBoxtemp;									/** 宽电压控制箱温度 */
+	uint16_t fanCur;									/** 风扇电流 */
 	char end[7];
 } CTRL_STATE;
 #pragma pack()

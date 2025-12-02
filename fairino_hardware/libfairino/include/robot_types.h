@@ -1,5 +1,5 @@
-#ifndef    ROBOTTYPES_H_
-#define    ROBOTTYPES_H_
+#ifndef ROBOTTYPES_H_
+#define ROBOTTYPES_H_
 
 #include <stdio.h>
 #include <iostream>

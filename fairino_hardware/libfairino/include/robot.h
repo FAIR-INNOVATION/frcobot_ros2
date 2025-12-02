@@ -693,7 +693,7 @@ public:
 	/**
 	 * @brief 设置碰撞等级
 	 * @param  [in]  mode  0-等级，1-百分比
-	 * @param  [in]  level 碰撞阈值，等级对应范围[],百分比对应范围[0~1]
+	 * @param  [in]  level 碰撞阈值，等级对应范围[1-10],百分比对应范围[0~1]
 	 * @param  [in]  config 0-不更新配置文件，1-更新配置文件
 	 * @return  错误码
 	 */
@@ -1874,16 +1874,16 @@ public:
 	/**
 	 * @brief 设置摆动参数
 	 * @param [in] weaveNum 摆焊参数配置编号
-	 * @param [in] weaveType 摆动类型 0-平面三角波摆动；1-垂直L型三角波摆动；2-顺时针圆形摆动；3-逆时针圆形摆动；4-平面正弦波摆动；5-垂直L型正弦波摆动；6-垂直三角波摆动；7-垂直正弦波摆动
+	 * @param [in] weaveType 摆动类型 0-三角波摆动(LIN/ARC/Circle)；1-垂直L型三角波摆动(LIN/ARC/Circle)；2-圆形摆动-顺时针(LIN)；3-圆形摆动-逆时针(LIN)；4-正弦波摆动(LIN/ARC/Circle)；5-垂直L型正弦波摆动(LIN/ARC/Circle)；6-立焊三角摆动
 	 * @param [in] weaveFrequency 摆动频率(Hz)
-	 * @param [in] weaveIncStayTime 等待模式 0-周期不包含等待时间；1-周期包含等待时间
+	 * @param [in] weaveIncStayTime 摆动等待时间 0-周期不包含等待时间；1-周期包含等待时间
 	 * @param [in] weaveRange 摆动幅度(mm)
-	 * @param [in] weaveLeftRange 垂直三角摆动左弦长度(mm)
-	 * @param [in] weaveRightRange 垂直三角摆动右弦长度(mm)
-	 * @param [in] additionalStayTime 垂直三角摆动垂三角点停留时间(mm)
+	 * @param [in] weaveLeftRange 垂直三角摆动左侧边长度(mm)
+	 * @param [in] weaveRightRange 垂直三角摆动右侧边长度(mm)
+	 * @param [in] additionalStayTime 垂直三角摆动零点停留时间(mm)
 	 * @param [in] weaveLeftStayTime 摆动左停留时间(ms)
 	 * @param [in] weaveRightStayTime 摆动右停留时间(ms)
-	 * @param [in] weaveCircleRadio 圆形摆动-回调比率(0-100%)
+	 * @param [in] weaveCircleRadio 圆形摆动-回调比例(0-100%)
 	 * @param [in] weaveStationary 摆动位置等待，0-等待时间内位置继续移动；1-等待时间内位置静止
 	 * @param [in] weaveYawAngle 摆动方向方位角(绕摆动Z轴旋转)，单位°
 	 * @param [in] weaveRotAngle 摆动方向侧倾角(绕摆动X轴偏转)，单位°
@@ -2268,9 +2268,10 @@ public:
 	 * @brief UDP扩展轴运动
 	 * @param [in] pos 目标位置
 	 * @param [in] ovl 速度百分比
+	 * @param [in] blend 平滑参数(mm或ms)
 	 * @return 错误码
 	 */
-	errno_t ExtAxisMove(ExaxisPos pos, double ovl);
+	errno_t ExtAxisMove(ExaxisPos pos, double ovl, double blend = -1);
 
 	/**
 	 * @brief 设置扩展DO
@@ -3632,6 +3633,92 @@ public:
 	 * @return 错误码
 	 */
 	errno_t GetWideBoxTempFanMonitorParam(int &enable, int &period);
+
+	/**
+	 * @brief 设置焦点标定点
+	 * @param [in] pointNum 焦点标定点编号 1-8
+	 * @param [in] point 标定点坐标
+	 * @return 错误码
+	 */
+	errno_t SetFocusCalibPoint(int pointNum, DescPose point);
+
+	/**
+	 * @brief 计算焦点标定结果
+	 * @param [in] pointNum 标定点个数
+	 * @param [out] resultPos 标定结果XYZ
+	 * @param [out] accuracy 标定精度误差
+	 * @return 错误码
+	 */
+	errno_t ComputeFocusCalib(int pointNum, DescTran& resultPos, float& accuracy);
+
+	/**
+	 * @brief 开启焦点跟随
+	 * @param [in] kp 比例参数，默认50.0
+	 * @param [in] kpredict 前馈参数，默认19.0
+	 * @param [in] aMax 最大角加速度限制，默认1440°/s^2
+	 * @param [in] vMax 最大角速度限制，默认180°/s
+	 * @param [in] type 锁定X轴指向(0-参考输入矢量；1-水平；2-垂直)
+	 * @return 错误码
+	 */
+	errno_t FocusStart(double kp, double kpredict, double aMax, double vMax, int type);
+
+	/**
+	 * @brief 停止焦点跟随
+	 * @return 错误码
+	 */
+	errno_t FocusEnd();
+
+	/**
+	 * @brief 设置焦点坐标
+	 * @param [in] pos 焦点坐标XYZ
+	 * @return 错误码
+	 */
+	errno_t SetFocusPosition(DescTran pos);
+
+	/**
+	 * @brief 设置编码器升级(暂未开放)
+	 * @param [in] path 本地升级包全路径(D://zUP/XXXXX.bin)
+	 * @return 错误码
+	 */
+	errno_t SetEncoderUpgrade(std::string path);
+
+	/**
+	 * @brief 设置关节固件升级
+	 * @param [in] type 升级文件类型；1-升级固件(使用前需要使机器人进入boot模式)；2-升级从站配置文件(使用前需要去使能机器人)
+	 * @param [in] path 本地升级包全路径(D://zUP/XXXXX.bin)
+	 * @return 错误码
+	 */
+	errno_t SetJointFirmwareUpgrade(int type, std::string path);
+
+	/**
+	 * @brief 设置控制箱固件升级
+	 * @param [in] type 升级文件类型；1-升级固件(使用前需要使机器人进入boot模式)；2-升级从站配置文件(使用前需要去使能机器人)
+	 * @param [in] path 本地升级包全路径(D://zUP/XXXXX.bin)
+	 * @return 错误码
+	 */
+	errno_t SetCtrlFirmwareUpgrade(int type, std::string path);
+
+	/**
+	 * @brief 设置末端固件升级
+	 * @param [in] type 升级文件类型；1-升级固件(使用前需要使机器人进入boot模式)；2-升级从站配置文件(使用前需要去使能机器人)
+	 * @param [in] path 本地升级包全路径(D://zUP/XXXXX.bin)
+	 * @return 错误码
+	 */
+	errno_t SetEndFirmwareUpgrade(int type, std::string path);
+
+	/**
+	 * @brief 关节全参数配置文件升级(使用前需要去使能机器人)
+	 * @param [in] path 本地升级包全路径(D://zUP/XXXXX.bin)
+	 * @return 错误码
+	 */
+	errno_t JointAllParamUpgrade(std::string path);
+
+	/**
+	 * @brief 设置机器人型号(使用前需要去使能机器人)
+	 * @param [in] type 机器人型号
+	 * @return 错误码
+	 */
+	errno_t SetRobotType(int type);
 
 
 	/**
