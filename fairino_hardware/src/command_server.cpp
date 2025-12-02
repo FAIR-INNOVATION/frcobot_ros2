@@ -2,7 +2,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include "fairino_hardware/version_control.h"
-#include "sys/mman.h"
 
 std::atomic_bool _reconnect_flag;
 std::atomic<int> mainerrcode;
@@ -221,12 +220,13 @@ robot_command_thread::robot_command_thread(const std::string node_name):rclcpp::
     //开始初始化
     int connect_count = 0;
     _ptr_robot = std::make_unique<FRRobot>();
-    _ptr_robot->SetReConnectParam(true,86400000,500);
+    _ptr_robot->SetReConnectParam(true,30000,500);
     //_ptr_robot->LoggerInit(0,"/home/fa/ros2_ws/fairino_SDK_log/cppsdk.log",5);
     while(connect_count <_connect_retry_SDK){
         error_t returncode = _ptr_robot->RPC(_controller_ip.c_str());
         if(returncode !=0){
             connect_count++;
+            RCLCPP_ERROR(rclcpp::get_logger(LOGGER_NAME),msgout[msg_id(try_reconnect)]);
         }else{//正常情况
             break;
         }
@@ -236,7 +236,7 @@ robot_command_thread::robot_command_thread(const std::string node_name):rclcpp::
         }
     }
 
-    _locktimer = this->create_wall_timer(1ms,std::bind(&robot_command_thread::_getRobotRTState,this));
+    _locktimer = this->create_wall_timer(10ms,std::bind(&robot_command_thread::_getRobotRTState,this));
     RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),msgout[msg_id(connect_success)]);
     /*********************************************************************************************/
 }
@@ -260,7 +260,7 @@ void robot_command_thread::_parseROSCommandData_callback(
         const std::shared_ptr<remote_cmd_server_srv_msg::Request> req,\ 
         std::shared_ptr<remote_cmd_server_srv_msg::Response> res){
     //指令格式为movj(1,10)
-    std::regex func_reg("([A-Z|a-z|_|0-9]+)[(](.*)[)]");//函数名的输入模式应该是字母或者数字函数名后跟(),圆括号中有所有输入参数
+    std::regex func_reg("([A-Z|a-z|_]+)[(](.*)[)]");//函数名的输入模式应该是字母函数名后跟(),圆括号中有所有输入参数
     std::smatch func_match;
     if(std::regex_match(req->cmd_str,func_match,func_reg)){
         std::string func_name = func_match[1];
@@ -299,14 +299,10 @@ void robot_command_thread::_parseROSCommandData_callback(
     }
 }
 
-"WeaveChangeStart(1, 2, 2.5, 2.5)"
-std::vector<std::stirng> vec_str;
-_recurseVar(vec_str);
-template<typename T,typename ... Ts>
-void _recurseVar(T& first_arg,Ts&... args){
-    first_arg
-    _recurseVar(args);
-}
+// template<typename T,typename ... Ts>
+// void _recurseVar(T& first_arg,Ts&... args){
+
+// }
 
 /**
  * @brief 私有函数，用于按逗号分割字符串并存储入std::list容器中
@@ -603,33 +599,6 @@ std::string robot_command_thread::SetToolCoord(std::string para){
     //RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"settoolcoord:%d,%f,%f,%f,%f,%f,%f,%d,%d",\
     id,trans.tran.x, trans.tran.y, trans.tran.z,trans.rpy.rx,trans.rpy.ry,trans.rpy.rz,typei,installi);
     return std::to_string(_ptr_robot->SetToolCoord(id,&trans,typei,installi,toolid,loadNo));
-}
-
-
-std::string robot_command_thread::SetToolPoint(std::string para){
-    return std::to_string(_ptr_robot->SetToolPoint(std::stoi(para)));
-}
-
-std::string robot_command_thread::ComputeTool(std::string para){
-    DescPose pose;
-    int res = _ptr_robot->ComputeTool(&pose);
-    return std::string(std::to_string(res) + "," + std::to_string(pose.tran.x) + "," +\
-            std::to_string(pose.tran.y) + "," + std::to_string(pose.tran.z) + "," + \
-            std::to_string(pose.rpy.rx) + "," + std::to_string(pose.rpy.ry) + "," + \
-            std::to_string(pose.rpy.rz));
-}
-
-std::string robot_command_thread::SetTcp4RefPoint(std::string para){
-    return std::to_string(_ptr_robot->SetTcp4RefPoint(std::stoi(para)));
-}
-
-std::string robot_command_thread::ComputeTcp4(std::string para){
-    DescPose pose;
-    int res = _ptr_robot->ComputeTcp4(&pose);
-    return std::string(std::to_string(res) + "," + std::to_string(pose.tran.x) + "," \
-        + std::to_string(pose.tran.y) + "," + std::to_string(pose.tran.z) + "," + \
-        std::to_string(pose.rpy.rx) + "," + std::to_string(pose.rpy.ry) + "," + \
-        std::to_string(pose.rpy.rz));
 }
 
 /**
@@ -1297,90 +1266,6 @@ std::string robot_command_thread::ExtAxisSyncMoveJ(std::string para){
         blend,offset_flag,offsetpos));
 }
 
-std::string robot_command_thread::ExtAxisSyncMoveL(std::string para){
-    std::list<std::string> list;
-    _splitString2List(para,list);
-    JointPos jntpos;
-    DescPose cartpos,offsetpos;
-    ExaxisPos epos;
-    for(int i=0;i<6;i++){
-        jntpos.jPos[i] = std::stof(list.front());
-        list.pop_front();
-    }
-    cartpos.tran.x = std::stof(list.front());list.pop_front();
-    cartpos.tran.y = std::stof(list.front());list.pop_front();
-    cartpos.tran.z = std::stof(list.front());list.pop_front();
-    cartpos.rpy.rx = std::stof(list.front());list.pop_front();
-    cartpos.rpy.ry = std::stof(list.front());list.pop_front();
-    cartpos.rpy.rz = std::stof(list.front());list.pop_front();
-
-    int tool = std::stoi(list.front());list.pop_front();
-    int user = std::stoi(list.front());list.pop_front();
-    int vel = std::stoi(list.front());list.pop_front();
-    int acc = std::stoi(list.front());list.pop_front();
-    int ovl = std::stoi(list.front());list.pop_front();
-
-    for(int i=0;i<4;i++){
-        epos.ePos[i] = std::stof(list.front());
-        list.pop_front();
-    }
-    float blend = std::stof(list.front());list.pop_front();
-    uint8_t offset_flag = std::stoi(list.front());list.pop_front();
-    offsetpos.tran.x = std::stof(list.front());list.pop_front();
-    offsetpos.tran.y = std::stof(list.front());list.pop_front();
-    offsetpos.tran.z = std::stof(list.front());list.pop_front();
-    offsetpos.rpy.rx = std::stof(list.front());list.pop_front();
-    offsetpos.rpy.ry = std::stof(list.front());list.pop_front();
-    offsetpos.rpy.rz = std::stof(list.front());
-
-    return std::to_string(_ptr_robot->ExtAxisSyncMoveL(jntpos,cartpos,tool,user,vel,acc,ovl,\
-        blend,epos,offset_flag,offsetpos));
-}
-
-
-std::string robot_command_thread::ExtAxisSetRefPoint(std::string para){
-    return std::to_string(_ptr_robot->ExtAxisSetRefPoint(std::stoi(para)));
-}
-
-std::string robot_command_thread::ExtAxisComputeECoordSys(std::string para){
-    DescPose pose;
-    int res = _ptr_robot->ExtAxisComputeECoordSys(pose);
-    return std::string(std::to_string(res) + "," + std::to_string(pose.tran.x) + "," + std::to_string(pose.tran.y) + \
-                "," + std::to_string(pose.tran.z) + "," + std::to_string(pose.rpy.rx) + "," + std::to_string(pose.rpy.ry) + \
-                "," + std::to_string(pose.rpy.rz));
-}
-
-std::string robot_command_thread::ExtAxisActiveECoordSys(std::string para){
-    std::list<std::string> datalist;
-    _splitString2List(para,datalist);
-    int axiscoordnum = stoi(datalist.front());datalist.pop_front();
-    int toolnum = stoi(datalist.front());datalist.pop_front();
-    DescPose pose;
-    _fillDescPose(datalist,pose);
-    int flag = stoi(datalist.front());
-    return std::to_string(_ptr_robot->ExtAxisActiveECoordSys(axiscoordnum,toolnum,pose,flag));
-}
-
-std::string robot_command_thread::SetAxisDHParaConfig(std::string para){
-    std::list<std::string> datalist;
-    _splitString2List(para,datalist);
-    int axisconfig = stoi(datalist.front());datalist.pop_front();
-    double d1 = stod(datalist.front());datalist.pop_front();
-    double d2 = stod(datalist.front());datalist.pop_front();
-    double d3 = stod(datalist.front());datalist.pop_front();
-    double d4 = stod(datalist.front());datalist.pop_front();
-    double a1 = stod(datalist.front());datalist.pop_front();
-    double a2 = stod(datalist.front());datalist.pop_front();
-    double a3 = stod(datalist.front());datalist.pop_front();
-    double a4 = stod(datalist.front());datalist.pop_front();
-
-    return std::to_string(_ptr_robot->SetAxisDHParaConfig(axisconfig,d1,d2,d3,d4,a1,a2,a3,a4));
-}
-
-
-std::string robot_command_thread::ExtDevLoadUDPDriver(std::string para){
-    return std::to_string(_ptr_robot->ExtDevLoadUDPDriver());
-}
 
 
 /**
@@ -2583,32 +2468,6 @@ std::string robot_command_thread::ComputeWObjCoordWithPoints(std::string para){
             std::to_string(posout.rpy.rz));
 }
 
-
-std::string robot_command_thread::WeldingSetCurrent(std::string para){
-    std::list<std::string> list;
-    _splitString2List(para,list);
-    
-    int iotype = std::stoi(list.front().c_str());list.pop_front();
-    double current = std::stof(list.front().c_str());list.pop_front();
-    int AOIndex = std::stoi(list.front().c_str());list.pop_front();
-    int blend = std::stoi(list.front().c_str());
-    return std::to_string(_ptr_robot->WeldingSetCurrent(iotype,current,AOIndex,blend));
-}
-
-
-std::string robot_command_thread::WeldingSetVoltage(std::string para){
-    std::list<std::string> list;
-    _splitString2List(para,list);
-
-    int iotype = std::stoi(list.front().c_str());list.pop_front();
-    double current = std::stof(list.front().c_str());list.pop_front();
-    int AOIndex = std::stoi(list.front().c_str());list.pop_front();
-    int blend = std::stoi(list.front().c_str());
-
-    return std::to_string(_ptr_robot->WeldingSetVoltage(iotype,current,AOIndex,blend));
-}
-
-
 /**
  * @brief 设置机器人焊接电弧意外中断检测参数
  * @param [in] checkEnable 是否使能检测；0-不使能；1-使能
@@ -2739,21 +2598,8 @@ robot_recv_thread::robot_recv_thread(const std::string node_name):rclcpp::Node(n
                 1
             );
             _locktimer = this->create_wall_timer(10ms,std::bind(&robot_recv_thread::_state_recv_callback,this));//创建一个定时器任务用于获取非实时状态数据,触发间隔为100ms
-
-            //创建共享内存空间，用于发布topic消息的同时，把数据结构也塞入共享内存中
-            _shm_fd = shm_open("fairino_nonrt_state_data",O_CREAT|O_RDWR,0777);
-            _sem = sem_open("/sem_nonrt_state_data",O_CREAT,0666,1);//创建信号量
-            if(_sem == SEM_FAILED){
-                RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"sem create failed");
-            }
-            if(_shm_fd < 0){
-                RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"shared memory create failed");
-                exit(0);//丢出错误并返回
-            }
-            ftruncate(_shm_fd,SHM_SHARED_DATA_SIZE);//预留10000byte空间容量
-            _shm_state_data = (uint8_t*)mmap(NULL,SHM_SHARED_DATA_SIZE,PROT_READ|PROT_WRITE,MAP_SHARED,_shm_fd,0);
-
         }
+
         //连接成功，创建守护线程,如果该连接端掉，则自动发起重连接;生命周期随该节点
         _try_to_reconnect();
     }
@@ -2838,9 +2684,6 @@ robot_recv_thread::~robot_recv_thread(){
         _reconnect_thread.join();
         RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),msgout[msg_id(keep_alive_exit)]);
     }
-    
-    munmap(_shm_state_data,SHM_SHARED_DATA_SIZE);
-    close(_shm_fd);
 }
 
 /**
@@ -2914,8 +2757,6 @@ void robot_recv_thread::_state_recv_callback(){
             if ((length_read == 0) || ((length_read == -1) && (errno != EINTR )&&\
             (errno != EWOULDBLOCK) && (errno != EAGAIN))){
                 _reconnect_flag.store(true);
-                //_p_robot->CloseRPC();
-                //RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"SDK关闭连接");
                 RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),msgout[msg_id(network_diconnect)]);
                 break;
             }
@@ -2939,14 +2780,14 @@ void robot_recv_thread::_state_recv_callback(){
         int32_t* ptr_frame_length = (int32_t*)(&recv_buff[7]);
         if(*ptr_frame_length < (_CTRL_STATE_SIZE-14)){//帧长度小于等于预期，直接填装
             std::call_once(oneflag,[&](){
-                RCLCPP_ERROR(rclcpp::get_logger(LOGGER_NAME),msgout[msg_id(feedback_data_small)]
+                RCLCPP_WARN(rclcpp::get_logger(LOGGER_NAME),msgout[msg_id(feedback_data_small)]
                     //_CTRL_STATE_SIZE-14-*ptr_frame_length
                 );
             });
             delta_length = 0;
         }else if(*ptr_frame_length > (_CTRL_STATE_SIZE-14)){//帧长度大于预期，需要削去多余数据，默认削去尾部数据
             std::call_once(oneflag,[&](){
-                RCLCPP_ERROR(rclcpp::get_logger(LOGGER_NAME),msgout[msg_id(feedback_data_large)]);
+                RCLCPP_WARN(rclcpp::get_logger(LOGGER_NAME),msgout[msg_id(feedback_data_large)]);
             });
             delta_length = *ptr_frame_length - _CTRL_STATE_SIZE + 14;
         }else{
@@ -3021,7 +2862,7 @@ void robot_recv_thread::_state_recv_callback(){
         ctrl_state = ctrl_state_store_buff.front();
         ctrl_state_store_buff.pop();
         auto msg = robot_feedback_msg();
-        auto cur_clock = rclcpp::Clock();//使用系统时钟作为时间戳
+        auto cur_clock = rclcpp::Clock();
 
         msg.main_error_code = mainerrcode;
         msg.sub_error_code = suberrcode;
@@ -3093,21 +2934,10 @@ void robot_recv_thread::_state_recv_callback(){
 
         // msg.exaxispos1 = ctrl_state.exaxis_status[0].exAxisPos;=
         msg.exaxispos1 = ctrl_state.exaxis_status[0].exAxisPosBack;
-        msg.exaxistatus1[0] = ctrl_state.exaxis_status[0].exAxisErrorCode;
-        msg.exaxistatus1[1] = ctrl_state.exaxis_status[0].exAxisRDY;
-        msg.exaxistatus1[2] = ctrl_state.exaxis_status[0].exAxisINPOS;
-        msg.exaxispos2 = ctrl_state.exaxis_status[1].exAxisPosBack;
-        msg.exaxistatus2[0] = ctrl_state.exaxis_status[1].exAxisErrorCode;
-        msg.exaxistatus2[1] = ctrl_state.exaxis_status[1].exAxisRDY;
-        msg.exaxistatus2[2] = ctrl_state.exaxis_status[1].exAxisINPOS;
+        //msg.exaxispos2 = ctrl_state.exaxis_status[1].exAxisPosBack;
+        msg.exaxispos2 = ctrl_state.exaxis_status[0].exAxisINPOS;
         msg.exaxispos3 = ctrl_state.exaxis_status[2].exAxisPosBack;
-        msg.exaxistatus3[0] = ctrl_state.exaxis_status[2].exAxisErrorCode;
-        msg.exaxistatus3[1] = ctrl_state.exaxis_status[2].exAxisRDY;
-        msg.exaxistatus3[2] = ctrl_state.exaxis_status[2].exAxisINPOS;
         msg.exaxispos4 = ctrl_state.exaxis_status[3].exAxisPosBack;
-        msg.exaxistatus4[0] = ctrl_state.exaxis_status[3].exAxisErrorCode;
-        msg.exaxistatus4[1] = ctrl_state.exaxis_status[3].exAxisRDY;
-        msg.exaxistatus4[2] = ctrl_state.exaxis_status[3].exAxisINPOS;
 
         msg.j1_cur_tor = ctrl_state.jt_cur_tor[0];
         msg.j2_cur_tor = ctrl_state.jt_cur_tor[1];
@@ -3195,27 +3025,8 @@ void robot_recv_thread::_state_recv_callback(){
         msg.forcesensorerrstate = ctrl_state.forceSensorErrState;
         for(int i=0;i<4;i++){
             msg.ctrlopenluaerrcode[i] = ctrl_state.ctrlOpenLuaErrCode[i];
-            std::cout << "ctrlOpenLuaErrCode:" << i << "," << (int)ctrl_state.ctrlOpenLuaErrCode[i] << std::endl;
         }
 
         _state_publisher->publish(msg);
-
-        ShmData shm_shared_data;
-        for(int i=0;i<6;i++){
-            shm_shared_data.jnt_cur_pos[i] = ctrl_state.jt_cur_pos[i];
-            shm_shared_data.tcp_cur_pos[i] = ctrl_state.tl_cur_pos[i];
-            shm_shared_data.flange_cur_pos[i] = ctrl_state.flange_cur_pos[i];
-        }
-        for(int i=0;i<4;i++){
-            shm_shared_data.exaxis_cur_pos[i] = ctrl_state.exaxis_status[i].exAxisPosBack;
-        }
-        shm_shared_data.timestamp = cur_clock.now().nanoseconds();
-        //sem_wait(_sem);
-        if(sem_trywait(_sem) == 0){
-            memcpy(_shm_state_data,&shm_shared_data,sizeof(shm_shared_data));
-            sem_post(_sem);
-        }
-        // uint8_t* pt_head = (uint8_t*)_shm_state_data;
-        // std::cout << *(double*)pt_head << "," << shm_shared_data.jnt_cur_pos[0] << std::endl;
     }
 }

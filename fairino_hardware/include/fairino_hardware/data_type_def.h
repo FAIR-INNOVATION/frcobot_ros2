@@ -37,18 +37,6 @@
 #define _CTRL_STATE_SIZE sizeof(_CTRL_STATE)
 /******************************/
 
-/*SHM共享内存使用的交互数据结构*/
-#define SHM_SHARED_DATA_SIZE 10000
-#pragma pack(1)
-typedef struct _ShmData{
-	uint64_t timestamp;
-	double jnt_cur_pos[6];
-	double exaxis_cur_pos[4];
-	double tcp_cur_pos[6];
-	double flange_cur_pos[6];
-}ShmData;
-#pragma pack()
-/******************************/
 
 
 /*********8081端口结构体数据部分********/

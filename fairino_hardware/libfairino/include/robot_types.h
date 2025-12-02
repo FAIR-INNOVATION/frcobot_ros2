@@ -306,6 +306,8 @@ typedef struct _ROBOT_STATE_PKG
 	WELDING_BREAKOFF_STATE weldingBreakOffState;  //焊接中断状态
 	double jt_tgt_tor[6];          //关节指令力矩
 	int smartToolState;            //SmartTool手柄按钮状态
+	float wideVoltageCtrlBoxTemp;        //宽电压控制箱温度
+	uint16_t wideVoltageCtrlBoxFanCurrent;   //宽电压控制箱风扇电流(mA)
 	uint16_t check_sum;            /* 和校验 */
 }ROBOT_STATE_PKG;
 

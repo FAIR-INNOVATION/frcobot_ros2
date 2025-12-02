@@ -10,7 +10,6 @@
 #include "mutex"
 #include "sys/socket.h"
 #include "sys/types.h"
-#include "sys/mman.h"
 #include "netinet/in.h"
 #include "netinet/tcp.h"
 #include "arpa/inet.h"
@@ -20,7 +19,6 @@
 #include <queue>
 #include "libfairino/include/robot.h"
 #include <atomic>
-#include "semaphore.h"
 
 using remote_cmd_server_srv_msg = fairino_msgs::srv::RemoteCmdInterface;
 using remote_script_srv_msg = fairino_msgs::srv::RemoteScriptContent;
@@ -57,11 +55,6 @@ public:
     std::string SetSpeed(std::string para);
     std::string SetToolCoord(std::string para);
     std::string SetToolList(std::string para);
-    std::string SetToolPoint(std::string para);
-    std::string ComputeTool(std::string para);
-    std::string SetTcp4RefPoint(std::string para);
-    std::string ComputeTcp4(std::string para);
-
     std::string SetExToolCoord(std::string para);
     std::string SetExToolList(std::string para);
     std::string SetWObjCoord(std::string para);
@@ -103,13 +96,7 @@ public:
     std::string ExtAxisGetCoord(std::string para);
     std::string ExtAxisMove(std::string para);
     std::string ExtAxisSyncMoveJ(std::string para);
-    std::string ExtAxisSyncMoveL(std::string para);
-    std::string ExtAxisSetRefPoint(std::string para);
-    std::string ExtAxisComputeECoordSys(std::string para);
-    std::string ExtAxisActiveECoordSys(std::string para);
-    std::string SetAxisDHParaConfig(std::string para);
-    std::string ExtDevLoadUDPDriver(std::string para);
-
+    
     //运动指令
     std::string StartJOG(std::string para);
     std::string StopJOG(std::string para);
@@ -174,8 +161,6 @@ public:
     std::string ComputeWObjCoordWithPoints(std::string para);
 
     //焊接中断恢复功能
-    std::string WeldingSetCurrent(std::string para);
-    std::string WeldingSetVoltage(std::string para);
     std::string WeldingSetCheckArcInterruptionParam(std::string para);
     std::string WeldingGetCheckArcInterruptionParam(std::string para);
     std::string WeldingSetReWeldAfterBreakOffParam(std::string para);
@@ -236,11 +221,7 @@ private:
     {"SetSpeed",&robot_command_thread::SetSpeed},
     {"Mode",&robot_command_thread::Mode},
     {"SetToolCoord",&robot_command_thread::SetToolCoord},
-    {"ComputeTool",&robot_command_thread::ComputeTool},
-    {"SetTcp4RefPoint",&robot_command_thread::SetTcp4RefPoint},
-    {"ComputeTcp4",&robot_command_thread::ComputeTcp4},
     {"SetToolList",&robot_command_thread::SetToolList},
-    {"SetToolPoint",&robot_command_thread::SetToolPoint},
     {"SetExToolCoord",&robot_command_thread::SetExToolCoord},
     {"SetExToolList",&robot_command_thread::SetExToolList},
     {"SetWObjCoord",&robot_command_thread::SetWObjCoord},
@@ -271,12 +252,6 @@ private:
     {"ExtAxisStartJog",&robot_command_thread::ExtAxisStartJog},
     {"ExtAxisSetHoming",&robot_command_thread::ExtAxisSetHoming},
     {"ExtAxisSyncMoveJ",&robot_command_thread::ExtAxisSyncMoveJ},
-    {"ExtAxisSyncMoveL",&robot_command_thread::ExtAxisSyncMoveL},
-    {"ExtAxisSetRefPoint",&robot_command_thread::ExtAxisSetRefPoint},
-    {"ExtAxisComputeECoordSys",&robot_command_thread::ExtAxisComputeECoordSys},
-    {"ExtAxisActiveECoordSys",&robot_command_thread::ExtAxisActiveECoordSys},
-    {"SetAxisDHParaConfig",&robot_command_thread::SetAxisDHParaConfig},
-    {"ExtDevLoadUDPDriver",&robot_command_thread::ExtDevLoadUDPDriver},
     {"StopExtAxisJog",&robot_command_thread::StopExtAxisJog},
     {"ExtAxisGetCoord",&robot_command_thread::ExtAxisGetCoord},
     {"ExtAxisMove",&robot_command_thread::ExtAxisMove},
@@ -331,8 +306,6 @@ private:
     {"GetLuaList",&robot_command_thread::GetLuaList},
     {"ComputeToolCoordWithPoints",&robot_command_thread::ComputeToolCoordWithPoints},
     {"ComputeWObjCoordWithPoints",&robot_command_thread::ComputeWObjCoordWithPoints},
-    {"WeldingSetCurrent",&robot_command_thread::WeldingSetCurrent},
-    {"WeldingSetVoltage",&robot_command_thread::WeldingSetVoltage},
     {"WeldingSetCheckArcInterruptionParam",&robot_command_thread::WeldingSetCheckArcInterruptionParam},
     {"WeldingGetCheckArcInterruptionParam",&robot_command_thread::WeldingGetCheckArcInterruptionParam},
     {"WeldingSetReWeldAfterBreakOffParam",&robot_command_thread::WeldingSetReWeldAfterBreakOffParam},
@@ -363,9 +336,6 @@ private:
     rclcpp::Publisher<robot_feedback_msg>::SharedPtr _state_publisher;//进程内通信，用于发送状态数据字符串
     rclcpp::TimerBase::SharedPtr _locktimer;
     int port1 = 8081;//非实时状态数据获取端口
-    sem_t* _sem;
-    int _shm_fd;
-    uint8_t* _shm_state_data;
 
 };
 

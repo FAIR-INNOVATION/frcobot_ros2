@@ -9,7 +9,7 @@
 //用于记录对应机械臂软件版本号
 #define VERSION_ROBOT_MARJOR 3
 #define VERSION_ROBOT_MINOR 8
-#define VERSION_ROBOT_MINOR2 2
+#define VERSION_ROBOT_MINOR2 3
 
 
 //用于记录fairino_msgs版本号
@@ -21,6 +21,6 @@ V3.0.4 新增扩展轴状态数组
 #define VERSION_MSG_MINOR 0
 #define VERSION_MSG_MINOR2 4
 
-#define ENG_VERSION
-
+#define CHN_VERSION
+//#define ENG_VERSION
 #endif
