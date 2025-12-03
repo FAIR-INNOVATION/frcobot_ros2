@@ -1621,6 +1621,28 @@ public:
 	errno_t FT_Control(uint8_t flag, int sensor_id, uint8_t select[6], ForceTorque *ft, float ft_pid[6], uint8_t adj_sign, uint8_t ILC_sign, float max_dis, float max_ang, int filter_Sign = 0, int posAdapt_sign = 0, int isNoBlock = 0);
 
 	/**
+	 * @brief  恒力控制
+	 * @param  [in] flag 0-关闭恒力控制，1-开启恒力控制
+	 * @param  [in] sensor_id 力传感器编号
+	 * @param  [in] select  选择六个自由度是否检测碰撞，0-不检测，1-检测
+	 * @param  [in] ft  碰撞力/扭矩，fx,fy,fz,tx,ty,tz
+	 * @param  [in] ft_pid 力pid参数，力矩pid参数
+	 * @param  [in] adj_sign 自适应启停控制，0-关闭，1-开启
+	 * @param  [in] ILC_sign ILC启停控制， 0-停止，1-训练，2-实操
+	 * @param  [in] max_dis 最大调整距离，单位mm
+	 * @param  [in] max_ang 最大调整角度，单位deg
+	 * @param  [in] M 质量参数 
+	 * @param  [in] B 阻尼参数
+	 * @param  [in] polishRadio 打磨半径，单位mm
+	 * @param  [in] filter_Sign 滤波开启标志 0-关；1-开，默认关闭
+	 * @param  [in] posAdapt_sign 姿态顺应开启标志 0-关；1-开，默认关闭
+	 * @param  [in] isNoBlock 阻塞标志，0-阻塞；1-非阻塞
+	 * @return  错误码
+	 */
+	errno_t FT_Control(uint8_t flag, int sensor_id, uint8_t select[6], ForceTorque* ft, float ft_pid[6], uint8_t adj_sign, uint8_t ILC_sign, float max_dis, float max_ang, double M[2], double B[2], double polishRadio = 0.0, int filter_Sign = 0, int posAdapt_sign = 0,  int isNoBlock = 0);
+
+
+	/**
 	 * @brief  螺旋线探索
 	 * @param  [in] rcs 参考坐标系，0-工具坐标系，1-基坐标系
 	 * @param  [in] dr 每圈半径进给量
@@ -4333,10 +4355,75 @@ public:
 	 */
 	errno_t CustomWeaveGetPara(int id, int& pointNum, DescTran point[10], double stayTime[10], double& frequency, int& incStayType, int& stationary);
 
+	/**
+	 * @brief 关节扭矩传感器灵敏度标定功能开启
+	 * @param [in] status 0-关闭；1-开启
+	 * @return  错误码
+	 */
+	errno_t JointSensitivityEnable(int status);
 
+	/**
+	 * @brief 获取关节扭矩传感器灵敏度标定结果
+	 * @param [out] calibResult j1~j6关节灵敏度[0-1]
+	 * @return 错误码
+	 */
+	errno_t JointSensitivityCalibration(double result[6]);
+
+	/**
+	 * @brief 关节扭矩传感器灵敏度数据采集
+	 * @return 错误码
+	 */
+	errno_t JointSensitivityCollect();
 
 	errno_t Sleep(int ms);
 
+	/**
+	 * @brief 清空运动指令队列
+	 * @return 错误码
+	 */
+	errno_t MotionQueueClear();
+
+	/**
+	 * @brief 获取机器人8个从站端口错误帧数
+	 * @param [out] inRecvErr 输入接收错误帧数 
+	 * @param [out] inCRCErr 输入CRC错误帧数 
+	 * @param [out] inTransmitErr 输入转发错误帧数 
+	 * @param [out] inLinkErr 输入链接错误帧数 
+	 * @param [out] outRecvErr 输出接收错误帧数
+	 * @param [out] outCRCErr 输出CRC错误帧数
+	 * @param [out] outTransmitErr 输出转发错误帧数
+	 * @param [out] outLinkErr 输出链接错误帧数
+	 * @return 错误码
+	 */
+	errno_t GetSlavePortErrCounter(int inRecvErr[8], int inCRCErr[8], int inTransmitErr[8], int inLinkErr[8],
+								   int outRecvErr[8], int outCRCErr[8], int outTransmitErr[8], int outLinkErr[8]);
+
+	/**
+	 * @brief 从站端口错误帧清零
+	 * @param [in] slaveID 从站编号0~7
+	 * @return 错误码
+	 */
+	errno_t SlavePortErrCounterClear(int slaveID);
+
+	/**
+	 * @brief 设置各轴速度前馈系数
+	 * @param [in] radio 各轴速度前馈系数
+	 * @return 错误码
+	 */
+	errno_t SetVelFeedForwardRatio(double radio[6]);
+
+	/**
+	 * @brief 获取各轴速度前馈系数
+	 * @param [out] radio 各轴速度前馈系数
+	 * @return 错误码
+	 */
+	errno_t GetVelFeedForwardRatio(double radio[6]);
+
+	/**
+	 * @brief 机器人MCU日志生成
+	 * @return 错误码
+	 */
+	errno_t RobotMCULogCollect();
 
 	/**
 	 *@brief  机器人接口类析构函数
