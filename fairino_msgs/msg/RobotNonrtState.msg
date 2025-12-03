@@ -1,4 +1,3 @@
-#V3.0.4
 float64 j1_cur_pos
 float64 j2_cur_pos
 float64 j3_cur_pos
@@ -24,13 +23,9 @@ float64 flange_a_cur_pos
 float64 flange_b_cur_pos
 float64 flange_c_cur_pos
 float64 exaxispos1
-int32[10] exaxistatus1
 float64 exaxispos2
-int32[10] exaxistatus2
 float64 exaxispos3
-int32[10] exaxistatus3
 float64 exaxispos4
-int32[10] exaxistatus4
 float64 ft_fx_data
 float64 ft_fy_data
 float64 ft_fz_data

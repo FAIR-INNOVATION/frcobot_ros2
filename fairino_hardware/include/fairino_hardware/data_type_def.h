@@ -140,6 +140,17 @@ typedef struct _CNC_SYS_STATE
     uint8_t disConnectState;         /** 机床通讯异常断开故障；0-未断开；1-异常断开 */
 }CNC_SYS_STATE;
 
+typedef struct _SUCKER_STATE
+{
+	uint8_t ComState[20];					/* 吸盘通信状态 0-断开连接 1-建立连接 */
+	uint8_t fdbkstate[20];					/* 吸盘状态 */
+	uint16_t pressValue[20];				/* 压力 kp*/
+	uint16_t error[20];					    /* 错误码 0为无错误，非0存在错误*/
+	uint8_t ctrlState[20];					/* 设置的控制状态 */
+	uint8_t maxPress[20];					/* 设置的最大压力 */
+	uint8_t minPress[20];					/* 设置的最小压力 */
+	uint16_t time[20];					    /* 设置的超时时间 */
+}SUCKER_STATE;
 
 /** 8081端口运动控制器状态结构体 */
 typedef struct _CTRL_STATE
@@ -235,7 +246,7 @@ typedef struct _CTRL_STATE
 	double     weldTrackSpeed;          /** 焊缝跟踪速度   mm/s */
 	uint8_t    drag_alarm;              /** 拖动警告，当前处于自动模式,0-不报警，1-报警 ，2-位置反馈异常不切换 */
 	double     LoadIdentifyData[4];     /** 负载辨识结果（weight,x,y,z） */
-	int       conveyor_encoder_pos;    /** 传送带编码器位置 */
+	int        conveyor_encoder_pos;    /** 传送带编码器位置 */
 	double     conveyor_speed;          /** 传送带速度 mm/s */
 	double     conveyorWorkPiecePos;    /** 传送带工件当前位置，单位mm */
 	uint8_t    btn_box_stop_signal;     /** 按钮盒急停信号 ，1-按下急停*/
@@ -363,6 +374,8 @@ typedef struct _CTRL_STATE
     uint8_t fieldBusversion;                  			/* 板卡从站： 版本号  1*/
 	float wideBoxtemp;									/** 宽电压控制箱温度 */
 	uint16_t fanCur;									/** 风扇电流 */
+	SUCKER_STATE sucker_state;							/** 20个阵列式吸盘的状态*/
+	uint8_t socket_connect_enable[4];					/** 4个socket调试的连接状态 0-关闭 1-打开*/
 	char end[7];
 } CTRL_STATE;
 #pragma pack()
