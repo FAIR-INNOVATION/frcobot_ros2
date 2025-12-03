@@ -246,7 +246,7 @@ typedef struct _CTRL_STATE
 	double     weldTrackSpeed;          /** 焊缝跟踪速度   mm/s */
 	uint8_t    drag_alarm;              /** 拖动警告，当前处于自动模式,0-不报警，1-报警 ，2-位置反馈异常不切换 */
 	double     LoadIdentifyData[4];     /** 负载辨识结果（weight,x,y,z） */
-	int        conveyor_encoder_pos;    /** 传送带编码器位置 */
+	long       conveyor_encoder_pos;    /** 传送带编码器位置 */
 	double     conveyor_speed;          /** 传送带速度 mm/s */
 	double     conveyorWorkPiecePos;    /** 传送带工件当前位置，单位mm */
 	uint8_t    btn_box_stop_signal;     /** 按钮盒急停信号 ，1-按下急停*/

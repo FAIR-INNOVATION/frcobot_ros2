@@ -211,7 +211,7 @@ typedef struct _EXT_AXIS_STATUS
 	double pos;           //扩展轴位置
 	double vel;           //扩展轴速度
 	int errorCode;        //扩展轴故障码
-	uint8_t ready;        //伺服准备好
+	uint8_t ready;        //伺服准备好  0-使能；1-未使能
 	uint8_t inPos;        //伺服到位
 	uint8_t alarm;        //伺服报警
 	uint8_t flerr;        //跟随误差
@@ -308,6 +308,12 @@ typedef struct _ROBOT_STATE_PKG
 	int smartToolState;            //SmartTool手柄按钮状态
 	float wideVoltageCtrlBoxTemp;        //宽电压控制箱温度
 	uint16_t wideVoltageCtrlBoxFanCurrent;   //宽电压控制箱风扇电流(mA)
+	double toolCoord[6];           //工具坐标系
+	double wobjCoord[6];		   //工件坐标系
+	double extoolCoord[6];		   //外部工具坐标系
+	double exAxisCoord[6];		   //扩展轴坐标系
+	double load;                   //负载质量
+	double loadCog[3];             //负载质心
 	uint16_t check_sum;            /* 和校验 */
 }ROBOT_STATE_PKG;
 
