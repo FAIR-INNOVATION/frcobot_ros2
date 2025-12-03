@@ -3191,6 +3191,17 @@ public:
 	errno_t ServoJT(float torque[], double interval);
 
 	/**
+	* @brief 关节扭矩控制
+	* @param  [in] torque j1~j6关节扭矩，单位Nm
+	* @param  [in] interval 指令周期，单位s，范围[0.001~0.008]
+	* @param  [in] checkFlag 检测策略 0-不限制；1-限制功率；2-限制速度；3-功率和速度同时限制
+	* @param  [in] jPowerLimit 关节最大功率限制(W)
+	* @param  [in] jVelLimit 关节最大速度(°/s)
+	* @return  错误码
+	*/
+	errno_t ServoJT(float torque[], double interval, int checkFlag, double jPowerLimit[6], double jVelLimit[6]);
+
+	/**
 	* @brief 关节扭矩控制结束
 	* @return  错误码
 	*/
@@ -4365,9 +4376,10 @@ public:
 	/**
 	 * @brief 获取关节扭矩传感器灵敏度标定结果
 	 * @param [out] calibResult j1~j6关节灵敏度[0-1]
+	 * @param [out] linearityn j1~j6关节线性度[0-1]
 	 * @return 错误码
 	 */
-	errno_t JointSensitivityCalibration(double result[6]);
+	errno_t JointSensitivityCalibration(double calibResult[6], double linearity[6]);
 
 	/**
 	 * @brief 关节扭矩传感器灵敏度数据采集
@@ -4424,6 +4436,102 @@ public:
 	 * @return 错误码
 	 */
 	errno_t RobotMCULogCollect();
+
+	/**
+	 * @brief 移动到相贯线起始点
+	 * @param [in] mainPoint 主管6个示教点的笛卡尔位姿
+	 * @param [in] piecePoint 辅管6个示教点的笛卡尔位姿
+	 * @param [in] tool 工具坐标系编号
+	 * @param [in] wobj 工件坐标系编号
+	 * @param [in] vel 速度百分比
+	 * @param [in] acc 加速度百分比
+	 * @param [in] ovl 速度缩放因子
+	 * @param [in] oacc 加速度缩放因子
+	 * @param [in] moveType 运动类型; 0-PTP；1-LIN
+	 * @return 错误码
+	 */
+	errno_t MoveToIntersectLineStart(DescPose mainPoint[6], DescPose piecePoint[6], int tool, int wobj, double vel, double acc, double ovl, double oacc, int moveType);
+
+	/**
+	 * @brief 移动到相贯线起始点
+	 * @param [in] mainPoint 主管6个示教点的笛卡尔位姿
+	 * @param [in] mainExaxisPos 主管6个示教点扩展轴位置
+	 * @param [in] piecePoint 辅管6个示教点的笛卡尔位姿
+	 * @param [in] pieceExaxisPos 拼接管6个示教点扩展轴位置
+	 * @param [in] extAxisFlag 是否启用扩展轴；0-不启用；1-启用
+	 * @param [in] exaxisPos 起点扩展轴位置
+	 * @param [in] tool 工具坐标系编号
+	 * @param [in] wobj 工件坐标系编号
+	 * @param [in] vel 速度百分比
+	 * @param [in] acc 加速度百分比
+	 * @param [in] ovl 速度缩放因子
+	 * @param [in] oacc 加速度缩放因子
+	 * @param [in] moveType 运动类型; 0-PTP；1-LIN
+	 * @param [in] moveDirection 运动方向；0-顺时针；1-逆时针
+	 * @param [in] offset 偏移量
+	 * @return 错误码
+	 */
+	errno_t MoveToIntersectLineStart(DescPose mainPoint[6], ExaxisPos mainExaxisPos[6], DescPose piecePoint[6], ExaxisPos pieceExaxisPos[6], int extAxisFlag, ExaxisPos exaxisPos, int tool, int wobj, double vel, double acc, double ovl, double oacc, int moveType, int moveDirection, DescPose offset);
+
+	/**
+	 * @brief 相贯线运动
+	 * @param [in] mainPoint 主管6个示教点的笛卡尔位姿
+	 * @param [in] piecePoint 辅管6个示教点的笛卡尔位姿
+	 * @param [in] tool 工具坐标系编号
+	 * @param [in] wobj 工件坐标系编号
+	 * @param [in] vel 速度百分比
+	 * @param [in] acc 加速度百分比
+	 * @param [in] ovl 速度缩放因子
+	 * @param [in] oacc 加速度缩放因子
+	 * @param [in] moveDirection 运动方向; 0-顺时针；1-逆时针
+	 * @return 错误码
+	 */
+	errno_t MoveIntersectLine(DescPose mainPoint[6], DescPose piecePoint[6], int tool, int wobj, double vel, double acc, double ovl, double oacc, int moveDirection);
+
+	/**
+	 * @brief 相贯线运动
+	 * @param [in] mainPoint 主管6个示教点的笛卡尔位姿
+	 * @param [in] mainExaxisPos 主管6个示教点扩展轴位置
+	 * @param [in] piecePoint 辅管6个示教点的笛卡尔位姿
+	 * @param [in] pieceExaxisPos 拼接管6个示教点扩展轴位置
+	 * @param [in] extAxisFlag 是否启用扩展轴；0-不启用；1-启用
+	 * @param [in] exaxisPos 起点扩展轴位置
+	 * @param [in] tool 工具坐标系编号
+	 * @param [in] wobj 工件坐标系编号
+	 * @param [in] vel 速度百分比
+	 * @param [in] acc 加速度百分比
+	 * @param [in] ovl 速度缩放因子
+	 * @param [in] oacc 加速度缩放因子
+	 * @param [in] moveDirection 运动方向; 0-顺时针；1-逆时针
+	 * @param [in] offset 偏移量
+	 * @return 错误码
+	 */
+	errno_t MoveIntersectLine(DescPose mainPoint[6], ExaxisPos mainExaxisPos[6], DescPose piecePoint[6], ExaxisPos pieceExaxisPos[6], int extAxisFlag, ExaxisPos exaxisPos[4], int tool, int wobj, double vel, double acc, double ovl, double oacc, int moveDirection, DescPose offset);
+	/**
+	 * @brief 获取关节扭矩传感器迟滞误差
+	 * @param [out] hysteresisError j1~j6关节迟滞误差
+	 * @return 错误码
+	 */
+	errno_t JointHysteresisError(double hysteresisError[6]);
+
+	/**
+	 * @brief 获取关节扭矩传感器重复精度
+	 * @param [out] repeatability j1~j6关节扭矩传感器重复精度
+	 * @return 错误码
+	 */
+	errno_t JointRepeatability(double repeatability[6]);
+
+	/**
+	 * @brief 设置关节力传感器参数
+	 * @param [in] M J1-J6质量系数[0.001 ~ 10]
+	 * @param [in] B J1-J6阻尼系数[0.001 ~ 10]
+	 * @param [in] K J1-J6刚度系数[0.001 ~ 10]
+	 * @param [in] threshold 力控制阈值，Nm
+	 * @param [in] sensitivity 灵敏度,Nm/V,[0 ~ 10]
+	 * @param [in] setZeroFlag 功能开启标志位；0-关闭；1-开启；2-位置1记录零点；3-位置2记录零点
+	 * @return 错误码
+	 */
+	errno_t SetAdmittanceParams(double M[6], double B[6], double K[6], double threshold[6], double sensitivity[6], int setZeroFlag);
 
 	/**
 	 *@brief  机器人接口类析构函数
