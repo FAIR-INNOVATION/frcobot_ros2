@@ -12,7 +12,7 @@
 #include "libfairino/include/robot.h"
 
 
-#define CONTROLLER_IP_ADDRESS "192.168.58.2"
+#define DEFAULT_CONTROLLER_IP_ADDRESS "192.168.58.2"
 
 namespace fairino_hardware
 {
@@ -60,7 +60,7 @@ private:
   double _jnt_velocity_state[6];
   double _jnt_torque_state[6];
   int _control_mode;
-  std::string _controller_ip = CONTROLLER_IP_ADDRESS;
+  std::string _controller_ip = DEFAULT_CONTROLLER_IP_ADDRESS;
   std::unique_ptr<FRRobot> _ptr_robot;
 };
 
