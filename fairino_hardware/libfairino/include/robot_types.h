@@ -35,28 +35,60 @@ typedef struct JointPos
 
 	JointPos()
 	{
-
+		jPos[0] = 0.0;
+		jPos[1] = 0.0;
+		jPos[2] = 0.0;
+		jPos[3] = 0.0;
+		jPos[4] = 0.0;
+		jPos[5] = 0.0;
 	}
 }JointPos;
 
 /**
 * @brief 笛卡尔空间位置数据类型
 */
-typedef struct
+typedef struct DescTran
 {
 	double x;    /* x轴坐标，单位mm  */
 	double y;    /* y轴坐标，单位mm  */
 	double z;    /* z轴坐标，单位mm  */
+
+	DescTran(double _x, double _y, double _z)
+	{
+		x = _x;
+		y = _y;
+		z = _z;
+	}
+
+	DescTran()
+	{
+		x = 0.0;
+		y = 0.0;
+		z = 0.0;
+	}
 } DescTran;
 
 /**
 * @brief 欧拉角姿态数据类型
 */
-typedef struct
+typedef struct Rpy
 {
 	double rx;   /* 绕固定轴X旋转角度，单位：deg  */
 	double ry;   /* 绕固定轴Y旋转角度，单位：deg  */
 	double rz;   /* 绕固定轴Z旋转角度，单位：deg  */
+	Rpy(double _rx, double _ry, double _rz)
+	{
+		rx = _rx;
+		ry = _ry;
+		rz = _rz;
+	}
+
+	Rpy()
+	{
+		rx = 0.0;
+		ry = 0.0;
+		rz = 0.0;
+	}
 } Rpy;
 
 /**
@@ -80,7 +112,8 @@ typedef struct DescPose
 
 	DescPose()
 	{
-
+		tran = { 0.0, 0.0, 0.0 };
+		rpy = { 0.0, 0.0, 0.0 };
 	}
 } DescPose;
 

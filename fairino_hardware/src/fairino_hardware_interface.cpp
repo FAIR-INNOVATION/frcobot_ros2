@@ -170,7 +170,7 @@ hardware_interface::return_type FairinoHardwareInterface::read(const rclcpp::Tim
             //_jnt_torque_state[i] = state_data.jt_cur_tor[i];//注意单位转换
         }
     }else{
-        hardware_interface::return_type::ERROR;
+        return hardware_interface::return_type::ERROR;
     }
     //RCLCPP_INFO(rclcpp::get_logger("FairinoHardwareInterface"), "System successfully read: %f,%f,%f,%f,%f,%f",_jnt_position_state[0],\
     _jnt_position_state[1],_jnt_position_state[2],_jnt_position_state[3],_jnt_position_state[4],_jnt_position_state[5]);
