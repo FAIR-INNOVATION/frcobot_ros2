@@ -506,7 +506,76 @@ public:
     std::string SetWideBoxTempFanMonitorParam(std::string para);
     std::string GetWideBoxTempFanMonitorParam(std::string para);
     std::string SetFocusCalibPoint(std::string para);
+    std::string ComputeFocusCalib(std::string para);
+    std::string FocusStart(std::string para);
+    std::string FocusEnd(std::string para);
+    std::string SetFocusPosition(std::string para);
+    std::string SetEncoderUpgrade(std::string para);
+    std::string SetJointFirmwareUpgrade(std::string para);
+    std::string SetCtrlFirmwareUpgrade(std::string para);
+    std::string SetEndFirmwareUpgrade(std::string para);
+    std::string JointAllParamUpgrade(std::string para);
+    std::string SetRobotType(std::string para);
+    std::string LaserRecordPoint(std::string para);
+    std::string SetExAxisRobotPlan(std::string para);
+    std::string SetReConnectParam(std::string para);
+    std::string GetFieldBusConfig(std::string para);
+    std::string FieldBusSlaveWriteDO(std::string para);
+    std::string FieldBusSlaveWriteAO(std::string para);
+    std::string FieldBusSlaveReadDI(std::string para);
+    std::string FieldBusSlaveReadAI(std::string para);
+    std::string FieldBusSlaveWaitDI(std::string para);
+    std::string FieldBusSlaveWaitAI(std::string para);
+    std::string SetSuckerCtrl(std::string para);
+    std::string GetSuckerState(std::string para);
+    std::string WaitSuckerState(std::string para);
+    std::string OpenLuaUpload(std::string para);
+    std::string ImpedanceControlStartStop(std::string para);
+    std::string SetTorqueDetectionSwitch(std::string para);
+    std::string GetToolCoordWithID(std::string para);
+    std::string GetWObjCoordWithID(std::string para);
+    std::string GetExToolCoordWithID(std::string para);
+    std::string GetExAxisCoordWithID(std::string para);
+    std::string GetTargetPayloadWithID(std::string para);
+    std::string GetCurToolCoord(std::string para);
+    std::string GetCurWObjCoord(std::string para);
+    std::string GetCurExToolCoord(std::string para);
+    std::string GetCurExAxisCoord(std::string para);
+    std::string KernelUpgrade(std::string para);
+    std::string GetKernelUpgradeResult(std::string para);
+    std::string CustomWeaveSetPara(std::string para);
+    std::string CustomWeaveGetPara(std::string para);
+    std::string JointSensitivityEnable(std::string para);
+    std::string JointSensitivityCalibration(std::string para);
+    std::string JointSensitivityCollect(std::string para);
+    std::string Sleep(std::string para);
+    std::string MotionQueueClear(std::string para);
+    std::string GetSlavePortErrCounter(std::string para);
+    std::string SlavePortErrCounterClear(std::string para);
+    std::string SetVelFeedForwardRatio(std::string para);
+    std::string GetVelFeedForwardRatio(std::string para);
+    std::string RobotMCULogCollect(std::string para);
+    std::string MoveToIntersectLineStart(std::string para);
+    std::string MoveIntersectLine(std::string para);
+    std::string JointHysteresisError(std::string para);
+    std::string JointRepeatability(std::string para);
+    std::string SetAdmittanceParams(std::string para);
+    std::string SerCoderCompenParams(std::string para);
+    std::string TCPComputeRPY(std::string para);
+    std::string TCPComputeXYZ(std::string para);
+    std::string TCPRecordFlangePosStart(std::string para);
+    std::string TCPRecordFlangePosEnd(std::string para);
+    std::string TCPGetRecordFlangePos(std::string para);
+    std::string PhotoelectricSensorTCPCalibration(std::string para);
+    std::string MoveStationary(std::string para);
 private:
+
+    
+    void _state_recv_callback();
+    rclcpp::Publisher<robot_feedback_msg>::SharedPtr _state_publisher;//进程内通信，用于发送状态数据字符串
+    rclcpp::TimerBase::SharedPtr _locktimer1;
+
+
     std::unique_ptr<FRRobot> _ptr_robot;//机械臂SDK库指针
     ROBOT_STATE_PKG _robot_realtime_state;//从SDK获取的机械臂实时状态结构体
     rclcpp::TimerBase::SharedPtr _locktimer;
@@ -986,35 +1055,70 @@ private:
     {"GetSmarttoolBtnState",&robot_command_thread::GetSmarttoolBtnState},
     {"SetWideBoxTempFanMonitorParam",&robot_command_thread::SetWideBoxTempFanMonitorParam},
     {"GetWideBoxTempFanMonitorParam",&robot_command_thread::GetWideBoxTempFanMonitorParam},
-    {"SetFocusCalibPoint",&robot_command_thread::SetFocusCalibPoint}
+    {"SetFocusCalibPoint",&robot_command_thread::SetFocusCalibPoint},
+    {"ComputeFocusCalib",&robot_command_thread::ComputeFocusCalib},
+    {"FocusStart",&robot_command_thread::FocusStart},
+    {"FocusEnd",&robot_command_thread::FocusEnd},
+    {"SetFocusPosition",&robot_command_thread::SetFocusPosition},
+    {"SetEncoderUpgrade",&robot_command_thread::SetEncoderUpgrade},
+    {"SetJointFirmwareUpgrade",&robot_command_thread::SetJointFirmwareUpgrade},
+    {"SetCtrlFirmwareUpgrade",&robot_command_thread::SetCtrlFirmwareUpgrade},
+    {"SetEndFirmwareUpgrade",&robot_command_thread::SetEndFirmwareUpgrade},
+    {"JointAllParamUpgrade",&robot_command_thread::JointAllParamUpgrade},
+    {"SetRobotType",&robot_command_thread::SetRobotType},
+    {"LaserRecordPoint",&robot_command_thread::LaserRecordPoint},
+    {"SetExAxisRobotPlan",&robot_command_thread::SetExAxisRobotPlan},
+    {"SetReConnectParam",&robot_command_thread::SetReConnectParam},
+    {"GetFieldBusConfig",&robot_command_thread::GetFieldBusConfig},
+    {"FieldBusSlaveWriteDO",&robot_command_thread::FieldBusSlaveWriteDO},
+    {"FieldBusSlaveWriteAO",&robot_command_thread::FieldBusSlaveWriteAO},
+    {"FieldBusSlaveReadDI",&robot_command_thread::FieldBusSlaveReadDI},
+    {"FieldBusSlaveReadAI",&robot_command_thread::FieldBusSlaveReadAI},
+    {"FieldBusSlaveWaitDI",&robot_command_thread::FieldBusSlaveWaitDI},
+    {"FieldBusSlaveWaitAI",&robot_command_thread::FieldBusSlaveWaitAI},
+    {"SetSuckerCtrl",&robot_command_thread::SetSuckerCtrl},
+    {"GetSuckerState",&robot_command_thread::GetSuckerState},
+    {"WaitSuckerState",&robot_command_thread::WaitSuckerState},
+    {"OpenLuaUpload",&robot_command_thread::OpenLuaUpload},
+    {"ImpedanceControlStartStop",&robot_command_thread::ImpedanceControlStartStop},
+    {"SetTorqueDetectionSwitch",&robot_command_thread::SetTorqueDetectionSwitch},
+    {"GetToolCoordWithID",&robot_command_thread::GetToolCoordWithID},
+    {"GetWObjCoordWithID",&robot_command_thread::GetWObjCoordWithID},
+    {"GetExToolCoordWithID",&robot_command_thread::GetExToolCoordWithID},
+    {"GetExAxisCoordWithID",&robot_command_thread::GetExAxisCoordWithID},
+    {"GetTargetPayloadWithID",&robot_command_thread::GetTargetPayloadWithID},
+    {"GetCurToolCoord",&robot_command_thread::GetCurToolCoord},
+    {"GetCurWObjCoord",&robot_command_thread::GetCurWObjCoord},
+    {"GetCurExToolCoord",&robot_command_thread::GetCurExToolCoord},
+    {"GetCurExAxisCoord",&robot_command_thread::GetCurExAxisCoord},
+    {"KernelUpgrade",&robot_command_thread::KernelUpgrade},
+    {"GetKernelUpgradeResult",&robot_command_thread::GetKernelUpgradeResult},
+    {"CustomWeaveSetPara",&robot_command_thread::CustomWeaveSetPara},
+    {"CustomWeaveGetPara",&robot_command_thread::CustomWeaveGetPara},
+    {"JointSensitivityEnable",&robot_command_thread::JointSensitivityEnable},
+    {"JointSensitivityCalibration",&robot_command_thread::JointSensitivityCalibration},
+    {"JointSensitivityCollect",&robot_command_thread::JointSensitivityCollect},
+    {"Sleep",&robot_command_thread::Sleep},
+    {"MotionQueueClear",&robot_command_thread::MotionQueueClear},
+    {"GetSlavePortErrCounter",&robot_command_thread::GetSlavePortErrCounter},
+    {"SlavePortErrCounterClear",&robot_command_thread::SlavePortErrCounterClear},
+    {"SetVelFeedForwardRatio",&robot_command_thread::SetVelFeedForwardRatio},
+    {"GetVelFeedForwardRatio",&robot_command_thread::GetVelFeedForwardRatio},
+    {"RobotMCULogCollect",&robot_command_thread::RobotMCULogCollect},
+    {"MoveToIntersectLineStart",&robot_command_thread::MoveToIntersectLineStart},
+    {"MoveIntersectLine",&robot_command_thread::MoveIntersectLine},
+    {"JointHysteresisError",&robot_command_thread::JointHysteresisError},
+    {"JointRepeatability",&robot_command_thread::JointRepeatability},
+    {"SetAdmittanceParams",&robot_command_thread::SetAdmittanceParams},
+    {"SerCoderCompenParams",&robot_command_thread::SerCoderCompenParams},
+    {"TCPComputeRPY",&robot_command_thread::TCPComputeRPY},
+    {"TCPComputeXYZ",&robot_command_thread::TCPComputeXYZ},
+    {"TCPRecordFlangePosStart",&robot_command_thread::TCPRecordFlangePosStart},
+    {"TCPRecordFlangePosEnd",&robot_command_thread::TCPRecordFlangePosEnd},
+    {"TCPGetRecordFlangePos",&robot_command_thread::TCPGetRecordFlangePos},
+    {"PhotoelectricSensorTCPCalibration",&robot_command_thread::PhotoelectricSensorTCPCalibration},
+    {"MoveStationary",&robot_command_thread::MoveStationary}
     };
 };
-
-/**
- * @class robot_recv_thread
- * @brief 接收控制器8081端口发送的TCP状态数据结构体并发布成topic消息
- */
-class robot_recv_thread:public rclcpp::Node{
-public:
-    explicit robot_recv_thread(const std::string node_name);
-    ~robot_recv_thread();
-private:
-    int setKeepAlive(int fd, int idle_time, int interval_time, int probe_times);
-    int _socketfd1;
-    std::atomic_bool _reconnect_flag;
-    int _robot_recv_exit = 0;           //类即将析构，通知重连线程退出.
-    std::thread _reconnect_thread;
-    void _try_to_reconnect();
-
-    std::string _controller_ip;
-    void _state_recv_callback();
-    rclcpp::Publisher<robot_feedback_msg>::SharedPtr _state_publisher;//进程内通信，用于发送状态数据字符串
-    rclcpp::TimerBase::SharedPtr _locktimer;
-    int port1 = 8081;//非实时状态数据获取端口
-
-};
-
-
-
 
 #endif
