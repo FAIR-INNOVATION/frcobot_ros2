@@ -2661,17 +2661,17 @@ std::string robot_command_thread::ServoMoveEnd(std::string para){
 }
 
 /**
- * @brief  笛卡尔空间伺服模式运动
- * @param  [in]  mode  0-绝对运动(基坐标系)，1-增量运动(基坐标系)，2-增量运动(工具坐标系)
- * @param  [in]  desc_pos  目标笛卡尔位姿或位姿增量
- * @param  [in]  pos_gain  位姿增量比例系数，仅在增量运动下生效，范围[0~1]
- * @param  [in] acc  加速度百分比，范围[0~100],暂不开放，默认为0
- * @param  [in] vel  速度百分比，范围[0~100]，暂不开放，默认为0
- * @param  [in] cmdT  指令下发周期，单位s，建议范围[0.001~0.0016]
- * @param  [in] filterT 滤波时间，单位s，暂不开放，默认为0
- * @param  [in] gain  目标位置的比例放大器，暂不开放，默认为0
- * @return 指令执行是否成功
- * @retval 0-成功，其他-错误码 
+ * @brief 笛卡尔空间伺服模式运动
+ * @param [in] mode 0-绝对运动(基坐标系)，1-增量运动(基坐标系)，2-增量运动(工具坐标系)
+ * @param [in] desc_pos 目标笛卡尔位姿或位姿增量
+ * @param [in] exaxis 扩展轴位置
+ * @param [in] pos_gain 位姿增量比例系数，仅在增量运动下生效，范围[0~1]
+ * @param [in] acc 加速度百分比，范围[0~100],暂不开放，默认为0
+ * @param [in] vel 速度百分比，范围[0~100]，暂不开放，默认为0
+ * @param [in] cmdT 指令下发周期，单位s，建议范围[0.001~0.016]
+ * @param [in] filterT 滤波时间，单位s，暂不开放，默认为0
+ * @param [in] gain 目标位置的比例放大器，暂不开放，默认为0
+ * @return 错误码
  */
 std::string robot_command_thread::ServoCart(std::string para){
     std::list<std::string> list;
@@ -2680,6 +2680,11 @@ std::string robot_command_thread::ServoCart(std::string para){
     int mode = std::stoi(list.front().c_str());list.pop_front();
     DescPose desc_pose;
     _fillDescPose(list,desc_pose);
+    ExaxisPos exaxis;
+    exaxis.ePos[0] = std::stod(list.front().c_str());list.pop_front();
+    exaxis.ePos[1] = std::stod(list.front().c_str());list.pop_front();
+    exaxis.ePos[2] = std::stod(list.front().c_str());list.pop_front();
+    exaxis.ePos[3] = std::stod(list.front().c_str());list.pop_front();
     float pos_gain[6];
     pos_gain[0] = std::stod(list.front().c_str());list.pop_front();
     pos_gain[1] = std::stod(list.front().c_str());list.pop_front();
@@ -2693,8 +2698,7 @@ std::string robot_command_thread::ServoCart(std::string para){
     float filterT = std::stod(list.front().c_str());list.pop_front();
     float gain = std::stod(list.front().c_str());list.pop_front();
     
-    return std::to_string(_ptr_robot->ServoCart(mode,&desc_pose,pos_gain,acc,vel,cmdT,\
-        filterT,gain));
+    return std::to_string(_ptr_robot->ServoCart(mode,&desc_pose,exaxis,pos_gain,acc,vel,cmdT,filterT,gain));
 }
 
 /**
@@ -3446,6 +3450,39 @@ std::string robot_command_thread::GetInverseKinHasSolution(std::string para){
     uint8_t result;
     int res = _ptr_robot->GetInverseKinHasSolution(type,&desc_pos,&joint_pos_ref,&result);
     return std::string(std::to_string(res) + "," + std::to_string(result));
+}
+
+/**
+ * @brief 逆运动学求解，笛卡尔空间包含扩展轴位置
+ * @param [in] type 0-绝对位姿(基坐标系)，1-增量位姿(基坐标系)，2-增量位姿(工具坐标系)
+ * @param [in] desc_pos 笛卡尔位姿
+ * @param [in] exaxis 扩展轴位置
+ * @param [in] tool 工具号
+ * @param [in] workPiece 工件号
+ * @param [out] joint_pos 关节位置
+ * @return 错误码
+ */
+std::string robot_command_thread::GetInverseKinExaxis(std::string para){
+    std::list<std::string> list;
+    _splitString2List(para,list);
+
+    int type = std::stoi(list.front());list.pop_front();
+    DescPose desc_pos;
+    _fillDescPose(list,desc_pos);
+    ExaxisPos exaxis;
+    exaxis.ePos[0] = std::stod(list.front().c_str());list.pop_front();
+    exaxis.ePos[1] = std::stod(list.front().c_str());list.pop_front();
+    exaxis.ePos[2] = std::stod(list.front().c_str());list.pop_front();
+    exaxis.ePos[3] = std::stod(list.front().c_str());list.pop_front();
+    int tool = std::stoi(list.front());list.pop_front();
+    int workPiece = std::stoi(list.front());list.pop_front();
+
+    JointPos joint_pos;
+    int res = _ptr_robot->GetInverseKinExaxis(type,desc_pos,exaxis,tool,workPiece,joint_pos);
+    return std::string(std::to_string(res) + "," + std::to_string(joint_pos.jPos[0]) + "," +\
+            std::to_string(joint_pos.jPos[1]) + "," + std::to_string(joint_pos.jPos[2]) + "," +\
+            std::to_string(joint_pos.jPos[3]) + "," + std::to_string(joint_pos.jPos[4]) + "," +\
+            std::to_string(joint_pos.jPos[5]));
 }
 
 /**
@@ -6876,8 +6913,9 @@ std::string robot_command_thread::SetOutputResetCtlBoxDO(std::string para){
     _splitString2List(para,list);
 
     int resetFlag = std::stoi(list.front());list.pop_front();
+    int reloadFlag = std::stoi(list.front());list.pop_front();
 
-    int res = _ptr_robot->SetOutputResetCtlBoxDO(resetFlag);
+    int res = _ptr_robot->SetOutputResetCtlBoxDO(resetFlag,reloadFlag);
     return std::string(std::to_string(res));
 }
 
@@ -6891,8 +6929,9 @@ std::string robot_command_thread::SetOutputResetCtlBoxAO(std::string para){
     _splitString2List(para,list);
 
     int resetFlag = std::stoi(list.front());list.pop_front();
+    int reloadFlag = std::stoi(list.front());list.pop_front();
 
-    int res = _ptr_robot->SetOutputResetCtlBoxAO(resetFlag);
+    int res = _ptr_robot->SetOutputResetCtlBoxAO(resetFlag,reloadFlag);
     return std::string(std::to_string(res));
 }
 
@@ -6906,8 +6945,9 @@ std::string robot_command_thread::SetOutputResetAxleDO(std::string para){
     _splitString2List(para,list);
 
     int resetFlag = std::stoi(list.front());list.pop_front();
+    int reloadFlag = std::stoi(list.front());list.pop_front();
 
-    int res = _ptr_robot->SetOutputResetAxleDO(resetFlag);
+    int res = _ptr_robot->SetOutputResetAxleDO(resetFlag,reloadFlag);
     return std::string(std::to_string(res));
 }
 
@@ -6921,8 +6961,9 @@ std::string robot_command_thread::SetOutputResetAxleAO(std::string para){
     _splitString2List(para,list);
 
     int resetFlag = std::stoi(list.front());list.pop_front();
+    int reloadFlag = std::stoi(list.front());list.pop_front();
 
-    int res = _ptr_robot->SetOutputResetAxleAO(resetFlag);
+    int res = _ptr_robot->SetOutputResetAxleAO(resetFlag,reloadFlag);
     return std::string(std::to_string(res));
 }
 
@@ -6936,8 +6977,9 @@ std::string robot_command_thread::SetOutputResetExtDO(std::string para){
     _splitString2List(para,list);
 
     int resetFlag = std::stoi(list.front());list.pop_front();
+    int reloadFlag = std::stoi(list.front());list.pop_front();
 
-    int res = _ptr_robot->SetOutputResetExtDO(resetFlag);
+    int res = _ptr_robot->SetOutputResetExtDO(resetFlag,reloadFlag);
     return std::string(std::to_string(res));
 }
 
@@ -6951,8 +6993,9 @@ std::string robot_command_thread::SetOutputResetExtAO(std::string para){
     _splitString2List(para,list);
 
     int resetFlag = std::stoi(list.front());list.pop_front();
+    int reloadFlag = std::stoi(list.front());list.pop_front();
 
-    int res = _ptr_robot->SetOutputResetExtAO(resetFlag);
+    int res = _ptr_robot->SetOutputResetExtAO(resetFlag,reloadFlag);
     return std::string(std::to_string(res));
 }
 
@@ -6966,8 +7009,9 @@ std::string robot_command_thread::SetOutputResetSmartToolDO(std::string para){
     _splitString2List(para,list);
 
     int resetFlag = std::stoi(list.front());list.pop_front();
+    int reloadFlag = std::stoi(list.front());list.pop_front();
 
-    int res = _ptr_robot->SetOutputResetSmartToolDO(resetFlag);
+    int res = _ptr_robot->SetOutputResetSmartToolDO(resetFlag,reloadFlag);
     return std::string(std::to_string(res));
 }
 
@@ -10222,7 +10266,6 @@ std::string robot_command_thread::PhotoelectricSensorTCPCalibration(std::string 
         std::to_string(TCP.rpy.rz));            
 }
 
-
 /**
  * @brief 原地空运动
  * @return 错误码
@@ -10233,6 +10276,22 @@ std::string robot_command_thread::MoveStationary(std::string para){
     int res = _ptr_robot->MoveStationary();
     return std::string(std::to_string(res));
 }
+
+/**
+ * @brief 获取lua程序错误行号和错误码
+ * @param [out] errLinNum lua程序执行错误行号
+ * @param [out] luaErrCode lua程序执行错误码
+ * @return 错误码
+ */
+std::string robot_command_thread::GetProgramRunErrCode(std::string para){
+    para.clear();
+    
+    int errLinNum;
+    int luaErrCode;
+    int res = _ptr_robot->GetProgramRunErrCode(errLinNum, luaErrCode);
+    return std::string(std::to_string(res) + ","  + std::to_string(errLinNum) + ","  + std::to_string(luaErrCode));
+}
+
 
 
 

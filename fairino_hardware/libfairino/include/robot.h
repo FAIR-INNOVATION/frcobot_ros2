@@ -372,18 +372,19 @@ public:
 	errno_t ServoJ(JointPos *joint_pos, ExaxisPos* axisPos, float acc, float vel, float cmdT, float filterT, float gain, int id = 0);
 
 	/**
-	 * @brief  笛卡尔空间伺服模式运动
-	 * @param  [in]  mode  0-绝对运动(基坐标系)，1-增量运动(基坐标系)，2-增量运动(工具坐标系)
-	 * @param  [in]  desc_pos  目标笛卡尔位姿或位姿增量
-	 * @param  [in]  pos_gain  位姿增量比例系数，仅在增量运动下生效，范围[0~1]
-	 * @param  [in] acc  加速度百分比，范围[0~100],暂不开放，默认为0
-	 * @param  [in] vel  速度百分比，范围[0~100]，暂不开放，默认为0
-	 * @param  [in] cmdT  指令下发周期，单位s，建议范围[0.001~0.0016]
-	 * @param  [in] filterT 滤波时间，单位s，暂不开放，默认为0
-	 * @param  [in] gain  目标位置的比例放大器，暂不开放，默认为0
-	 * @return  错误码
+	 * @brief 笛卡尔空间伺服模式运动
+	 * @param [in] mode 0-绝对运动(基坐标系)，1-增量运动(基坐标系)，2-增量运动(工具坐标系)
+	 * @param [in] desc_pos 目标笛卡尔位姿或位姿增量
+	 * @param [in] exaxis 扩展轴位置
+	 * @param [in] pos_gain 位姿增量比例系数，仅在增量运动下生效，范围[0~1]
+	 * @param [in] acc 加速度百分比，范围[0~100],暂不开放，默认为0
+	 * @param [in] vel 速度百分比，范围[0~100]，暂不开放，默认为0
+	 * @param [in] cmdT 指令下发周期，单位s，建议范围[0.001~0.016]
+	 * @param [in] filterT 滤波时间，单位s，暂不开放，默认为0
+	 * @param [in] gain 目标位置的比例放大器，暂不开放，默认为0
+	 * @return 错误码
 	 */
-	errno_t ServoCart(int mode, DescPose *desc_pose, float pos_gain[6], float acc, float vel, float cmdT, float filterT, float gain);
+	errno_t ServoCart(int mode, DescPose *desc_pose, ExaxisPos exaxis, float pos_gain[6], float acc, float vel, float cmdT, float filterT, float gain);
 
 	/**
 	 * @brief  笛卡尔空间点到点运动
@@ -1049,6 +1050,18 @@ public:
 	 * @return  错误码
 	 */
 	errno_t GetInverseKinHasSolution(int type, DescPose *desc_pos, JointPos *joint_pos_ref, uint8_t *result);
+
+	/**
+	 * @brief 逆运动学求解，笛卡尔空间包含扩展轴位置
+	 * @param [in] type 0-绝对位姿(基坐标系)，1-增量位姿(基坐标系)，2-增量位姿(工具坐标系)
+	 * @param [in] desc_pos 笛卡尔位姿
+	 * @param [in] exaxis 扩展轴位置
+	 * @param [in] tool 工具号
+	 * @param [in] workPiece 工件号
+	 * @param [out] joint_pos 关节位置
+	 * @return 错误码
+	 */
+	errno_t GetInverseKinExaxis(int type, DescPose desc_pos, ExaxisPos exaxis, int tool, int workPiece, JointPos& joint_pos);
 
 	/**
 	 * @brief  正运动学求解
@@ -3055,103 +3068,110 @@ public:
 	  */
 	errno_t AxleSensorRegWrite(int devAddr, int regHAddr, int regLAddr, int regNum, int data1, int data2, int isNoBlock);
 
-		/**
-		 * @brief  设置控制箱DO停止/暂停后输出是否复位
-		 * @param  [in] resetFlag  0-不复位；1-复位
-		 * @return  错误码
-		 */
-		errno_t SetOutputResetCtlBoxDO(int resetFlag);
+	/**
+	* @brief 设置控制箱DO停止/暂停后输出是否复位
+	* @param [in] resetFlag 0-不复位；1-复位
+	* @param [in] reloadFlag 暂停恢复后是否重加载，0-不加载；1-加载
+	* @return 错误码
+	*/
+	errno_t SetOutputResetCtlBoxDO(int resetFlag, int reloadFlag = 0);
 
 	 /**
-	  * @brief  设置控制箱AO停止/暂停后输出是否复位
-	  * @param  [in] resetFlag  0-不复位；1-复位
-	  * @return  错误码
+	  * @brief 设置控制箱AO停止/暂停后输出是否复位
+	  * @param [in] resetFlag  0-不复位；1-复位
+	  * @param [in] reloadFlag 暂停恢复后是否重加载，0-不加载；1-加载
+	  * @return 错误码
 	  */
-		errno_t SetOutputResetCtlBoxAO(int resetFlag);
+	errno_t SetOutputResetCtlBoxAO(int resetFlag, int reloadFlag = 0);
 
 	 /**
-	  * @brief  设置末端工具DO停止/暂停后输出是否复位
-	  * @param  [in] resetFlag  0-不复位；1-复位
-	  * @return  错误码
+	  * @brief 设置末端工具DO停止/暂停后输出是否复位
+	  * @param [in] resetFlag  0-不复位；1-复位
+	  * @param [in] reloadFlag 暂停恢复后是否重加载，0-不加载；1-加载
+	  * @return 错误码
 	  */
-		errno_t SetOutputResetAxleDO(int resetFlag);
+	errno_t SetOutputResetAxleDO(int resetFlag, int reloadFlag = 0);
 	 
 	 /**
-	  * @brief  设置末端工具AO停止/暂停后输出是否复位
-	  * @param  [in] resetFlag  0-不复位；1-复位
+	  * @brief 设置末端工具AO停止/暂停后输出是否复位
+	  * @param [in] resetFlag  0-不复位；1-复位
+	  * @param [in] reloadFlag 暂停恢复后是否重加载，0-不加载；1-加载
 	  * @return  错误码
 	  */
-		errno_t SetOutputResetAxleAO(int resetFlag);
+	errno_t SetOutputResetAxleAO(int resetFlag, int reloadFlag = 0);
 	
 	 /**
-	  * @brief  设置扩展DO停止/暂停后输出是否复位
-	  * @param  [in] resetFlag  0-不复位；1-复位
+	  * @brief 设置扩展DO停止/暂停后输出是否复位
+	  * @param [in] resetFlag  0-不复位；1-复位
+	  * @param [in] reloadFlag 暂停恢复后是否重加载，0-不加载；1-加载
 	  * @return  错误码
 	  */
-		errno_t SetOutputResetExtDO(int resetFlag);
+	 errno_t SetOutputResetExtDO(int resetFlag, int reloadFlag = 0);
 
 	 /**
-	  * @brief  设置扩展AO停止/暂停后输出是否复位
-	  * @param  [in] resetFlag  0-不复位；1-复位
+	  * @brief 设置扩展AO停止/暂停后输出是否复位
+	  * @param [in] resetFlag  0-不复位；1-复位
+	  * @param [in] reloadFlag 暂停恢复后是否重加载，0-不加载；1-加载
 	  * @return  错误码
 	  */
-		errno_t SetOutputResetExtAO(int resetFlag);
+	 errno_t SetOutputResetExtAO(int resetFlag, int reloadFlag = 0);
 
 	 /**
-	  * @brief  设置SmartTool停止/暂停后输出是否复位
-	  * @param  [in] resetFlag  0-不复位；1-复位
+	  * @brief 设置SmartTool停止/暂停后输出是否复位
+	  * @param [in] resetFlag  0-不复位；1-复位
+	  * @param [in] reloadFlag 暂停恢复后是否重加载，0-不加载；1-加载
 	  * @return  错误码
 	  */
-		errno_t SetOutputResetSmartToolDO(int resetFlag);
+	 errno_t SetOutputResetSmartToolDO(int resetFlag, int reloadFlag = 0);
 	
 	 /**
 	  * @brief  仿真摆动开始
 	  * @param  [in] weaveNum  摆动参数编号
 	  * @return  错误码
 	  */
-		errno_t WeaveStartSim(int weaveNum);
+	errno_t WeaveStartSim(int weaveNum);
 
 	 /**
 	  * @brief  仿真摆动结束
 	  * @param  [in] weaveNum  摆动参数编号
 	  * @return  错误码
 	  */
-		errno_t WeaveEndSim(int weaveNum);
+	errno_t WeaveEndSim(int weaveNum);
 
 	 /**
 	  * @brief  开始轨迹检测预警(不运动)
 	  * @param  [in] weaveNum   摆动参数编号
 	  * @return  错误码
 	  */
-		errno_t WeaveInspectStart(int weaveNum);
+	errno_t WeaveInspectStart(int weaveNum);
 
 	 /**
 	  * @brief 结束轨迹检测预警(不运动)
 	  * @param  [in] weaveNum   摆动参数编号
 	  * @return  错误码
 	  */
-		errno_t WeaveInspectEnd(int weaveNum);
+	errno_t WeaveInspectEnd(int weaveNum);
 
 	 /**
 	  * @brief 扩展IO-配置焊机气体检测信号
 	  * @param  [in] DONum  气体检测信号扩展DO编号
 	  * @return  错误码
 	  */
-		errno_t SetAirControlExtDoNum(int DONum);
+	errno_t SetAirControlExtDoNum(int DONum);
 	
 	 /**
 	  * @brief 扩展IO-配置焊机起弧信号
 	  * @param  [in] DONum  焊机起弧信号扩展DO编号
 	  * @return  错误码
 	  */
-		errno_t SetArcStartExtDoNum(int DONum);
+	errno_t SetArcStartExtDoNum(int DONum);
 
 	 /**
 	  * @brief 扩展IO-配置焊机反向送丝信号
 	  * @param  [in] DONum  反向送丝信号扩展DO编号
 	  * @return  错误码
 	  */
-		errno_t SetWireReverseFeedExtDoNum(int DONum);
+	errno_t SetWireReverseFeedExtDoNum(int DONum);
 
 	 /**
 	  * @brief 扩展IO-配置焊机正向送丝信号
@@ -4639,6 +4659,14 @@ public:
 	errno_t MoveStationary();
 
 	/**
+	 * @brief 获取lua程序错误行号和错误码
+	 * @param [out] errLinNum lua程序执行错误行号
+	 * @param [out] luaErrCode lua程序执行错误码
+	 * @return 错误码
+	 */
+	errno_t GetProgramRunErrCode(int& errLinNum, int& luaErrCode);
+
+	/**
 	 *@brief  机器人接口类析构函数
 	 */
 	~FRRobot();
@@ -4703,6 +4731,8 @@ private:
 	char g_recvbuf[1024 * 4] = { 0 };
 	int g_sock_com_err;
 	double fileUploadPercent;
+	int robotProgramErrLinNum = 0;
+	int robotProgramErrCode = 0;
 
 	char robot_ip[64];
 	std::shared_ptr<ROBOT_STATE_PKG> robot_state_pkg;

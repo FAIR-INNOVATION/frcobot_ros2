@@ -26,7 +26,7 @@ file(GLOB EXP_SRC_DIR ./examples/src/*.cpp)
 
 #compile
 file(CREATE_LINK 
-"${CMAKE_CURRENT_SOURCE_DIR}/libfairino/lib/libfairino.so.2.3.2"
+"${CMAKE_CURRENT_SOURCE_DIR}/libfairino/lib/libfairino.so.2.3.3"
 "${CMAKE_CURRENT_SOURCE_DIR}/libfairino/lib/libfairino.so.2"
 SYMBOLIC)
 
@@ -99,12 +99,12 @@ file(MAKE_DIRECTORY
 "${CMAKE_INSTALL_PREFIX}/lib/${PROJECT_NAME}"
 )
 
-file(COPY_FILE "libfairino/lib/libfairino.so.2.3.2" 
-"${CMAKE_INSTALL_PREFIX}/lib/libfairino.so.2.3.2" 
+file(COPY_FILE "libfairino/lib/libfairino.so.2.3.3" 
+"${CMAKE_INSTALL_PREFIX}/lib/libfairino.so.2.3.3" 
 )
 
 file(CREATE_LINK 
-"${CMAKE_INSTALL_PREFIX}/lib/libfairino.so.2.3.2" 
+"${CMAKE_INSTALL_PREFIX}/lib/libfairino.so.2.3.3" 
 "${CMAKE_INSTALL_PREFIX}/lib/libfairino.so.2" 
 SYMBOLIC)
 

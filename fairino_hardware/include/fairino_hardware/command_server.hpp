@@ -217,6 +217,7 @@ public:
     std::string GetActualToolFlangePose(std::string para);
     std::string GetInverseKinRef(std::string para);
     std::string GetInverseKinHasSolution(std::string para);
+    std::string GetInverseKinExaxis(std::string para);
     std::string GetForwardKin(std::string para);
     std::string GetJointTorques(std::string para);
     std::string GetTargetPayload(std::string para);
@@ -568,6 +569,7 @@ public:
     std::string TCPGetRecordFlangePos(std::string para);
     std::string PhotoelectricSensorTCPCalibration(std::string para);
     std::string MoveStationary(std::string para);
+    std::string GetProgramRunErrCode(std::string para);
 private:
 
     
@@ -767,6 +769,7 @@ private:
     {"GetActualToolFlangePose",&robot_command_thread::GetActualToolFlangePose},
     {"GetInverseKinRef",&robot_command_thread::GetInverseKinRef},
     {"GetInverseKinHasSolution",&robot_command_thread::GetInverseKinHasSolution},
+    {"GetInverseKinExaxis",&robot_command_thread::GetInverseKinExaxis},
     {"GetForwardKin",&robot_command_thread::GetForwardKin},
     {"GetJointTorques",&robot_command_thread::GetJointTorques},
     {"GetTargetPayload",&robot_command_thread::GetTargetPayload},
@@ -1117,7 +1120,8 @@ private:
     {"TCPRecordFlangePosEnd",&robot_command_thread::TCPRecordFlangePosEnd},
     {"TCPGetRecordFlangePos",&robot_command_thread::TCPGetRecordFlangePos},
     {"PhotoelectricSensorTCPCalibration",&robot_command_thread::PhotoelectricSensorTCPCalibration},
-    {"MoveStationary",&robot_command_thread::MoveStationary}
+    {"MoveStationary",&robot_command_thread::MoveStationary},
+    {"GetProgramRunErrCode",&robot_command_thread::GetProgramRunErrCode}
     };
 };
 
