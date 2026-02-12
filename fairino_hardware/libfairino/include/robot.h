@@ -29,7 +29,7 @@ public:
 
 	/**
 	 * @brief  与机器人控制器建立通讯
-	 * @param  [in] ip  控制器IP地址，出场默认为192.168.11.2
+	 * @param  [in] ip  控制器IP地址，出场默认为192.168.0.2
 	 * @return 错误码
 	 */
 	errno_t RPC(const char *ip);
