@@ -41,9 +41,9 @@ hardware_interface::CallbackReturn FairinoHardwareInterface::on_init(
     // }
 
     // 关节状态部分
-    if (joint.state_interfaces.size() != 1) {
+    if (joint.state_interfaces.size() < 1) {
       RCLCPP_FATAL(rclcpp::get_logger("FairinoHardwareInterface"),
-                   "Joint '%s' has %zu state interface. 3 expected.",
+                   "Joint '%s' has %zu state interface. At least 1 expected.",
                    joint.name.c_str(), joint.state_interfaces.size());
       return hardware_interface::CallbackReturn::ERROR;
     }
@@ -134,7 +134,7 @@ hardware_interface::CallbackReturn FairinoHardwareInterface::on_activate(
     _jnt_torque_state[i] = 0;
   }
   _control_mode = 0; // 默认是位置控制,0-位置控制，1-扭矩控制 2-速度控制
-  errno_t returncode = _ptr_robot->RPC(info_.hardware_parameters.at("can_interface").c_str()); // 建立xmlrpc连接
+  errno_t returncode = _ptr_robot->RPC(info_.hardware_parameters.at("ip_address").c_str()); // 建立xmlrpc连接
   rclcpp::sleep_for(200ms); // 等待一段时间让控制器的rpc连接建立完毕
   if (returncode != 0) {
     RCLCPP_INFO(rclcpp::get_logger("FairinoHardwareInterface"),

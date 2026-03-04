@@ -4,12 +4,12 @@
     name="fairino_ros2_control"
     params="name fairino_file use_fake_hardware:=false"
   >
-    <xacro:property name="ip_address" value="${load_yaml(fairino_file)['ip_address']}" />
-    <xacro:property name="initial_positions" value="${load_yaml(fairino_file)['initial_positions']}" />
+    <xacro:property name="ip_address" value="${xacro.load_yaml(fairino_file)['ip_address']}" />
+    <xacro:property name="initial_positions" value="${xacro.load_yaml(fairino_file)['initial_positions']}" />
     <ros2_control name="${name}" type="system">
       <hardware>
         <xacro:if value="${use_fake_hardware}">
-          <plugin>mock_components/GenericSystem</plugin>
+          <plugin>gz_ros2_control/GazeboSimSystem</plugin>
         </xacro:if>
         <xacro:unless value="${use_fake_hardware}">
           <plugin>fairino_hardware/FairinoHardwareInterface</plugin>
@@ -21,36 +21,48 @@
         <state_interface name="position">
           <param name="initial_value">${initial_positions['j1']}</param>
         </state_interface>
+        <state_interface name="velocity" />
+        <state_interface name="effort" />
       </joint>
       <joint name="j2">
         <command_interface name="position" />
         <state_interface name="position">
           <param name="initial_value">${initial_positions['j2']}</param>
         </state_interface>
+        <state_interface name="velocity" />
+        <state_interface name="effort" />
       </joint>
       <joint name="j3">
         <command_interface name="position" />
         <state_interface name="position">
           <param name="initial_value">${initial_positions['j3']}</param>
         </state_interface>
+        <state_interface name="velocity" />
+        <state_interface name="effort" />
       </joint>
       <joint name="j4">
         <command_interface name="position" />
         <state_interface name="position">
           <param name="initial_value">${initial_positions['j4']}</param>
         </state_interface>
+        <state_interface name="velocity" />
+        <state_interface name="effort" />
       </joint>
       <joint name="j5">
         <command_interface name="position" />
         <state_interface name="position">
           <param name="initial_value">${initial_positions['j5']}</param>
         </state_interface>
+        <state_interface name="velocity" />
+        <state_interface name="effort" />
       </joint>
       <joint name="j6">
         <command_interface name="position" />
         <state_interface name="position">
           <param name="initial_value">${initial_positions['j6']}</param>
         </state_interface>
+        <state_interface name="velocity" />
+        <state_interface name="effort" />
       </joint>
     </ros2_control>
   </xacro:macro>
