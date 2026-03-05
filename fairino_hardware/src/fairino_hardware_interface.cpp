@@ -89,13 +89,13 @@ FairinoHardwareInterface::export_state_interfaces() {
         info_.joints[i].name, hardware_interface::HW_IF_POSITION,
         &_jnt_position_state[i]));
 
-    // state_interfaces.emplace_back(hardware_interface::StateInterface(
-    //     info_.joints[i].name, hardware_interface::HW_IF_VELOCITY,
-    //     &_jnt_velocity_state.at(i)));
+    state_interfaces.emplace_back(hardware_interface::StateInterface(
+        info_.joints[i].name, hardware_interface::HW_IF_VELOCITY,
+        &_jnt_velocity_state[i]));
 
-    // state_interfaces.emplace_back(hardware_interface::StateInterface(
-    //     info_.joints[i].name, hardware_interface::HW_IF_EFFORT,
-    //     &_jnt_torque_state.at(i)));
+    state_interfaces.emplace_back(hardware_interface::StateInterface(
+        info_.joints[i].name, hardware_interface::HW_IF_EFFORT,
+        &_jnt_torque_state[i]));
   }
 
   // 导出
