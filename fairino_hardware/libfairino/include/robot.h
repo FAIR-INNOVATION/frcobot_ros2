@@ -18,6 +18,7 @@
 #include <memory>
 
 class FRTcpClient;
+class FRUdpClient;
 
 class FR_LIB_EXPORT FRRobot
 {
@@ -347,29 +348,32 @@ public:
 
 	/**
 	 * @brief 伺服运动开始，配合ServoJ、ServoCart指令使用
+	 * @param [in] comType 指令下发类型；0-xmlrpc；1-UDP(对应机器人20007端口)
 	 * @return  错误码
 	 */
-	errno_t ServoMoveStart();
+	errno_t ServoMoveStart(int comType = 0);
 
 	/**
 	 * @brief 伺服运动结束，配合ServoJ、ServoCart指令使用
+	 * @param [in] comType 指令下发类型；0-xmlrpc；1-UDP(对应机器人20007端口)
 	 * @return  错误码
 	 */
-	errno_t ServoMoveEnd();
+	errno_t ServoMoveEnd(int comType = 0);
 
 	/**
-	 * @brief  关节空间伺服模式运动
-	 * @param  [in] joint_pos  目标关节位置,单位deg
-	 * @param  [in] axisPos  外部轴位置,单位mm
-	 * @param  [in] acc  加速度百分比，范围[0~100],暂不开放，默认为0
-	 * @param  [in] vel  速度百分比，范围[0~100]，暂不开放，默认为0
-	 * @param  [in] cmdT  指令下发周期，单位s，建议范围[0.001~0.0016]
-	 * @param  [in] filterT 滤波时间，单位s，暂不开放，默认为0
-	 * @param  [in] gain  目标位置的比例放大器，暂不开放，默认为0
-	 * @param  [in] id servoJ指令ID,默认为0
+	 * @brief 关节空间伺服模式运动
+	 * @param [in] joint_pos 目标关节位置,单位deg
+	 * @param [in] axisPos 外部轴位置,单位mm
+	 * @param [in] acc 加速度百分比，范围[0~100],暂不开放，默认为0
+	 * @param [in] vel 速度百分比，范围[0~100]，暂不开放，默认为0
+	 * @param [in] cmdT 指令下发周期，单位s，建议范围[0.001~0.0016]
+	 * @param [in] filterT 滤波时间，单位s，暂不开放，默认为0
+	 * @param [in] gain 目标位置的比例放大器，暂不开放，默认为0
+	 * @param [in] id servoJ指令ID,默认为0
+	 * @param [in] comType 指令下发类型；0-xmlrpc；1-UDP(对应机器人20007端口)
 	 * @return  错误码
 	 */
-	errno_t ServoJ(JointPos *joint_pos, ExaxisPos* axisPos, float acc, float vel, float cmdT, float filterT, float gain, int id = 0);
+	errno_t ServoJ(JointPos *joint_pos, ExaxisPos* axisPos, float acc, float vel, float cmdT, float filterT, float gain, int id = 0, int comType = 0);
 
 	/**
 	 * @brief 笛卡尔空间伺服模式运动
@@ -662,6 +666,190 @@ public:
 	 * @return  错误码
 	 */
 	errno_t WaitToolAI(int id, int sign, float value, int max_time, int opt);
+
+	/**
+	 * @brief 设置控制箱可配置CI端口功能
+	 * @param [in] config CI0-CI7功能编码；
+	 * 0-无;1-起弧成功;2-焊机准备;3-传送带检测;4-暂停;5-恢复;6-启动;7-停止;
+	 8-暂停/恢复;9-启动/停止;10-脚踏拖动;11-移至作业原点;12-手自动切换;
+	 13-焊丝寻位成功;14-运动中断;15-启动主程序;16-启动倒带;17-启动确认;
+	 18-光电检测信号X;19-光电检测信号Y;20-外部急停输入信号1;21-外部急停输入信号2;
+	 22-一级缩减模式;23-二级缩减模式;24-三级缩减模式(停止);25-恢复焊接;26-终止焊接;
+	 27-辅助拖动开启;28-辅助拖动关闭;29-辅助拖动开启/关闭;30-清除所有错误;
+	 31-手自动切换(高低电平);32-使能;33-去使能;34-使能/去使能(上升下降沿);35-定点跟踪开始/结束
+	 * @return 错误码
+	 */
+	errno_t SetDIConfig(int config[8]);
+
+	/**
+	 * @brief 获取控制箱可配置CI端口功能
+	 * @param [in] config CI0-CI7功能编码；
+	 * 0-无;1-起弧成功;2-焊机准备;3-传送带检测;4-暂停;5-恢复;6-启动;7-停止;
+	 8-暂停/恢复;9-启动/停止;10-脚踏拖动;11-移至作业原点;12-手自动切换;
+	 13-焊丝寻位成功;14-运动中断;15-启动主程序;16-启动倒带;17-启动确认;
+	 18-光电检测信号X;19-光电检测信号Y;20-外部急停输入信号1;21-外部急停输入信号2;
+	 22-一级缩减模式;23-二级缩减模式;24-三级缩减模式(停止);25-恢复焊接;26-终止焊接;
+	 27-辅助拖动开启;28-辅助拖动关闭;29-辅助拖动开启/关闭;30-清除所有错误;
+	 31-手自动切换(高低电平);32-使能;33-去使能;34-使能/去使能(上升下降沿);35-定点跟踪开始/结束
+	 * @return 错误码
+	 */
+	errno_t GetDIConfig(int config[8]);
+
+	/**
+	 * @brief 设置可配置CO端口功能
+	 * @param [out] config CO0-CO7功能编码；
+	 * 0-无;1-机器人报错;2-机器人运动中;3-喷涂启停;4-喷涂清枪;5-送气信号;6-起弧信号;7-点动送丝;
+		8-反向送丝;9-JOB输入口1;10-JOB输入口2;11-JOB输入口3;12-传送带启停控制;13-机器人暂停中;14-到达作业原点;
+		15-到达干涉区;16-焊丝寻位启停控制;17-机器人启动完成;18-程序启动停止;19-自动手动模式;20-急停输出信号1-安全;
+		21-急停输出信号2-安全;22-LUA脚本程序运行停止;23-安全状态输出-安全;24-保护性停止状态输出-安全;
+		25-机器人运动中-安全;26-机器人缩减模式-安全;27-机器人非缩减模式-安全;28-机器人非停止;29-机器人报错-指令点错误;
+		30-机器人报错-驱动器错误;31-机器人报错-超出软限位错误;32-机器人报错-碰撞错误;33-机器人报错-活动从站数量错误;
+		34-机器人报错-从站错误;35-机器人报错-IO错误;36-机器人报错-夹爪错误;37-机器人报错-文件错误;38-机器人报错-奇异位姿错误;
+		39-机器人报错-驱动器通信错误;40-机器人报错-参数错误;41-机器人报错-外部轴超出软限位错误;42-机器人警告-警告;
+		43-机器人警告-安全门警告;44-机器人警告-运动警告;45-机器人警告-干涉区警告;46-机器人警告-安全墙警告;
+		47-使能状态;48-断线自动抬升中;49-立方体1干涉警告;50-立方体2干涉警告;51-立方体3干涉警告;52-立方体4干涉警告;
+	 * @return 错误码
+	 */
+	errno_t SetDOConfig(int config[8]);
+
+	/**
+	 * @brief 获取可配置CO端口功能
+	 * @param [out] config CO0-CO7功能编码；
+	 * 0-无;1-机器人报错;2-机器人运动中;3-喷涂启停;4-喷涂清枪;5-送气信号;6-起弧信号;7-点动送丝;
+		8-反向送丝;9-JOB输入口1;10-JOB输入口2;11-JOB输入口3;12-传送带启停控制;13-机器人暂停中;14-到达作业原点;
+		15-到达干涉区;16-焊丝寻位启停控制;17-机器人启动完成;18-程序启动停止;19-自动手动模式;20-急停输出信号1-安全;
+		21-急停输出信号2-安全;22-LUA脚本程序运行停止;23-安全状态输出-安全;24-保护性停止状态输出-安全;
+		25-机器人运动中-安全;26-机器人缩减模式-安全;27-机器人非缩减模式-安全;28-机器人非停止;29-机器人报错-指令点错误;
+		30-机器人报错-驱动器错误;31-机器人报错-超出软限位错误;32-机器人报错-碰撞错误;33-机器人报错-活动从站数量错误;
+		34-机器人报错-从站错误;35-机器人报错-IO错误;36-机器人报错-夹爪错误;37-机器人报错-文件错误;38-机器人报错-奇异位姿错误;
+		39-机器人报错-驱动器通信错误;40-机器人报错-参数错误;41-机器人报错-外部轴超出软限位错误;42-机器人警告-警告;
+		43-机器人警告-安全门警告;44-机器人警告-运动警告;45-机器人警告-干涉区警告;46-机器人警告-安全墙警告;
+		47-使能状态;48-断线自动抬升中;49-立方体1干涉警告;50-立方体2干涉警告;51-立方体3干涉警告;52-立方体4干涉警告;
+	 * @return 错误码
+	 */
+	errno_t GetDOConfig(int config[8]);
+
+	/**
+	 * @brief 设置末端可配置End-CI端口功能
+	 * @param [in] config End CI0-CI1功能编码；
+	 * 0-无;1-拖动示教工具开关;2-点记录信号;3-手自动切换（脉冲信号）;4-TPD记录启动/停止;5-暂停运动;
+		6-恢复运动;7-启动;8-停止;9-暂停/恢复;10-启动/停止;11-力传感器辅助拖动开启;12-力传感器辅助拖动关闭;
+		13-力传感器辅助拖动开启/关闭;14-激光检测信号X;15-激光检测信号Y;16-PTP运动至作业原点;17-运动中断，根据信号停止当前运动;
+		18-启动主程序;19-启动倒带;20-启动确认;21-恢复焊接;22-终止焊接;23-清除错误;24-手自动切换（高低电平）
+		25-使能;26-去使能;27-使能/去使能;28-激光伺服跟踪启停信号;
+	 * @return 错误码
+	 */
+	errno_t SetToolDIConfig(int config[2]);
+
+	/**
+	 * @brief 获取末端可配置End-CI端口功能
+	 * @param [out] config End CI0-CI1功能编码；
+	 * 0-无;1-拖动示教工具开关;2-点记录信号;3-手自动切换（脉冲信号）;4-TPD记录启动/停止;5-暂停运动;
+		6-恢复运动;7-启动;8-停止;9-暂停/恢复;10-启动/停止;11-力传感器辅助拖动开启;12-力传感器辅助拖动关闭;
+		13-力传感器辅助拖动开启/关闭;14-激光检测信号X;15-激光检测信号Y;16-PTP运动至作业原点;17-运动中断，根据信号停止当前运动;
+		18-启动主程序;19-启动倒带;20-启动确认;21-恢复焊接;22-终止焊接;23-清除错误;24-手自动切换（高低电平）
+		25-使能;26-去使能;27-使能/去使能;28-激光伺服跟踪启停信号;
+	 * @return 错误码
+	 */
+	errno_t GetToolDIConfig(int config[2]);
+
+	///**
+	// * @brief 设置末端可配置End-DO端口功能
+	// * @param [in] config End DO0-DO1功能编码；
+	// * @return 错误码
+	// */
+	//errno_t SetToolDOConfig(int config[2]);
+
+	///**
+	// * @brief 获取末端可配置End-DO端口功能
+	// * @param [out] config End DO0-DO1功能编码；
+	// * @return 错误码
+	// */
+	//errno_t GetToolDOConfig(int config[2]);
+
+	/**
+	 * @brief 设置控制箱可配置CI有效状态
+	 * @param [in] config CI0-CI7端口有效状态；0-高电平有效；1-低电平有效
+	 * @return 错误码
+	 */
+	errno_t SetDIConfigLevel(int config[8]);
+
+	/**
+	 * @brief 获取控制箱可配置CI有效状态
+	 * @param [out] config CI0-CI7端口有效状态；0-高电平有效；1-低电平有效
+	 * @return 错误码
+	 */
+	errno_t GetDIConfigLevel(int config[8]);
+
+	/**
+	 * @brief 设置控制箱可配置CO有效状态
+	 * @param [in] config CO0-CO7端口有效状态；0-高电平有效；1-低电平有效
+	 * @return 错误码
+	 */
+	errno_t SetDOConfigLevel(int config[8]);
+
+	/**
+	 * @brief 获取控制箱可配置CO有效状态
+	 * @param [out] config CO0-CO7端口有效状态；0-高电平有效；1-低电平有效
+	 * @return 错误码
+	 */
+	errno_t GetDOConfigLevel(int config[8]);
+
+	/**
+	 * @brief 设置末端可配置CI有效状态
+	 * @param [in] config CI0-CI1端口有效状态；0-高电平有效；1-低电平有效
+	 * @return 错误码
+	 */
+	errno_t SetToolDIConfigLevel(int config[2]);
+
+	/**
+	 * @brief 获取末端可配置CI有效状态
+	 * @param [out] config CI0-CI1端口有效状态；0-高电平有效；1-低电平有效
+	 * @return 错误码
+	 */
+	errno_t GetToolDIConfigLevel(int config[2]);
+
+	///**
+	// * @brief 设置末端可配置CO有效状态
+	// * @param [in] config CO0-CO1端口有效状态；0-高电平有效；1-低电平有效
+	// * @return 错误码
+	// */
+	//errno_t SetToolDOConfigLevel(int config[2]);
+
+	///**
+	// * @brief 获取末端可配置CO有效状态
+	// * @param [out] config CO0-CO7端口有效状态；0-高电平有效；1-低电平有效
+	// * @return 错误码
+	// */
+	//errno_t GetToolDOConfigLevel(int config[2]);
+
+	/**
+	 * @brief 设置控制箱标准DI有效状态
+	 * @param [in] config DI0-DI7端口有效状态；0-高电平有效；1-低电平有效
+	 * @return 错误码
+	 */
+	errno_t SetStandardDILevel(int config[8]);
+
+	/**
+	 * @brief 获取控制箱标准DI有效状态
+	 * @param [out] config DI0-DI7端口有效状态；0-高电平有效；1-低电平有效
+	 * @return 错误码
+	 */
+	errno_t GetStandardDILevel(int config[8]);
+
+	/**
+	 * @brief 设置控制箱标准DO有效状态
+	 * @param [in] config DO0-DO7端口有效状态；0-高电平有效；1-低电平有效
+	 * @return 错误码
+	 */
+	errno_t SetStandardDOLevel(int config[8]);
+
+	/**
+	 * @brief 获取控制箱标准DO有效状态
+	 * @param [out] config DO0-DO7端口有效状态；0-高电平有效；1-低电平有效
+	 * @return 错误码
+	 */
+	errno_t GetStandardDOLevel(int config[8]);
 
 	/**
 	 * @brief  设置全局速度
@@ -1228,6 +1416,15 @@ public:
 	 * @return  错误码
 	 */
 	errno_t MoveTPD(char name[30], uint8_t blend, float ovl);
+
+	/**
+	 * @brief 运动到TPD轨迹记录起点
+	 * @param [in] name 轨迹文件名
+	 * @param [in] moveType 运动类型；0-PTP; 1-LIN
+	 * @param [in] ovl 速度缩放百分比，范围[0~100]
+	 * @return 错误码
+	 */
+	errno_t MoveToTPDStart(char name[30], uint8_t moveType, float ovl);
 
 	/**
 	 * @brief  轨迹预处理
@@ -2002,7 +2199,7 @@ public:
 
 	/**
 	 * @brief 焊接开始
-	 * @param [in] ioType io类型 0-控制器IO； 1-扩展IO
+	 * @param [in] ioType io类型 0-控制器IO； 1-数字通信协议UDP；2-数字通信协议ModbusTCP
 	 * @param [in] arcNum 焊机配置文件编号
 	 * @param [in] timeout 起弧超时时间
 	 * @return 错误码
@@ -2423,9 +2620,10 @@ public:
 	 * @param [out] reconnectEnable	通讯断开自动重连使能 0-不使能 1-使能
 	 * @param [out] reconnectPeriod	重连周期间隔(ms)
 	 * @param [out] reconnectNum	重连次数
+	 * @param [out] selfStart 重启控制箱后是否自动重连；0-不重连；1-重连
 	 * @return 错误码
 	 */
-	errno_t ExtDevGetUDPComParam(std::string& ip, int& port, int& period, int& lossPkgTime, int& lossPkgNum, int& disconnectTime, int& reconnectEnable, int& reconnectPeriod, int& reconnectNum);
+	errno_t ExtDevGetUDPComParam(std::string& ip, int& port, int& period, int& lossPkgTime, int& lossPkgNum, int& disconnectTime, int& reconnectEnable, int& reconnectPeriod, int& reconnectNum, int& selfConnect);
 
 	/**
 	* @brief 加载UDP通信
@@ -3227,9 +3425,10 @@ public:
 	
 	/**
 	* @brief 关节扭矩控制开始
+	* @param [in] comType 指令下发类型；0-xmlrpc；1-UDP(对应机器人20007端口)
 	* @return  错误码
 	*/
-	errno_t ServoJTStart();
+	errno_t ServoJTStart(int comType = 0);
 
 	/**
 	* @brief 关节扭矩控制
@@ -3241,20 +3440,22 @@ public:
 
 	/**
 	* @brief 关节扭矩控制
-	* @param  [in] torque j1~j6关节扭矩，单位Nm
-	* @param  [in] interval 指令周期，单位s，范围[0.001~0.008]
-	* @param  [in] checkFlag 检测策略 0-不限制；1-限制功率；2-限制速度；3-功率和速度同时限制
-	* @param  [in] jPowerLimit 关节最大功率限制(W)
-	* @param  [in] jVelLimit 关节最大速度(°/s)
-	* @return  错误码
+	* @param [in] torque j1~j6关节扭矩，单位Nm
+	* @param [in] interval 指令周期，单位s，范围[0.001~0.008]
+	* @param [in] checkFlag 检测策略 0-不限制；1-限制功率；2-限制速度；3-功率和速度同时限制
+	* @param [in] jPowerLimit 关节最大功率限制(W)
+	* @param [in] jVelLimit 关节最大速度(°/s)
+	* @param [in] comType 指令下发类型；0-xmlrpc；1-UDP(对应机器人20007端口)
+	* @return 错误码
 	*/
-	errno_t ServoJT(float torque[], double interval, int checkFlag, double jPowerLimit[6], double jVelLimit[6]);
+	errno_t ServoJT(float torque[], double interval, int checkFlag, double jPowerLimit[6], double jVelLimit[6], int comType = 0);
 
 	/**
 	* @brief 关节扭矩控制结束
+	* @param [in] comType 指令下发类型；0-xmlrpc；1-UDP(对应机器人20007端口)
 	* @return  错误码
 	*/
-	errno_t ServoJTEnd();
+	errno_t ServoJTEnd(int comType = 0);
 
 	/**
 	 * @brief 设置机器人 20004 端口反馈周期
@@ -3555,11 +3756,12 @@ public:
 	errno_t SetWeldMachineCtrlModeExtDoNum(int DONum);
 
 	/**
-	 * @brief 设置焊机控制模式
-	 * @param mode 焊机控制模式;0-一元化
-	 * @return 错误码
-	 */
-	errno_t SetWeldMachineCtrlMode(int mode);
+	* @brief 设置焊机控制模式
+	* @param [in] mode 焊机控制模式;0-直流一元模式；1-脉冲一元模式；2-JOB模式；3-近控模式；4-分别模式；5-CC/CV模式；6-TIG；7-CMT
+	* @param [in] ioType 控制类型；0-控制箱IO;1-数字通信协议(UDP);2-数字通信协议(ModbusTCP)
+	* @return 错误码
+	*/
+	errno_t SetWeldMachineCtrlMode(int mode, int ioType = 1);
 
 	/**
 	* @brief 开始奇异位姿保护
@@ -4291,6 +4493,26 @@ public:
 	 */
 	errno_t OpenLuaUpload(std::string filePath);
 
+	/**
+	 * @brief 下载开放协议Lua文件
+	 * @param [in] fileName 开放协议文件名称“CtrlDev_XXX.lua”
+	 * @param [in] savePath 开放协议保存文件路径
+	 * @return 错误码
+	 */
+	errno_t OpenLuaDownload(std::string fileName, std::string savePath);
+
+	/**
+	 * @brief 删除开放协议Lua文件
+	 * @param [in] fileName 要删除的开放协议lua文件名“CtrlDev_XXX.lua”
+	 * @return 错误码
+	 */
+	errno_t OpenLuaDelete(std::string fileName);
+
+	/**
+	 * @brief 删除所有开放协议Lua文件
+	 * @return 错误码
+	 */
+	errno_t AllOpenLuaDelete();
 
 	/**
 	* @brief 阻抗启停控制
@@ -4667,6 +4889,103 @@ public:
 	errno_t GetProgramRunErrCode(int& errLinNum, int& luaErrCode);
 
 	/**
+	* @brief 开启末端通用透传功能
+	* @param [in] 使能，0-关闭，1-开启
+	* @return  错误码
+	*/
+	errno_t SetAxleGenComEnable(int mode);
+
+	/**
+	* @brief 按长度获取周期数据
+	* @param [in] len，返回的长度
+	* @return  错误码
+	*/
+	errno_t GetAxleGenComCycleData(int len, int cycleData[130]);
+
+	/**
+	* @brief 末端发送非周期数据并等待应答
+	* @param [in] len_snd 发送的长度
+	* @param [in] sndBuff 发送数据
+	* @param [in] len_rcv 选择接受的长度
+	* @param [out] rcvBuff 应答的数据
+	* @return  错误码
+	*/
+	errno_t SndRcvAxleGenComCmdData(int lenSnd, int sndBuff[130], int lenRcv, int rcvData[130]);
+
+	/**
+	* @brief 设置端口通讯断开时停止机器人运行
+	* @param [in] pordID 端口编号 0-8080；1-8083；2-20002；3-20004
+	* @param [in] enable 0-关闭；1-开启
+	* @param [in] confirmTime 通讯中断确认时长(ms)[0-5000]
+	* @return  错误码
+	*/
+	errno_t SetRobotStopOnComDisc(int pordID, bool enable, int confirmTime);
+
+	/**
+	* @brief 获取端口通讯断开时停止机器人运行参数
+	* @param [in] pordID 端口编号 0-8080；1-8083；2-20002；3-20004
+	* @param [out] enable 0-关闭；1-开启
+	* @param [out] confirmTime 通讯中断确认时长(ms)[0-5000]
+	* @return  错误码
+	*/
+	errno_t GetRobotStopOnComDisc(int pordID, bool &enable, int &confirmTime);
+
+	/**
+	 * @brief UDP扩展轴定位完成时间设置
+	 * @param [in] time 定位完成时间[ms]
+	 * @return 错误码
+	 */
+	errno_t SetExAxisCmdDoneTime(double time);
+
+	/**
+	 * @brief UDP发送一帧指令
+	 * @param [in] frame 发送数据帧字符串如：/f/bIII20III303III7IIIMode(0)III/b/f
+	 * @return 错误码
+	 */
+	errno_t SendUDPFrame(std::string frame);
+
+	/**
+	 * @brief 设置SDK通过UDP发送指令的执行结果回调函数
+	 * @param [in] CallBack 回调函数；comType-指令结果通讯回复类型0-TCP，1-UDP；count-指令回复帧计数；cmdID-指令编号；contentLen-数据长度；content-数据内容
+	 * @return 错误码
+	 */
+	errno_t SetCmdRpyCallback(void (*CallBack)(int comType, int count, int cmdID, int contentLen, std::string content));
+
+	/**
+	 * @brief 设置安全速度参数
+	 * @param [in] enable 0-关；1-手动模式启用；2-所有模式启用
+	 * @param [in] maxTCPVel 限制最大TCP速度;[0-1000]mm/s
+	 * @param [in] strategy 超速后策略；0-停止报警；1-自动限速；2-停止报警并去使能
+	 * @return 错误码
+	 */
+	errno_t SetVelReducePara(int enable, double maxTCPVel, int strategy);
+
+	/**
+	 * @brief 定点摆动开始
+	 * @param [in] weaveNum 摆动编号[0-7]
+	 * @param [in] mode 0-工具坐标系；1-参考点
+	 * @param [in] refPoint 参考点笛卡尔坐标[x,y,z,a,b,c]
+	 * @param [in] weaveTime 摆动时间[s]
+	 * @return 错误码
+	 */
+	errno_t OriginPointWeaveStart(int weaveNum, int mode, DescPose refPoint, double weaveTime);
+
+	/**
+	 * @brief 定点摆动结束
+	 * @return 错误码
+	 */
+	errno_t OriginPointWeaveEnd();
+
+	/**
+	 * @brief 设置用户自定义机器人末端灯色
+	 * @param [in] r 末端红灯控制；0-灭；1-亮
+	 * @param [in] g 末端绿灯控制；0-灭；1-亮
+	 * @param [in] b 末端蓝灯控制；0-灭；1-亮
+	 * @return 错误码
+	 */
+	errno_t SetUserLEDColor(bool r, bool g, bool b);
+
+	/**
 	 *@brief  机器人接口类析构函数
 	 */
 	~FRRobot();
@@ -4733,11 +5052,13 @@ private:
 	double fileUploadPercent;
 	int robotProgramErrLinNum = 0;
 	int robotProgramErrCode = 0;
+	uint8_t cmdFrameCnt = 0;
 
 	char robot_ip[64];
 	std::shared_ptr<ROBOT_STATE_PKG> robot_state_pkg;
 	std::shared_ptr <FRTcpClient> rtClient;
 	std::shared_ptr <FRTcpClient> cmdClient;
+	std::shared_ptr <FRUdpClient> udpCmdClient;
 
 };
 
