@@ -570,6 +570,37 @@ public:
     std::string PhotoelectricSensorTCPCalibration(std::string para);
     std::string MoveStationary(std::string para);
     std::string GetProgramRunErrCode(std::string para);
+    std::string SetAxleGenComEnable(std::string para);
+    std::string GetAxleGenComCycleData(std::string para);
+    std::string SndRcvAxleGenComCmdData(std::string para);
+    std::string SetRobotStopOnComDisc(std::string para);
+    std::string GetRobotStopOnComDisc(std::string para);
+    std::string SetDIConfig(std::string para);
+    std::string GetDIConfig(std::string para);
+    std::string SetDOConfig(std::string para);
+    std::string GetDOConfig(std::string para);
+    std::string SetToolDIConfig(std::string para);
+    std::string GetToolDIConfig(std::string para);
+    std::string SetDIConfigLevel(std::string para);
+    std::string GetDIConfigLevel(std::string para);
+    std::string SetDOConfigLevel(std::string para);
+    std::string GetDOConfigLevel(std::string para);
+    std::string SetToolDIConfigLevel(std::string para);
+    std::string GetToolDIConfigLevel(std::string para);
+    std::string SetStandardDILevel(std::string para);
+    std::string GetStandardDILevel(std::string para);
+    std::string SetStandardDOLevel(std::string para);
+    std::string GetStandardDOLevel(std::string para);
+    std::string SetExAxisCmdDoneTime(std::string para);
+    std::string OpenLuaDownload(std::string para);
+    std::string SendUDPFrame(std::string para);
+    std::string SetVelReducePara(std::string para);
+    std::string OriginPointWeaveStart(std::string para);
+    std::string OriginPointWeaveEnd(std::string para);
+    std::string OpenLuaDelete(std::string para);
+    std::string AllOpenLuaDelete(std::string para);
+    std::string SetUserLEDColor(std::string para);
+    std::string MoveToTPDStart(std::string para);
 private:
 
     
@@ -1121,7 +1152,38 @@ private:
     {"TCPGetRecordFlangePos",&robot_command_thread::TCPGetRecordFlangePos},
     {"PhotoelectricSensorTCPCalibration",&robot_command_thread::PhotoelectricSensorTCPCalibration},
     {"MoveStationary",&robot_command_thread::MoveStationary},
-    {"GetProgramRunErrCode",&robot_command_thread::GetProgramRunErrCode}
+    {"GetProgramRunErrCode",&robot_command_thread::GetProgramRunErrCode},
+    {"SetAxleGenComEnable",&robot_command_thread::SetAxleGenComEnable},
+    {"GetAxleGenComCycleData",&robot_command_thread::GetAxleGenComCycleData},
+    {"SndRcvAxleGenComCmdData",&robot_command_thread::SndRcvAxleGenComCmdData},
+    {"SetRobotStopOnComDisc",&robot_command_thread::SetRobotStopOnComDisc},
+    {"GetRobotStopOnComDisc",&robot_command_thread::GetRobotStopOnComDisc},
+    {"SetDIConfig",&robot_command_thread::SetDIConfig},
+    {"GetDIConfig",&robot_command_thread::GetDIConfig},
+    {"SetDOConfig",&robot_command_thread::SetDOConfig},
+    {"GetDOConfig",&robot_command_thread::GetDOConfig},
+    {"SetToolDIConfig",&robot_command_thread::SetToolDIConfig},
+    {"GetToolDIConfig",&robot_command_thread::GetToolDIConfig},
+    {"SetDIConfigLevel",&robot_command_thread::SetDIConfigLevel},
+    {"GetDIConfigLevel",&robot_command_thread::GetDIConfigLevel},
+    {"SetDOConfigLevel",&robot_command_thread::SetDOConfigLevel},
+    {"GetDOConfigLevel",&robot_command_thread::GetDOConfigLevel},
+    {"SetToolDIConfigLevel",&robot_command_thread::SetToolDIConfigLevel},
+    {"GetToolDIConfigLevel",&robot_command_thread::GetToolDIConfigLevel},
+    {"SetStandardDILevel",&robot_command_thread::SetStandardDILevel},
+    {"GetStandardDILevel",&robot_command_thread::GetStandardDILevel},
+    {"SetStandardDOLevel",&robot_command_thread::SetStandardDOLevel},
+    {"GetStandardDOLevel",&robot_command_thread::GetStandardDOLevel},
+    {"SetExAxisCmdDoneTime",&robot_command_thread::SetExAxisCmdDoneTime},
+    {"OpenLuaDownload",&robot_command_thread::OpenLuaDownload},
+    {"SendUDPFrame",&robot_command_thread::SendUDPFrame},
+    {"SetVelReducePara",&robot_command_thread::SetVelReducePara},
+    {"OriginPointWeaveStart",&robot_command_thread::OriginPointWeaveStart},
+    {"OriginPointWeaveEnd",&robot_command_thread::OriginPointWeaveEnd},
+    {"OpenLuaDelete",&robot_command_thread::OpenLuaDelete},
+    {"AllOpenLuaDelete",&robot_command_thread::AllOpenLuaDelete},
+    {"SetUserLEDColor",&robot_command_thread::SetUserLEDColor},
+    {"MoveToTPDStart",&robot_command_thread::MoveToTPDStart}
     };
 };
 
