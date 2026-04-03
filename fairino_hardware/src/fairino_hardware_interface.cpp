@@ -61,6 +61,12 @@ hardware_interface::CallbackReturn FairinoHardwareInterface::on_init(const hardw
         // }
 
     }
+    if (info_.hardware_parameters.find("controller_ip") == info_.hardware_parameters.end()) {
+        RCLCPP_WARN(rclcpp::get_logger("FairinoHardwareInterface"),
+                    "Hardware parameter 'controller_ip' not found. Using default '%s'", DEFAULT_CONTROLLER_IP_ADDRESS);
+    } else {
+        _controller_ip = info_.hardware_parameters["controller_ip"];
+    }
     return hardware_interface::CallbackReturn::SUCCESS;
 }//end on_init
 
