@@ -10,6 +10,7 @@ find_package(ament_cmake REQUIRED)
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
+find_package(std_msgs REQUIRED)
 
 find_package(rosidl_default_generators REQUIRED)
 
@@ -17,6 +18,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
    "srv/RemoteCmdInterface.srv"
    "srv/RemoteScriptContent.srv"
    "msg/RobotNonrtState.msg"
+   DEPENDENCIES std_msgs  # 添加实际依赖
 )
 
 
