@@ -108,8 +108,8 @@
       damping="0"
       friction="0" />
     <safety_controller
-      soft_upper_limit="3.0543261"
-      soft_lower_limit="-3.0543261"
+      soft_upper_limit="3.0194"
+      soft_lower_limit="-3.0194"
       k_position="100.0"
       k_velocity="40.0" />
   </joint>
@@ -177,8 +177,8 @@
       damping="0"
       friction="0" />
     <safety_controller
-      soft_upper_limit="3.0543261"
-      soft_lower_limit="-3.0543261"
+      soft_upper_limit="1.4486"
+      soft_lower_limit="-4.5902"
       k_position="100.0"
       k_velocity="40.0" />
   </joint>
@@ -246,8 +246,8 @@
       damping="0"
       friction="0" />
     <safety_controller
-      soft_upper_limit="3.0543261"
-      soft_lower_limit="-3.0543261"
+      soft_upper_limit="2.7925"
+      soft_lower_limit="-2.7925"
       k_position="100.0"
       k_velocity="40.0" />
   </joint>
@@ -315,8 +315,8 @@
       damping="0"
       friction="0" />
     <safety_controller
-      soft_upper_limit="3.0543261"
-      soft_lower_limit="-3.0543261"
+      soft_upper_limit="1.4486"
+      soft_lower_limit="-4.5902"
       k_position="100.0"
       k_velocity="40.0" />
   </joint>
@@ -384,8 +384,8 @@
       damping="0"
       friction="0" />
     <safety_controller
-      soft_upper_limit="3.0543261"
-      soft_lower_limit="-3.0543261"
+      soft_upper_limit="3.0194"
+      soft_lower_limit="-3.0194"
       k_position="100.0"
       k_velocity="40.0" />
   </joint>
@@ -453,8 +453,8 @@
       damping="0"
       friction="0" />
     <safety_controller
-      soft_upper_limit="3.0543261"
-      soft_lower_limit="-3.0543261"
+      soft_upper_limit="3.0194"
+      soft_lower_limit="-3.0194"
       k_position="100.0"
       k_velocity="40.0" />
   </joint>

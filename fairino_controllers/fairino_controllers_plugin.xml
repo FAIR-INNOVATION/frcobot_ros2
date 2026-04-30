@@ -1,0 +1,10 @@
+<library path="fairino_controllers">
+  <class name="fairino_controllers/FreedriveModeController"
+         type="fairino_controllers::FreedriveModeController"
+         base_class_type="controller_interface::ControllerInterface">
+    <description>
+      Controller that drives Fairino robot into/out of freedrive (drag-teach) mode
+      via the freedrive command interfaces exported by FairinoHardwareInterface.
+    </description>
+  </class>
+</library>

@@ -10,6 +10,9 @@ controller_manager:
     joint_state_broadcaster:
       type: joint_state_broadcaster/JointStateBroadcaster
 
+    freedrive_mode_controller:
+      type: fairino_controllers/FreedriveModeController
+
 fairino20_controller:
   ros__parameters:
     joints:
@@ -23,3 +26,8 @@ fairino20_controller:
       - position
     state_interfaces:
       - position
+
+freedrive_mode_controller:
+  ros__parameters:
+    arm_controller_name: fairino20_controller
+    inactive_timeout: 30.0

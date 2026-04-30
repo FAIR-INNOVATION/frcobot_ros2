@@ -11,11 +11,12 @@
 
   <depend>rclcpp</depend>
   <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
   <depend>hardware_interface</depend>
   <depend>pluginlib</depend>
   <depend>rclcpp_lifecycle</depend>
   <depend>fairino_msgs</depend>
-
+  <depend>std_srvs</depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
   <test_depend>ament_add_gmock</test_depend>

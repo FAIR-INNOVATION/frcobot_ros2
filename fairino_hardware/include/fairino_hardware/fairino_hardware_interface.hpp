@@ -5,10 +5,13 @@
 #include "libfairino/include/robot.h"
 #include "rclcpp/macros.hpp"
 #include "rclcpp/rclcpp.hpp"
+#include "std_srvs/srv/trigger.hpp"
 #include "visibility_control.h"
+#include <atomic>
 #include <hardware_interface/hardware_info.hpp>
 #include <hardware_interface/system_interface.hpp>
 #include <hardware_interface/types/hardware_interface_return_values.hpp>
+#include <sensor_msgs/msg/joint_state.hpp>
 #include <vector>
 
 namespace fairino_hardware {
@@ -65,6 +68,25 @@ private:
   double _jnt_torque_state[6];
   int _control_mode;
   std::unique_ptr<FRRobot> _ptr_robot;
+
+  // Debug publisher: echoes the command sent to ServoJ each cycle
+  rclcpp::Node::SharedPtr _debug_node;
+  rclcpp::Publisher<sensor_msgs::msg::JointState>::SharedPtr _cmd_pub;
+  sensor_msgs::msg::JointState _cmd_msg;
+
+  // Freedrive command interfaces (backed by doubles, claimed by FreedriveModeController)
+  double _enable_cmd{0.0};
+  double _abort_cmd{0.0};
+  double _async_success{0.0};
+
+  // Internal state
+  bool _in_freedrive{false};
+
+  // Resend robot program — service on get_node(), flag bridging to write()
+  rclcpp::Service<std_srvs::srv::Trigger>::SharedPtr _resend_service;
+  std::atomic<bool> _resend_pending{false};
+  std::atomic<bool> _resend_done{false};
+  std::atomic<bool> _resend_success{false};
 };
 
 } // namespace fairino_hardware
