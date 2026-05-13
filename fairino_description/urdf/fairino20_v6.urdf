@@ -99,7 +99,7 @@
     <limit
       lower="-3.0543"
       upper="3.0543"
-      effort="150"
+      effort="1000"
       velocity="3.15" />
     <calibration
       rising="0"
@@ -168,7 +168,7 @@
     <limit
       lower="-4.6251"
       upper="1.4835"
-      effort="150"
+      effort="1000"
       velocity="3.15" />
     <calibration
       rising="0"
@@ -237,7 +237,7 @@
     <limit
       lower="-2.8274"
       upper="2.8274"
-      effort="150"
+      effort="1000"
       velocity="3.15" />
     <calibration
       rising="0"
@@ -306,7 +306,7 @@
     <limit
       lower="-4.6251"
       upper="1.4835"
-      effort="28"
+      effort="500"
       velocity="3.2" />
     <calibration
       rising="0"
@@ -375,7 +375,7 @@
     <limit
       lower="-3.0543"
       upper="3.0543"
-      effort="28"
+      effort="500"
       velocity="3.2" />
     <calibration
       rising="0"
@@ -444,7 +444,7 @@
     <limit
       lower="-3.0543"
       upper="3.0543"
-      effort="28"
+      effort="500"
       velocity="3.2" />
     <calibration
       rising="0"

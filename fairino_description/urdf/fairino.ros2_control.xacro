@@ -2,18 +2,23 @@
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
   <xacro:macro
     name="fairino_ros2_control"
-    params="name fairino_file use_fake_hardware:=false"
+    params="name fairino_file use_fake_hardware:=false use_gazebo:=false"
   >
     <xacro:property name="ip_address" value="${xacro.load_yaml(fairino_file)['ip_address']}" />
     <xacro:property name="initial_positions" value="${xacro.load_yaml(fairino_file)['initial_positions']}" />
     <ros2_control name="${name}" type="system">
       <hardware>
-        <xacro:if value="${use_fake_hardware}">
-          <plugin>mock_components/GenericSystem</plugin>
+        <xacro:if value="${use_gazebo}">
+          <plugin>gz_ros2_control/GazeboSimSystem</plugin>
         </xacro:if>
-        <xacro:unless value="${use_fake_hardware}">
-          <plugin>fairino_hardware/FairinoHardwareInterface</plugin>
-          <param name="ip_address">${ip_address}</param>
+        <xacro:unless value="${use_gazebo}">
+          <xacro:if value="${use_fake_hardware}">
+            <plugin>mock_components/GenericSystem</plugin>
+          </xacro:if>
+          <xacro:unless value="${use_fake_hardware}">
+            <plugin>fairino_hardware/FairinoHardwareInterface</plugin>
+            <param name="ip_address">${ip_address}</param>
+          </xacro:unless>
         </xacro:unless>
       </hardware>
       <joint name="j1">
