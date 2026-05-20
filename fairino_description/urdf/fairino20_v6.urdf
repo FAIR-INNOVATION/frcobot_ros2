@@ -105,7 +105,7 @@
       rising="0"
       falling="0" />
     <dynamics
-      damping="0"
+      damping="100"
       friction="0" />
     <safety_controller
       soft_upper_limit="3.0194"
@@ -174,7 +174,7 @@
       rising="0"
       falling="0" />
     <dynamics
-      damping="0"
+      damping="100"
       friction="0" />
     <safety_controller
       soft_upper_limit="1.4486"
@@ -243,7 +243,7 @@
       rising="0"
       falling="0" />
     <dynamics
-      damping="0"
+      damping="100"
       friction="0" />
     <safety_controller
       soft_upper_limit="2.7925"
@@ -312,7 +312,7 @@
       rising="0"
       falling="0" />
     <dynamics
-      damping="0"
+      damping="30"
       friction="0" />
     <safety_controller
       soft_upper_limit="1.4486"
@@ -381,7 +381,7 @@
       rising="0"
       falling="0" />
     <dynamics
-      damping="0"
+      damping="30"
       friction="0" />
     <safety_controller
       soft_upper_limit="3.0194"
@@ -450,7 +450,7 @@
       rising="0"
       falling="0" />
     <dynamics
-      damping="0"
+      damping="30"
       friction="0" />
     <safety_controller
       soft_upper_limit="3.0194"
