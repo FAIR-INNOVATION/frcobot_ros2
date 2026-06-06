@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="fairino10_v6_robot">
   <xacro:arg name="fairino_file" default="fairino.yaml" />
+  <xacro:arg name="hardware_mode" default="real" />
 
   <!-- Import fairino10_v6_robot urdf file -->
   <xacro:include filename="$(find fairino_description)/urdf/fairino10_v6.urdf" />
@@ -11,6 +12,6 @@
   <xacro:fairino_ros2_control
     name="fairino_ros2_control"
     fairino_file="$(arg fairino_file)"
-    use_fake_hardware="$(arg use_fake_hardware)"
+    hardware_mode="$(arg hardware_mode)"
   />
 </robot>
