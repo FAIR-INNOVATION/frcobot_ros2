@@ -222,6 +222,12 @@ hardware_interface::return_type FairinoHardwareInterface::write(const rclcpp::Ti
         }
         //RCLCPP_INFO(rclcpp::get_logger("FairinoHardwareInterface"), "ServoJ下发位置:%f,%f,%f,%f,%f,%f",\
             cmd.jPos[0],cmd.jPos[1],cmd.jPos[2],cmd.jPos[3],cmd.jPos[4],cmd.jPos[5]);
+        // cmdT (servo command period) must match the controller_manager update_rate.
+        // The FR5 SDK recommends cmdT in [0.001, 0.0016] s; outside that range the
+        // servo interpolator buffers commands and lurches. cmdT is 1.6 ms, so the
+        // controller_manager update_rate must be 625 Hz. NOTE: do not feed
+        // period.seconds() here - on the first control cycle it is 0, which the SDK
+        // rejects with error 14. If you change update_rate, update this to match.
         int returncode = _ptr_robot->ServoJ(&cmd,&extcmd,0,0,0.0016,0,0);
         // Halt the stream when the arm rejects ServoJ instead of hammering it.
         // A single stray rejection can be transient, but a SUSTAINED run of them
@@ -232,7 +238,7 @@ hardware_interface::return_type FairinoHardwareInterface::write(const rclcpp::Ti
         // which deactivates the controller and stops the stream cleanly (the move
         // aborts like a normal fault rather than storming).
         static int servoj_consecutive_errors = 0;
-        static constexpr int kServoJErrorHaltThreshold = 5;  // ~40 ms at 125 Hz / ~8 ms at 625 Hz
+        static constexpr int kServoJErrorHaltThreshold = 5;  // ~8 ms at 625 Hz
         if(returncode != 0){
             servoj_consecutive_errors++;
             RCLCPP_WARN(rclcpp::get_logger("FairinoHardwareInterface"),
