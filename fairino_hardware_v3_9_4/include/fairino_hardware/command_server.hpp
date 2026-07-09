@@ -255,7 +255,9 @@ public:
 private:
     std::unique_ptr<FRRobot> _ptr_robot;//机械臂SDK库指针
     ROBOT_STATE_PKG _robot_realtime_state;//从SDK获取的机械臂实时状态结构体
-    rclcpp::TimerBase::SharedPtr _locktimer;
+    rclcpp::Publisher<robot_feedback_msg>::SharedPtr _state_publisher;
+    rclcpp::TimerBase::SharedPtr _state_timer;
+    void _state_recv_callback();
 
     int lose_connect_times = 0;
     int _connect_retry_SDK = 5;
@@ -271,7 +273,6 @@ private:
     void _fillDescPose(std::list<std::string>& data,DescPose& pose);
     void _fillDescTran(std::list<std::string>& data,DescTran& trans);
     void _fillJointPose(std::list<std::string>& data,JointPos& pos);
-    void _getRobotRTState();
     //TODO 使用可变参数模板函数去填装SDK函数所需参数
     // template<typename T,typename ... Ts>
     // void _recurseVar(T& first_arg,Ts&... args);
