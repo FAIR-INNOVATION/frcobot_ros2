@@ -2,6 +2,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include "fairino_hardware/version_control.h"
+#include "fairino_hardware/global_val_def.hpp"
 #include "sys/mman.h"
 
 std::atomic_bool _reconnect_flag;
@@ -237,7 +238,9 @@ robot_command_thread::robot_command_thread(const std::string node_name):rclcpp::
         }
     }
 
-    _locktimer = this->create_wall_timer(1ms,std::bind(&robot_command_thread::_getRobotRTState,this));
+    _state_publisher = this->create_publisher<robot_feedback_msg>("nonrt_state_data", 1);
+    _state_timer = this->create_wall_timer(
+        50ms, std::bind(&robot_command_thread::_state_recv_callback, this));
     RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),msgout[msg_id(connect_success)]);
     /*********************************************************************************************/
 }
@@ -248,8 +251,13 @@ robot_command_thread::robot_command_thread(const std::string node_name):rclcpp::
  */
 robot_command_thread::~robot_command_thread()
 {
-    //_ptr_robot->CloseRPC();
-    _ptr_robot->~FRRobot();
+    if (_state_timer) {
+        _state_timer->cancel();
+    }
+    if (_ptr_robot) {
+        _ptr_robot->CloseRPC();
+        _ptr_robot.reset();
+    }
 }
 
 
@@ -375,11 +383,151 @@ void robot_command_thread::_fillJointPose(std::list<std::string>& data,JointPos&
     }
 }
 
-void robot_command_thread::_getRobotRTState(){
-    static ROBOT_STATE_PKG tmp;
-    _ptr_robot->GetRobotRealTimeState(&tmp);
-    mainerrcode = tmp.main_code;
-    suberrcode = tmp.sub_code;
+/**
+ * @brief 通过SDK获取机器人状态并发布到nonrt_state_data topic
+ */
+void robot_command_thread::_state_recv_callback(){
+    auto msg = robot_feedback_msg();
+    ROBOT_STATE_PKG ctrl_state{};
+    int res = _ptr_robot->GetRobotRealTimeState(&ctrl_state);
+    if (res == 0) {
+        mainerrcode = ctrl_state.main_code;
+        suberrcode = ctrl_state.sub_code;
+
+        msg.main_error_code = ctrl_state.main_code;
+        msg.sub_error_code = ctrl_state.sub_code;
+        msg.robot_motion_done = ctrl_state.motion_done;
+        msg.robot_mode = ctrl_state.robot_mode;
+        msg.emg = ctrl_state.EmergencyStop;
+        msg.grip_motion_done = ctrl_state.gripper_motiondone;
+
+        msg.j1_cur_pos = ctrl_state.jt_cur_pos[0];
+        msg.j2_cur_pos = ctrl_state.jt_cur_pos[1];
+        msg.j3_cur_pos = ctrl_state.jt_cur_pos[2];
+        msg.j4_cur_pos = ctrl_state.jt_cur_pos[3];
+        msg.j5_cur_pos = ctrl_state.jt_cur_pos[4];
+        msg.j6_cur_pos = ctrl_state.jt_cur_pos[5];
+
+        msg.j1_cur_tor = ctrl_state.jt_cur_tor[0];
+        msg.j2_cur_tor = ctrl_state.jt_cur_tor[1];
+        msg.j3_cur_tor = ctrl_state.jt_cur_tor[2];
+        msg.j4_cur_tor = ctrl_state.jt_cur_tor[3];
+        msg.j5_cur_tor = ctrl_state.jt_cur_tor[4];
+        msg.j6_cur_tor = ctrl_state.jt_cur_tor[5];
+
+        msg.cart_x_cur_pos = ctrl_state.tl_cur_pos[0];
+        msg.cart_y_cur_pos = ctrl_state.tl_cur_pos[1];
+        msg.cart_z_cur_pos = ctrl_state.tl_cur_pos[2];
+        msg.cart_a_cur_pos = ctrl_state.tl_cur_pos[3];
+        msg.cart_b_cur_pos = ctrl_state.tl_cur_pos[4];
+        msg.cart_c_cur_pos = ctrl_state.tl_cur_pos[5];
+
+        msg.flange_x_cur_pos = ctrl_state.flange_cur_pos[0];
+        msg.flange_y_cur_pos = ctrl_state.flange_cur_pos[1];
+        msg.flange_z_cur_pos = ctrl_state.flange_cur_pos[2];
+        msg.flange_a_cur_pos = ctrl_state.flange_cur_pos[3];
+        msg.flange_b_cur_pos = ctrl_state.flange_cur_pos[4];
+        msg.flange_c_cur_pos = ctrl_state.flange_cur_pos[5];
+
+        msg.tool_num = ctrl_state.tool;
+        msg.work_num = ctrl_state.user;
+        msg.prg_state = ctrl_state.program_state;
+        msg.endluaerrcode = ctrl_state.endLuaErrCode;
+        msg.collision_err = ctrl_state.collisionState;
+
+        msg.exaxispos1 = ctrl_state.extAxisStatus[0].pos;
+        msg.exaxistatus1[0] = ctrl_state.extAxisStatus[0].errorCode;
+        msg.exaxistatus1[1] = ctrl_state.extAxisStatus[0].ready;
+        msg.exaxistatus1[2] = ctrl_state.extAxisStatus[0].inPos;
+        msg.exaxistatus1[3] = ctrl_state.extAxisStatus[0].alarm;
+        msg.exaxistatus1[4] = ctrl_state.extAxisStatus[0].flerr;
+        msg.exaxistatus1[5] = ctrl_state.extAxisStatus[0].nlimit;
+        msg.exaxistatus1[6] = ctrl_state.extAxisStatus[0].pLimit;
+        msg.exaxistatus1[7] = ctrl_state.extAxisStatus[0].mdbsOffLine;
+        msg.exaxistatus1[8] = ctrl_state.extAxisStatus[0].mdbsTimeout;
+        msg.exaxistatus1[9] = ctrl_state.extAxisStatus[0].homingStatus;
+
+        msg.exaxispos2 = ctrl_state.extAxisStatus[1].pos;
+        msg.exaxistatus2[0] = ctrl_state.extAxisStatus[1].errorCode;
+        msg.exaxistatus2[1] = ctrl_state.extAxisStatus[1].ready;
+        msg.exaxistatus2[2] = ctrl_state.extAxisStatus[1].inPos;
+        msg.exaxistatus2[3] = ctrl_state.extAxisStatus[1].alarm;
+        msg.exaxistatus2[4] = ctrl_state.extAxisStatus[1].flerr;
+        msg.exaxistatus2[5] = ctrl_state.extAxisStatus[1].nlimit;
+        msg.exaxistatus2[6] = ctrl_state.extAxisStatus[1].pLimit;
+        msg.exaxistatus2[7] = ctrl_state.extAxisStatus[1].mdbsOffLine;
+        msg.exaxistatus2[8] = ctrl_state.extAxisStatus[1].mdbsTimeout;
+        msg.exaxistatus2[9] = ctrl_state.extAxisStatus[1].homingStatus;
+
+        msg.exaxispos3 = ctrl_state.extAxisStatus[2].pos;
+        msg.exaxistatus3[0] = ctrl_state.extAxisStatus[2].errorCode;
+        msg.exaxistatus3[1] = ctrl_state.extAxisStatus[2].ready;
+        msg.exaxistatus3[2] = ctrl_state.extAxisStatus[2].inPos;
+        msg.exaxistatus3[3] = ctrl_state.extAxisStatus[2].alarm;
+        msg.exaxistatus3[4] = ctrl_state.extAxisStatus[2].flerr;
+        msg.exaxistatus3[5] = ctrl_state.extAxisStatus[2].nlimit;
+        msg.exaxistatus3[6] = ctrl_state.extAxisStatus[2].pLimit;
+        msg.exaxistatus3[7] = ctrl_state.extAxisStatus[2].mdbsOffLine;
+        msg.exaxistatus3[8] = ctrl_state.extAxisStatus[2].mdbsTimeout;
+        msg.exaxistatus3[9] = ctrl_state.extAxisStatus[2].homingStatus;
+
+        msg.exaxispos4 = ctrl_state.extAxisStatus[3].pos;
+        msg.exaxistatus4[0] = ctrl_state.extAxisStatus[3].errorCode;
+        msg.exaxistatus4[1] = ctrl_state.extAxisStatus[3].ready;
+        msg.exaxistatus4[2] = ctrl_state.extAxisStatus[3].inPos;
+        msg.exaxistatus4[3] = ctrl_state.extAxisStatus[3].alarm;
+        msg.exaxistatus4[4] = ctrl_state.extAxisStatus[3].flerr;
+        msg.exaxistatus4[5] = ctrl_state.extAxisStatus[3].nlimit;
+        msg.exaxistatus4[6] = ctrl_state.extAxisStatus[3].pLimit;
+        msg.exaxistatus4[7] = ctrl_state.extAxisStatus[3].mdbsOffLine;
+        msg.exaxistatus4[8] = ctrl_state.extAxisStatus[3].mdbsTimeout;
+        msg.exaxistatus4[9] = ctrl_state.extAxisStatus[3].homingStatus;
+
+        msg.dgt_output_h = ctrl_state.cl_dgt_output_h;
+        msg.dgt_output_l = ctrl_state.cl_dgt_output_l;
+        msg.tl_dgt_output_l = ctrl_state.tl_dgt_output_l;
+        msg.dgt_input_h = ctrl_state.cl_dgt_input_h;
+        msg.dgt_input_l = ctrl_state.cl_dgt_input_l;
+        msg.tl_dgt_input_l = ctrl_state.tl_dgt_input_l;
+
+        msg.ft_fx_data = ctrl_state.ft_sensor_data[0];
+        msg.ft_fy_data = ctrl_state.ft_sensor_data[1];
+        msg.ft_fz_data = ctrl_state.ft_sensor_data[2];
+        msg.ft_tx_data = ctrl_state.ft_sensor_data[3];
+        msg.ft_ty_data = ctrl_state.ft_sensor_data[4];
+        msg.ft_tz_data = ctrl_state.ft_sensor_data[5];
+        msg.ft_actstatus = ctrl_state.ft_sensor_active;
+
+        msg.weldbreakoffstate = ctrl_state.weldingBreakOffState.breakOffState;
+        msg.weldarcstate = ctrl_state.weldingBreakOffState.weldArcState;
+
+        msg.auxservoservoid = ctrl_state.aux_state.servoId;
+        msg.auxservoerrcode = ctrl_state.aux_state.servoErrCode;
+        msg.auxservostate = ctrl_state.aux_state.servoState;
+        msg.auxservoactualpos = ctrl_state.aux_state.servoPos;
+        msg.auxservoctualspeed = ctrl_state.aux_state.servoVel;
+        msg.auxservoactualtorque = ctrl_state.aux_state.servoTorque;
+
+        for (int i = 0; i < 8; i++) {
+            msg.extpioinput[i] = ctrl_state.extDIState[i];
+            msg.extpiooutput[i] = ctrl_state.extDOState[i];
+        }
+        for (int i = 0; i < 4; i++) {
+            msg.extadcinput[i] = ctrl_state.extAIState[i];
+            msg.extadcoutput[i] = ctrl_state.extAOState[i];
+            global_exaxis_pos()[i] = ctrl_state.extAxisStatus[i].pos;
+        }
+
+        msg.version = "V" + std::to_string(VERSION_MSG_MARJOR) + "." +
+            std::to_string(VERSION_MSG_MINOR) + std::to_string(VERSION_MSG_MINOR2);
+        msg.timestamp = RCL_NS_TO_S(rclcpp::Clock().now().nanoseconds());
+        msg.reconnect_flag = 0;
+    } else {
+        RCLCPP_WARN(rclcpp::get_logger(LOGGER_NAME),
+            "SDK state feedback error: error_code=%d", res);
+        msg.reconnect_flag = 1;
+    }
+    _state_publisher->publish(msg);
 }
 
 
@@ -3981,26 +4129,25 @@ void robot_recv_thread::_try_to_reconnect(){
     };
 
     _reconnect_thread = std::thread(_reconnect_func);
-    _reconnect_thread.detach();
 }
 
 /**
  * @brief 状态监控节点类的析构函数
  */
 robot_recv_thread::~robot_recv_thread(){
-    //关闭并销毁socket
-    if(_socketfd1 != -1){
-        shutdown(_socketfd1,SHUT_RDWR);
-        close(_socketfd1);
-    }
-
     _robot_recv_exit = 1;
-    if(_reconnect_thread.joinable()){
+    if (_locktimer) {
+        _locktimer->cancel();
+    }
+    if (_reconnect_thread.joinable()) {
         _reconnect_thread.join();
         RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),msgout[msg_id(keep_alive_exit)]);
     }
-    
-
+    if (_socketfd1 != -1) {
+        shutdown(_socketfd1, SHUT_RDWR);
+        close(_socketfd1);
+        _socketfd1 = -1;
+    }
 }
 
 /**
@@ -4040,8 +4187,6 @@ int robot_recv_thread::setKeepAlive(int fd, int idle_time, int interval_time, in
  
     return 0;
 }
-
-#include "fairino_hardware/global_val_def.hpp"
 
 /**
  * @brief 8081反馈数据端口topic监听回调函数
