@@ -4188,8 +4188,6 @@ int robot_recv_thread::setKeepAlive(int fd, int idle_time, int interval_time, in
     return 0;
 }
 
-#include "fairino_hardware/global_val_def.hpp"
-
 /**
  * @brief 8081反馈数据端口topic监听回调函数
 */
