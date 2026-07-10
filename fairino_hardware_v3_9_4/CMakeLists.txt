@@ -100,24 +100,25 @@ install(TARGETS fairino_hardware
   LIBRARY DESTINATION lib/${PROJECT_NAME}
 )
 
-#copy fairino SDK lib file to specfic path
-file(MAKE_DIRECTORY 
-"${CMAKE_INSTALL_PREFIX}/lib/${PROJECT_NAME}"
+# Install vendor SDK next to ros2_cmd_server and fairino_hardware ($ORIGIN)
+install(FILES
+  libfairino/lib/libfairino.so.2.3.4
+  DESTINATION lib/${PROJECT_NAME}
 )
-
-file(COPY_FILE "libfairino/lib/libfairino.so.2.3.4" 
-"${CMAKE_INSTALL_PREFIX}/lib/libfairino.so.2.3.4" 
-)
-
-# file(CREATE_LINK 
-# "${CMAKE_INSTALL_PREFIX}/lib/libfairino.so.2.3.0" 
-# "${CMAKE_INSTALL_PREFIX}/lib/libfairino.so.2" 
-# SYMBOLIC)
-
-# file(CREATE_LINK 
-# "${CMAKE_INSTALL_PREFIX}/lib/libfairino.so.2" 
-# "${CMAKE_INSTALL_PREFIX}/lib/libfairino.so" 
-# SYMBOLIC)
+install(CODE "
+  execute_process(
+    COMMAND ${CMAKE_COMMAND} -E create_symlink
+      libfairino.so.2.3.4
+      libfairino.so.2
+    WORKING_DIRECTORY \"\${CMAKE_INSTALL_PREFIX}/lib/${PROJECT_NAME}\"
+  )
+  execute_process(
+    COMMAND ${CMAKE_COMMAND} -E create_symlink
+      libfairino.so.2
+      libfairino.so
+    WORKING_DIRECTORY \"\${CMAKE_INSTALL_PREFIX}/lib/${PROJECT_NAME}\"
+  )
+")
 
 
 if(BUILD_TESTING)
