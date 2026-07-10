@@ -1884,8 +1884,45 @@ std::string robot_command_thread::Circle(std::string para){
 }
 
 /**
+ * @brief 伺服运动开始，配合ServoJ、ServoCart指令使用
+ * @param [in] para-可选comType，0-xmlrpc，1-UDP(20007端口)，默认0
+ * @return 指令执行是否成功
+ * @retval 0-成功，其他-错误码
+ */
+std::string robot_command_thread::ServoMoveStart(std::string para){
+    int comType = 0;
+    if(!para.empty()){
+        comType = std::stoi(para);
+    }
+    errno_t result = _ptr_robot->ServoMoveStart(comType);
+    if(result == 0){
+        _servo_move_active = true;
+        _servo_com_type = comType;
+    }
+    return std::to_string(result);
+}
+
+/**
+ * @brief 伺服运动结束，配合ServoJ、ServoCart指令使用
+ * @param [in] para-可选comType，0-xmlrpc，1-UDP(20007端口)，默认0
+ * @return 指令执行是否成功
+ * @retval 0-成功，其他-错误码
+ */
+std::string robot_command_thread::ServoMoveEnd(std::string para){
+    int comType = 0;
+    if(!para.empty()){
+        comType = std::stoi(para);
+    }
+    errno_t result = _ptr_robot->ServoMoveEnd(comType);
+    if(result == 0){
+        _servo_move_active = false;
+    }
+    return std::to_string(result);
+}
+
+/**
  * @brief 机械臂关节伺服指令，该指令对于实时性要求较高
- * @param [in] jntpos-六个关节的位置指令，单位为度，eaxispos-4个外部轴位置指令，单位为度，deltaT-指令时间间隔，范围0.001~0.0016
+ * @param [in] jntpos-六个关节的位置指令，单位为度，eaxispos-4个外部轴位置指令，单位为度，deltaT-指令时间间隔(秒)，可选comType-0-xmlrpc，1-UDP
  * @return 指令执行是否成功
  * @retval 0-成功，其他-错误码 
  */
@@ -1902,8 +1939,15 @@ std::string robot_command_thread::ServoJ(std::string para){
     eaxispos.ePos[2] = std::stod(datalist.front().c_str());datalist.pop_front();
     eaxispos.ePos[3] = std::stod(datalist.front().c_str());datalist.pop_front();
 
-    int deltaT = std::stod(datalist.front().c_str());
-    return std::to_string(_ptr_robot->ServoJ(&jpos,&eaxispos,0,0,deltaT,0,0));
+    float deltaT = static_cast<float>(std::stod(datalist.front().c_str()));
+    datalist.pop_front();
+
+    int comType = _servo_move_active ? _servo_com_type : 0;
+    if(!datalist.empty()){
+        comType = std::stoi(datalist.front().c_str());
+    }
+
+    return std::to_string(_ptr_robot->ServoJ(&jpos,&eaxispos,0,0,deltaT,0,0,0,comType));
 }
 
 
@@ -2083,7 +2127,12 @@ std::string robot_command_thread::NewSplineEnd(std::string para){
 std::string robot_command_thread::StopMotion(std::string para){
     //empty para
     para.clear();
-    return std::to_string(_ptr_robot->StopMotion());
+    errno_t result = _ptr_robot->StopMotion();
+    if(_servo_move_active){
+        _ptr_robot->ServoMoveEnd(_servo_com_type);
+        _servo_move_active = false;
+    }
+    return std::to_string(result);
 }
 
 /**

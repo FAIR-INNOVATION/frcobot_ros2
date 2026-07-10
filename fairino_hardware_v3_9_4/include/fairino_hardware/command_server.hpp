@@ -118,6 +118,8 @@ public:
     std::string MoveL(std::string para);
     std::string MoveC(std::string para);
     std::string Circle(std::string para);
+    std::string ServoMoveStart(std::string para);
+    std::string ServoMoveEnd(std::string para);
     std::string ServoJ(std::string para);
     std::string SplineStart(std::string para);
     std::string SplinePTP(std::string para);
@@ -290,6 +292,8 @@ private:
     std::vector<JointPos> _cmd_jnt_pos_list;//存储关节数据点
     std::vector<DescPose> _cmd_cart_pos_list;//存储笛卡尔数据点
     std::string _controller_ip;
+    bool _servo_move_active = false;
+    int _servo_com_type = 0;
     const std::map<std::string,std::string(robot_command_thread::*)(std::string)> _fr_function_list{
     {"JNTPoint",&robot_command_thread::defJntPosition},
     {"CARTPoint",&robot_command_thread::defCartPosition},
@@ -357,6 +361,8 @@ private:
     {"MoveL",&robot_command_thread::MoveL},
     {"MoveC",&robot_command_thread::MoveC},
     {"Circle",&robot_command_thread::Circle},
+    {"ServoMoveStart",&robot_command_thread::ServoMoveStart},
+    {"ServoMoveEnd",&robot_command_thread::ServoMoveEnd},
     {"ServoJ",&robot_command_thread::ServoJ},
     {"SplineStart",&robot_command_thread::SplineStart},
     {"SplinePTP",&robot_command_thread::SplinePTP},
