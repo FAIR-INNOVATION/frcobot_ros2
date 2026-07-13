@@ -458,56 +458,33 @@
       k_position="0"
       k_velocity="0" />
   </joint>
-  <!-- <link
-    name="tool_Link">
+  <link
+    name="flange_Link">
     <inertial>
       <origin
-        xyz="0.42882 0.086294 -0.13853"
+        xyz="0 0 0"
         rpy="0 0 0" />
       <mass
-        value="23.974" />
+        value="0.001" />
       <inertia
-        ixx="0.13389"
-        ixy="-0.023701"
-        ixz="-0.015343"
-        iyy="2.4117"
-        iyz="0.0016672"
-        izz="2.3665" />
+        ixx="0.000001"
+        ixy="0"
+        ixz="0"
+        iyy="0.000001"
+        iyz="0"
+        izz="0.000001" />
     </inertial>
-    <visual>
-      <origin
-        xyz="0 0 0"
-        rpy="0 0 0" />
-      <geometry>
-        <mesh
-          filename="../meshes/FR3WML/visual/tool_Link.STL" />
-      </geometry>
-      <material
-        name="">
-        <color
-          rgba="1 1 1 1" />
-      </material>
-    </visual>
-    <collision>
-      <origin
-        xyz="0 0 0"
-        rpy="0 0 0" />
-      <geometry>
-        <mesh
-          filename="../meshes/FR3WML/collision/tool_Link.STL" />
-      </geometry>
-    </collision>
-  </link> -->
+  </link>
   <joint
-    name="tool"
+    name="flange"
     type="fixed">
     <origin
-      xyz="0 -0.00038104 0.1"
+      xyz="0 0 0.1"
       rpy="0 0 0" />
     <parent
       link="wrist3_Link" />
     <child
-      link="tool_Link" />
+      link="flange_Link" />
     <axis
       xyz="0 0 0" />
     <limit
