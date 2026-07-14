@@ -89,19 +89,10 @@ uint8[8] slavecomerror
 uint8 cmdpointerror
 uint8 ioerror
 uint8 grippererro
-# Bus gripper feedback (SDK ROBOT_STATE_PKG / _CTRL_STATE.gripper_status)
+# Bus gripper feedback (SDK ROBOT_STATE_PKG / _CTRL_STATE)
 uint8 gripper_position        # position 0-100% (SDK gripper_position / gripper_status.curPos)
-uint16 gripper_active         # activation status (SDK gripper_active / gripperActStatus)
+uint16 gripper_active         # activation bitfield (SDK gripper_active / gripperActStatus)
 uint8 gripper_fault_id        # faulting gripper index (SDK gripper_fault_id / gripperFaultId)
-int8 gripper_speed            # speed (SDK gripper_speed / gripper_status.curSpd)
-int8 gripper_current          # current (SDK gripper_current; not in 8081 _CTRL_STATE)
-int32 gripper_temp            # temperature (SDK gripper_temp; not in 8081 _CTRL_STATE)
-int32 gripper_voltage         # voltage (SDK gripper_voltage; not in 8081 _CTRL_STATE)
-uint8 gripper_id              # gripper index (8081 gripper_status.gripID only)
-uint8 gripper_type            # 0-parallel, 1-rotation (8081 gripper_status.gripType only)
-float32 gripper_rot_num       # rotation turns (SDK gripperRotNum / gripper_status.curRotNum)
-uint8 gripper_rot_speed       # rotation speed % (SDK gripperRotSpeed / gripper_status.curRotSpd)
-uint8 gripper_rot_torque      # rotation torque % (SDK gripperRotTorque / gripper_status.curRotTor)
 uint8 fileerror
 uint8 paraerror
 uint8 exaxis_out_slimit_error
