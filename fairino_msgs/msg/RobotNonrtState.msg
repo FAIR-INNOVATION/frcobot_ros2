@@ -89,6 +89,10 @@ uint8[8] slavecomerror
 uint8 cmdpointerror
 uint8 ioerror
 uint8 grippererro
+# Bus gripper feedback (SDK ROBOT_STATE_PKG / _CTRL_STATE)
+uint8 gripper_position        # position 0-100% (SDK gripper_position / gripper_status.curPos)
+uint16 gripper_active         # activation bitfield (SDK gripper_active / gripperActStatus)
+uint8 gripper_fault_id        # faulting gripper index (SDK gripper_fault_id / gripperFaultId)
 uint8 fileerror
 uint8 paraerror
 uint8 exaxis_out_slimit_error
