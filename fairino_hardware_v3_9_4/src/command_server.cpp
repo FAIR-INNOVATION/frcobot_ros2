@@ -400,6 +400,17 @@ void robot_command_thread::_state_recv_callback(){
         msg.robot_mode = ctrl_state.robot_mode;
         msg.emg = ctrl_state.EmergencyStop;
         msg.grip_motion_done = ctrl_state.gripper_motiondone;
+        msg.gripper_position = ctrl_state.gripper_position;
+        msg.gripper_active = ctrl_state.gripper_active;
+        msg.gripper_fault_id = ctrl_state.gripper_fault_id;
+        msg.gripperfaultnum = ctrl_state.gripper_fault;
+        msg.gripper_speed = ctrl_state.gripper_speed;
+        msg.gripper_current = ctrl_state.gripper_current;
+        msg.gripper_temp = ctrl_state.gripper_temp;
+        msg.gripper_voltage = ctrl_state.gripper_voltage;
+        msg.gripper_rot_num = ctrl_state.gripperRotNum;
+        msg.gripper_rot_speed = ctrl_state.gripperRotSpeed;
+        msg.gripper_rot_torque = ctrl_state.gripperRotTorque;
 
         msg.j1_cur_pos = ctrl_state.jt_cur_pos[0];
         msg.j2_cur_pos = ctrl_state.jt_cur_pos[1];
@@ -4556,6 +4567,15 @@ void robot_recv_thread::_state_recv_callback(){
         msg.udpcmdstate = ctrl_state.UDPCmdState;
         msg.aliveslavenumerror = ctrl_state.aliveSlaveNumError;
         msg.gripperfaultnum = ctrl_state.gripperFaultNum;
+        msg.gripper_position = ctrl_state.gripper_status.curPos;
+        msg.gripper_active = ctrl_state.gripperActStatus;
+        msg.gripper_fault_id = ctrl_state.gripperFaultId;
+        msg.gripper_speed = static_cast<int8_t>(ctrl_state.gripper_status.curSpd);
+        msg.gripper_id = ctrl_state.gripper_status.gripID;
+        msg.gripper_type = ctrl_state.gripper_status.gripType;
+        msg.gripper_rot_num = ctrl_state.gripper_status.curRotNum;
+        msg.gripper_rot_speed = ctrl_state.gripper_status.curRotSpd;
+        msg.gripper_rot_torque = ctrl_state.gripper_status.curRotTor;
         for(int i=0;i<8;i++){
             msg.slavecomerror[i] = ctrl_state.slaveComError[i];
         }
