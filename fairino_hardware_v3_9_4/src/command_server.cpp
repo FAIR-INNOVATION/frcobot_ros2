@@ -4,10 +4,59 @@
 #include "fairino_hardware/version_control.h"
 #include "fairino_hardware/global_val_def.hpp"
 #include "sys/mman.h"
+#include <array>
+#include <unordered_set>
 
 std::atomic_bool _reconnect_flag;
 std::atomic<int> mainerrcode;
 std::atomic<int> suberrcode;
+
+class FairinoServoJRobot : public fairino_hardware::ServoJRobot
+{
+public:
+    FairinoServoJRobot(FRRobot & robot, std::mutex & sdk_mutex)
+      : robot_(robot), sdk_mutex_(sdk_mutex) {}
+
+    int servo_move_start(int communication_type) override
+    {
+        std::lock_guard<std::mutex> lock(sdk_mutex_);
+        return robot_.ServoMoveStart(communication_type);
+    }
+
+    int servo_j(
+      const std::array<double, 6> & joints_deg, float period_sec, int command_id,
+      int communication_type) override
+    {
+        JointPos joints;
+        for (size_t index = 0; index < joints_deg.size(); ++index) {
+            joints.jPos[index] = joints_deg[index];
+        }
+        ExaxisPos external_axes;
+        for (double & position : external_axes.ePos) {
+            position = 0.0;
+        }
+        std::lock_guard<std::mutex> lock(sdk_mutex_);
+        return robot_.ServoJ(
+          &joints, &external_axes, 0.0F, 0.0F, period_sec, 0.0F, 0.0F, command_id,
+          communication_type);
+    }
+
+    int stop_motion() override
+    {
+        std::lock_guard<std::mutex> lock(sdk_mutex_);
+        return robot_.StopMotion();
+    }
+
+    int servo_move_end(int communication_type) override
+    {
+        std::lock_guard<std::mutex> lock(sdk_mutex_);
+        return robot_.ServoMoveEnd(communication_type);
+    }
+
+private:
+    FRRobot & robot_;
+    std::mutex & sdk_mutex_;
+};
 
 #define LOGGER_NAME "fairino_ros2_command_server"
 
@@ -194,15 +243,29 @@ robot_command_thread::robot_command_thread(const std::string node_name):rclcpp::
     this->declare_parameter<float>("Spline_acc",0);
     this->declare_parameter<float>("Spline_ovl",100);
     this->declare_parameter<float>("NewSpline_blendR",10);
+    this->declare_parameter<double>("servo_j.minimum_period_sec", 0.001);
+    this->declare_parameter<double>("servo_j.maximum_period_sec", 0.016);
+    this->declare_parameter<double>("servo_j.maximum_joint_step_deg", 1.0);
+    this->declare_parameter<double>("servo_j.deadline_tolerance_sec", 0.00025);
+    this->declare_parameter<double>("servo_j.maximum_lateness_sec", 0.0);
+    this->declare_parameter<double>("servo_j.feedback_period_sec", 0.05);
     /*********************************************************************************************/
 
     /***********************************创建字符串指令服务器*****************************************/
+    _command_callback_group = this->create_callback_group(
+        rclcpp::CallbackGroupType::MutuallyExclusive);
+    _state_callback_group = this->create_callback_group(
+        rclcpp::CallbackGroupType::MutuallyExclusive);
+    _action_callback_group = this->create_callback_group(
+        rclcpp::CallbackGroupType::Reentrant);
     _recv_ros_command_server = this->create_service<remote_cmd_server_srv_msg>(
         REMOTE_CMD_SERVER_NAME,
         std::bind(&robot_command_thread::_parseROSCommandData_callback,\
             this,\
             std::placeholders::_1,\
-            std::placeholders::_2)
+            std::placeholders::_2),
+        rmw_qos_profile_services_default,
+        _command_callback_group
         );
     /*********************************************************************************************/
 
@@ -238,9 +301,38 @@ robot_command_thread::robot_command_thread(const std::string node_name):rclcpp::
         }
     }
 
+    fairino_hardware::ServoJStreamerConfig stream_config;
+    stream_config.minimum_period_sec = this->get_parameter("servo_j.minimum_period_sec").as_double();
+    stream_config.maximum_period_sec = this->get_parameter("servo_j.maximum_period_sec").as_double();
+    stream_config.maximum_joint_step_deg =
+        this->get_parameter("servo_j.maximum_joint_step_deg").as_double();
+    stream_config.deadline_tolerance_sec =
+        this->get_parameter("servo_j.deadline_tolerance_sec").as_double();
+    stream_config.maximum_lateness_sec =
+        this->get_parameter("servo_j.maximum_lateness_sec").as_double();
+    stream_config.feedback_period_sec =
+        this->get_parameter("servo_j.feedback_period_sec").as_double();
+    _servo_j_robot = std::make_unique<FairinoServoJRobot>(*_ptr_robot, _sdk_mutex);
+    _servo_j_streamer = std::make_unique<fairino_hardware::ServoJStreamer>(
+        *_servo_j_robot, _monotonic_clock, stream_config);
+
+    _stream_servo_j_server = rclcpp_action::create_server<stream_servo_j_action>(
+        this,
+        STREAM_SERVO_J_ACTION_NAME,
+        std::bind(
+          &robot_command_thread::_handle_stream_goal, this, std::placeholders::_1,
+          std::placeholders::_2),
+        std::bind(
+          &robot_command_thread::_handle_stream_cancel, this, std::placeholders::_1),
+        std::bind(
+          &robot_command_thread::_handle_stream_accepted, this, std::placeholders::_1),
+        rcl_action_server_get_default_options(),
+        _action_callback_group);
+
     _state_publisher = this->create_publisher<robot_feedback_msg>("nonrt_state_data", 1);
     _state_timer = this->create_wall_timer(
-        50ms, std::bind(&robot_command_thread::_state_recv_callback, this));
+        50ms, std::bind(&robot_command_thread::_state_recv_callback, this),
+        _state_callback_group);
     RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),msgout[msg_id(connect_success)]);
     /*********************************************************************************************/
 }
@@ -254,10 +346,137 @@ robot_command_thread::~robot_command_thread()
     if (_state_timer) {
         _state_timer->cancel();
     }
+    if (_servo_j_streamer && _servo_j_streamer->active()) {
+        _servo_j_streamer->cancel_and_stop();
+    }
+    if (_stream_worker.joinable()) {
+        _stream_worker.join();
+    }
     if (_ptr_robot) {
+        std::lock_guard<std::mutex> lock(_sdk_mutex);
         _ptr_robot->CloseRPC();
         _ptr_robot.reset();
     }
+}
+
+fairino_hardware::ServoJStreamRequest robot_command_thread::_make_stream_request(
+        const stream_servo_j_action::Goal & goal) const
+{
+    fairino_hardware::ServoJStreamRequest request;
+    request.joints_deg = goal.joints_deg;
+    request.period_sec = goal.period_sec;
+    request.communication_type = goal.communication_type;
+    return request;
+}
+
+rclcpp_action::GoalResponse robot_command_thread::_handle_stream_goal(
+        const rclcpp_action::GoalUUID & uuid,
+        std::shared_ptr<const stream_servo_j_action::Goal> goal)
+{
+    (void)uuid;
+    std::lock_guard<std::mutex> motion_lock(_motion_mutex);
+    std::string reason;
+    if (_servo_move_active) {
+        RCLCPP_WARN(get_logger(), "Rejecting StreamServoJ goal: a legacy ServoJ session is active");
+        return rclcpp_action::GoalResponse::REJECT;
+    }
+    if (!_servo_j_streamer->reserve(_make_stream_request(*goal), reason)) {
+        RCLCPP_WARN(get_logger(), "Rejecting StreamServoJ goal: %s", reason.c_str());
+        return rclcpp_action::GoalResponse::REJECT;
+    }
+    return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
+}
+
+rclcpp_action::CancelResponse robot_command_thread::_handle_stream_cancel(
+        const std::shared_ptr<stream_servo_j_goal_handle> goal_handle)
+{
+    {
+        std::lock_guard<std::mutex> goal_lock(_stream_goal_mutex);
+        const auto active_goal = _active_stream_goal.lock();
+        if (active_goal != goal_handle &&
+            !(active_goal == nullptr && _servo_j_streamer->active()))
+        {
+            return rclcpp_action::CancelResponse::REJECT;
+        }
+    }
+    const int stop_error = _servo_j_streamer->cancel_and_stop();
+    if (stop_error != 0) {
+        RCLCPP_ERROR(get_logger(), "StopMotion during StreamServoJ cancellation failed: %d", stop_error);
+    }
+    return rclcpp_action::CancelResponse::ACCEPT;
+}
+
+void robot_command_thread::_handle_stream_accepted(
+        const std::shared_ptr<stream_servo_j_goal_handle> goal_handle)
+{
+    {
+        std::lock_guard<std::mutex> goal_lock(_stream_goal_mutex);
+        _active_stream_goal = goal_handle;
+    }
+    if (_stream_worker.joinable()) {
+        _stream_worker.join();
+    }
+    _stream_worker = std::thread(&robot_command_thread::_execute_stream, this, goal_handle);
+}
+
+void robot_command_thread::_execute_stream(
+        const std::shared_ptr<stream_servo_j_goal_handle> goal_handle)
+{
+    const auto request = _make_stream_request(*goal_handle->get_goal());
+    const auto metrics = _servo_j_streamer->run_reserved(
+        request,
+        [goal_handle](uint64_t samples_sent, uint64_t last_command_id) {
+            auto feedback = std::make_shared<stream_servo_j_action::Feedback>();
+            feedback->samples_sent = samples_sent;
+            feedback->last_command_id = last_command_id;
+            goal_handle->publish_feedback(feedback);
+        });
+
+    auto result = std::make_shared<stream_servo_j_action::Result>();
+    result->success = metrics.success;
+    result->message = metrics.message;
+    result->controller_error = metrics.controller_error;
+    result->samples_requested = metrics.samples_requested;
+    result->samples_sent = metrics.samples_sent;
+    result->last_command_id = metrics.last_command_id;
+    result->maximum_interval_sec = metrics.maximum_interval_sec;
+    result->missed_deadlines = metrics.missed_deadlines;
+    result->cancelled = metrics.cancelled;
+
+    if (goal_handle->is_canceling()) {
+        result->cancelled = true;
+        goal_handle->canceled(result);
+    } else if (metrics.cancelled) {
+        // StopMotion() is an external preemption, not a ROS action cancel transition.
+        result->cancelled = true;
+        goal_handle->abort(result);
+    } else if (metrics.success) {
+        goal_handle->succeed(result);
+    } else {
+        goal_handle->abort(result);
+    }
+    {
+        std::lock_guard<std::mutex> goal_lock(_stream_goal_mutex);
+        if (_active_stream_goal.lock() == goal_handle) {
+            _active_stream_goal.reset();
+        }
+    }
+}
+
+bool robot_command_thread::_is_motion_command(const std::string & function_name) const
+{
+    static const std::unordered_set<std::string> motion_commands{
+        "StartJOG", "StopJOG", "ImmStopJOG", "MoveJ", "MoveL", "MoveC", "Circle",
+        "ServoMoveStart", "ServoMoveEnd", "ServoJ", "SplineStart", "SplinePTP",
+        "SplineEnd", "NewSplineStart", "NewSplinePoint", "NewSplineEnd",
+        "ExtAxisStartJog", "ExtAxisSetHoming", "StopExtAxisJog", "ExtAxisMove",
+        "ExtAxisSyncMoveJ", "ExtAxisSyncMoveL", "AuxServoSetTargetPos",
+        "AuxServoSetTargetSpeed", "AuxServoSetTargetTorque", "AuxServoHoming",
+        "TractorHoming", "TractorMoveL", "TractorMoveC", "TractorStop", "MoveGripper",
+        "MoveTrajectoryJ", "PointsOffsetEnable", "PointsOffsetDisable", "ScriptStart",
+        "ScriptStop", "ScriptPause", "ScriptResume"
+    };
+    return motion_commands.find(function_name) != motion_commands.end();
 }
 
 
@@ -286,6 +505,24 @@ void robot_command_thread::_parseROSCommandData_callback(
                 res->cmd_res = std::string("-1");
             }else if(find_idx != _fr_function_list.end()){
                 try{
+                    // Hold motion arbitration through dispatch so an action goal cannot reserve
+                    // the controller between this check and an ordinary motion SDK call.
+                    std::lock_guard<std::mutex> motion_lock(_motion_mutex);
+                    if (_servo_j_streamer && _servo_j_streamer->active()) {
+                        if (func_name == "StopMotion") {
+                            res->cmd_res = std::to_string(_servo_j_streamer->cancel_and_stop());
+                            return;
+                        }
+                        if (_is_motion_command(func_name)) {
+                            RCLCPP_WARN(
+                                get_logger(),
+                                "Rejecting %s while a buffered ServoJ stream is active",
+                                func_name.c_str());
+                            res->cmd_res = "-1";
+                            return;
+                        }
+                    }
+                    std::lock_guard<std::mutex> sdk_lock(_sdk_mutex);
                     res->cmd_res = (this->*(find_idx->second))(para_list);
                 }catch(const std::invalid_argument& e){
                     RCLCPP_ERROR(rclcpp::get_logger(LOGGER_NAME),msgout[msg_id(invalid_datatype)]);
@@ -389,7 +626,11 @@ void robot_command_thread::_fillJointPose(std::list<std::string>& data,JointPos&
 void robot_command_thread::_state_recv_callback(){
     auto msg = robot_feedback_msg();
     ROBOT_STATE_PKG ctrl_state{};
-    int res = _ptr_robot->GetRobotRealTimeState(&ctrl_state);
+    int res;
+    {
+        std::lock_guard<std::mutex> sdk_lock(_sdk_mutex);
+        res = _ptr_robot->GetRobotRealTimeState(&ctrl_state);
+    }
     if (res == 0) {
         mainerrcode = ctrl_state.main_code;
         suberrcode = ctrl_state.sub_code;
@@ -1951,7 +2192,12 @@ std::string robot_command_thread::ServoJ(std::string para){
         comType = std::stoi(datalist.front().c_str());
     }
 
-    return std::to_string(_ptr_robot->ServoJ(&jpos,&eaxispos,0,0,deltaT,0,0,0,comType));
+    const int command_id = _servo_j_streamer ? _servo_j_streamer->allocate_command_id() : 0;
+    if(command_id < 0){
+        return std::to_string(-1);
+    }
+    return std::to_string(
+        _ptr_robot->ServoJ(&jpos,&eaxispos,0,0,deltaT,0,0,command_id,comType));
 }
 
 

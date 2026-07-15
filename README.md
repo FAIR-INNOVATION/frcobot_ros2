@@ -5,3 +5,8 @@ Tutorial of installing and uasage of ROS2 API, please refer to the Fair document
 
 Version histroy:
 2023.7.18 V1.0
+
+For timing-sensitive ServoJ trajectories on the 3.9.4 driver, use the buffered
+`fairino_msgs/action/StreamServoJ` interface described in
+[`fairino_hardware_v3_9_4/STREAM_SERVO_J.md`](fairino_hardware_v3_9_4/STREAM_SERVO_J.md).
+The string-based remote command service remains available for compatibility.

@@ -1,0 +1,19 @@
+# Flattened N x 6 joint targets in degrees.
+float64[] joints_deg
+# Command period in seconds. Set 0.004 for the initial 4 ms operating period.
+float64 period_sec
+# FAIRINO communication type. Buffered streaming currently supports UDP (1) only.
+uint8 communication_type
+---
+bool success
+string message
+int32 controller_error
+uint64 samples_requested
+uint64 samples_sent
+uint64 last_command_id
+float64 maximum_interval_sec
+uint64 missed_deadlines
+bool cancelled
+---
+uint64 samples_sent
+uint64 last_command_id

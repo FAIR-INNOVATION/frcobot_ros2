@@ -3,7 +3,9 @@
 
 #include "stdlib.h"
 #include "rclcpp/rclcpp.hpp"
+#include "rclcpp_action/rclcpp_action.hpp"
 #include "rclcpp/service.hpp"
+#include "fairino_msgs/action/stream_servo_j.hpp"
 #include "fairino_msgs/srv/remote_script_content.hpp"
 #include "fairino_msgs/srv/remote_cmd_interface.hpp"
 #include "fairino_msgs/msg/robot_nonrt_state.hpp"
@@ -20,13 +22,20 @@
 #include <queue>
 #include "libfairino/include/robot.h"
 #include <atomic>
+#include <thread>
 #include "semaphore.h"
+#include "fairino_hardware/servo_j_streamer.hpp"
 
 using remote_cmd_server_srv_msg = fairino_msgs::srv::RemoteCmdInterface;
 using remote_script_srv_msg = fairino_msgs::srv::RemoteScriptContent;
 using robot_feedback_msg = fairino_msgs::msg::RobotNonrtState;
+using stream_servo_j_action = fairino_msgs::action::StreamServoJ;
+using stream_servo_j_goal_handle = rclcpp_action::ServerGoalHandle<stream_servo_j_action>;
 #define REMOTE_CMD_SERVER_NAME  "fairino_remote_command_service"
 #define REMOTE_SCRIPT_SERVER_NAME  "fairino_script_service"
+#define STREAM_SERVO_J_ACTION_NAME "stream_servo_j"
+
+class FairinoServoJRobot;
 
 
 class robot_command_thread:public rclcpp::Node{
@@ -259,7 +268,25 @@ private:
     ROBOT_STATE_PKG _robot_realtime_state;//从SDK获取的机械臂实时状态结构体
     rclcpp::Publisher<robot_feedback_msg>::SharedPtr _state_publisher;
     rclcpp::TimerBase::SharedPtr _state_timer;
+    rclcpp::CallbackGroup::SharedPtr _state_callback_group;
+    rclcpp::CallbackGroup::SharedPtr _command_callback_group;
+    rclcpp::CallbackGroup::SharedPtr _action_callback_group;
     void _state_recv_callback();
+
+    rclcpp_action::Server<stream_servo_j_action>::SharedPtr _stream_servo_j_server;
+    std::mutex _stream_goal_mutex;
+    std::weak_ptr<stream_servo_j_goal_handle> _active_stream_goal;
+    rclcpp_action::GoalResponse _handle_stream_goal(
+      const rclcpp_action::GoalUUID & uuid,
+      std::shared_ptr<const stream_servo_j_action::Goal> goal);
+    rclcpp_action::CancelResponse _handle_stream_cancel(
+      const std::shared_ptr<stream_servo_j_goal_handle> goal_handle);
+    void _handle_stream_accepted(
+      const std::shared_ptr<stream_servo_j_goal_handle> goal_handle);
+    void _execute_stream(const std::shared_ptr<stream_servo_j_goal_handle> goal_handle);
+    fairino_hardware::ServoJStreamRequest _make_stream_request(
+      const stream_servo_j_action::Goal & goal) const;
+    bool _is_motion_command(const std::string & function_name) const;
 
     int lose_connect_times = 0;
     int _connect_retry_SDK = 5;
@@ -288,6 +315,12 @@ private:
     rclcpp::Service<fairino_msgs::srv::RemoteCmdInterface>::SharedPtr _recv_ros_command_server;
     //用于接受用户发送过来的脚本service
     rclcpp::Service<fairino_msgs::srv::RemoteScriptContent>::SharedPtr _recv_ros_script_server;
+    std::mutex _motion_mutex;
+    std::mutex _sdk_mutex;
+    std::unique_ptr<FairinoServoJRobot> _servo_j_robot;
+    fairino_hardware::SystemMonotonicClock _monotonic_clock;
+    std::unique_ptr<fairino_hardware::ServoJStreamer> _servo_j_streamer;
+    std::thread _stream_worker;
     int _robot_install;//机械臂安装方式
     std::vector<JointPos> _cmd_jnt_pos_list;//存储关节数据点
     std::vector<DescPose> _cmd_cart_pos_list;//存储笛卡尔数据点

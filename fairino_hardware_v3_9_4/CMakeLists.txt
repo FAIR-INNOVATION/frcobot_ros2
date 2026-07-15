@@ -12,6 +12,7 @@ set(CMAKE_CXX_STANDARD 17)
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rclcpp_action REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(hardware_interface REQUIRED)
 find_package(pluginlib REQUIRED)
@@ -25,21 +26,12 @@ file(GLOB SRC_DIR ./src/command_server.cpp ./src/command_server_node.cpp ./src/C
 file(GLOB EXP_SRC_DIR ./examples/src/*.cpp)
 
 #compile
-file(CREATE_LINK 
-"${CMAKE_CURRENT_SOURCE_DIR}/libfairino/lib/libfairino.so.2.3.4"
-"${CMAKE_CURRENT_SOURCE_DIR}/libfairino/lib/libfairino.so.2"
-SYMBOLIC)
-
-file(CREATE_LINK 
-"${CMAKE_CURRENT_SOURCE_DIR}/libfairino/lib/libfairino.so.2"
-"${CMAKE_CURRENT_SOURCE_DIR}/libfairino/lib/libfairino.so"
-SYMBOLIC)
-
 add_executable(ros2_cmd_server ${SRC_DIR})
 add_executable(srv_test_client ${EXP_SRC_DIR})
+add_library(servo_j_streamer STATIC ./src/servo_j_streamer.cpp)
 add_library(
-  fairino_hardware 
-  SHARED 
+  fairino_hardware
+  SHARED
   ./src/fairino_hardware_interface.cpp
 )
 
@@ -48,15 +40,20 @@ add_library(
 
 
 #add headfile source
-target_include_directories(ros2_cmd_server PUBLIC 
-${CMAKE_CURRENT_SOURCE_DIR}/include/ 
-${CMAKE_CURRENT_SOURCE_DIR}/)
+target_include_directories(ros2_cmd_server PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/
+  ${CMAKE_CURRENT_SOURCE_DIR}/)
+
+target_include_directories(servo_j_streamer PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include/fairino_hardware_v3_9_4>
+)
 
 target_include_directories(srv_test_client PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/examples/include)
-target_include_directories(fairino_hardware PUBLIC 
-$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/>
-$<INSTALL_INTERFACE:include/fairino_hardware>
+target_include_directories(fairino_hardware PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/>
+  $<INSTALL_INTERFACE:include/fairino_hardware>
 )
 # target_link_libraries(ros2_cmd_server ${CMAKE_CURRENT_SOURCE_DIR}/libfairino/lib/libfairino.so)
 # target_link_libraries(fairino_hardware ${CMAKE_CURRENT_SOURCE_DIR}/libfairino/lib/libfairino.so)
@@ -65,17 +62,18 @@ $<INSTALL_INTERFACE:include/fairino_hardware>
 
 # 链接库时添加rpath参数
 target_link_libraries(ros2_cmd_server "-Wl,-rpath,$ORIGIN" ${CMAKE_CURRENT_SOURCE_DIR}/libfairino/lib/libfairino.so.2.3.4)
+target_link_libraries(ros2_cmd_server servo_j_streamer)
 target_link_libraries(fairino_hardware "-Wl,-rpath,$ORIGIN" ${CMAKE_CURRENT_SOURCE_DIR}/libfairino/lib/libfairino.so.2.3.4)
 
 #add dependencies
-ament_target_dependencies(ros2_cmd_server rclcpp fairino_msgs)
+ament_target_dependencies(ros2_cmd_server rclcpp rclcpp_action fairino_msgs)
 ament_target_dependencies(srv_test_client rclcpp fairino_msgs)
-ament_target_dependencies(fairino_hardware 
+ament_target_dependencies(fairino_hardware
   hardware_interface
   pluginlib
   rclcpp
   fairino_msgs
-  rclcpp_lifecycle 
+  rclcpp_lifecycle
 )
 
 
@@ -86,6 +84,13 @@ pluginlib_export_plugin_description_file(hardware_interface fairino_hardware.xml
 #command server
 install(TARGETS ros2_cmd_server
   DESTINATION lib/${PROJECT_NAME}
+)
+
+install(TARGETS servo_j_streamer
+  ARCHIVE DESTINATION lib/${PROJECT_NAME}
+)
+install(DIRECTORY include/
+  DESTINATION include/${PROJECT_NAME}
 )
 
 #test example
@@ -103,22 +108,10 @@ install(TARGETS fairino_hardware
 # Install vendor SDK next to ros2_cmd_server and fairino_hardware ($ORIGIN)
 install(FILES
   libfairino/lib/libfairino.so.2.3.4
+  libfairino/lib/libfairino.so.2
+  libfairino/lib/libfairino.so
   DESTINATION lib/${PROJECT_NAME}
 )
-install(CODE "
-  execute_process(
-    COMMAND ${CMAKE_COMMAND} -E create_symlink
-      libfairino.so.2.3.4
-      libfairino.so.2
-    WORKING_DIRECTORY \"\${CMAKE_INSTALL_PREFIX}/lib/${PROJECT_NAME}\"
-  )
-  execute_process(
-    COMMAND ${CMAKE_COMMAND} -E create_symlink
-      libfairino.so.2
-      libfairino.so
-    WORKING_DIRECTORY \"\${CMAKE_INSTALL_PREFIX}/lib/${PROJECT_NAME}\"
-  )
-")
 
 
 if(BUILD_TESTING)
@@ -133,6 +126,9 @@ if(BUILD_TESTING)
   # a copyright and license is added to all source files
   set(ament_cmake_cpplint_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
+
+  ament_add_gmock(test_servo_j_streamer test/test_servo_j_streamer.cpp)
+  target_link_libraries(test_servo_j_streamer servo_j_streamer)
 endif()
 
 #export
