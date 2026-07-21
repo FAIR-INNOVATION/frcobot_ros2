@@ -624,6 +624,14 @@ void robot_command_thread::_fillJointPose(std::list<std::string>& data,JointPos&
  * @brief 通过SDK获取机器人状态并发布到nonrt_state_data topic
  */
 void robot_command_thread::_state_recv_callback(){
+    // GetRobotRealTimeState() and ServoJ share one SDK object and therefore the
+    // same mutex. Polling state at 20 Hz while a buffered stream is active can
+    // hold that mutex across a ServoJ deadline. Skip the SDK poll for the short
+    // duration of the stream; the timer resumes normally after the action has
+    // released its reservation.
+    if (_servo_j_streamer && _servo_j_streamer->active()) {
+        return;
+    }
     auto msg = robot_feedback_msg();
     ROBOT_STATE_PKG ctrl_state{};
     int res;

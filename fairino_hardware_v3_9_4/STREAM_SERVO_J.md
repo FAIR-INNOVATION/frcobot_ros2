@@ -36,6 +36,16 @@ Configuration parameters and defaults:
 - `servo_j.maximum_lateness_sec`: `0.0` (one requested period)
 - `servo_j.feedback_period_sec`: `0.05`
 
-The existing `nonrt_state_data` timer remains at 50 ms (20 Hz). State, service, and action
-callbacks use separate callback groups, while access to the shared FAIRINO SDK object is
-serialized. The blocking stream itself does not run on an executor thread.
+The existing `nonrt_state_data` timer runs at 50 ms (20 Hz) outside a stream. Its SDK poll
+is suppressed while a buffered stream is active because `GetRobotRealTimeState()` and
+`ServoJ()` share the same SDK mutex; allowing the poll during a stream can block a command
+past its deadline. State publication resumes on the first timer callback after the stream.
+Service and action callbacks use separate callback groups, while access to the shared
+FAIRINO SDK object is serialized. The blocking stream itself does not run on an executor
+thread.
+
+Clients that enforce a final joint tolerance should include a short run of repeated final
+samples in the submitted buffer, then wait for a `nonrt_state_data` message published
+after the action completes before checking the endpoint. Checking the cached state
+immediately can report the controller's normal following lag (or the last pre-stream
+state) as a goal-tolerance failure.
