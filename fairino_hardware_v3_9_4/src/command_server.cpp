@@ -624,19 +624,19 @@ void robot_command_thread::_fillJointPose(std::list<std::string>& data,JointPos&
  * @brief 通过SDK获取机器人状态并发布到nonrt_state_data topic
  */
 void robot_command_thread::_state_recv_callback(){
-    // GetRobotRealTimeState() and ServoJ share one SDK object and therefore the
-    // same mutex. Polling state at 20 Hz while a buffered stream is active can
-    // hold that mutex across a ServoJ deadline. Skip the SDK poll for the short
-    // duration of the stream; the timer resumes normally after the action has
-    // released its reservation.
-    if (_servo_j_streamer && _servo_j_streamer->active()) {
-        return;
-    }
     auto msg = robot_feedback_msg();
     ROBOT_STATE_PKG ctrl_state{};
     int res;
     {
-        std::lock_guard<std::mutex> sdk_lock(_sdk_mutex);
+        // GetRobotRealTimeState() and ServoJ share one SDK object and therefore
+        // the same mutex. Blocking here can hold it across a ServoJ deadline and
+        // abort the stream, so yield rather than wait. ServoJ holds the mutex
+        // only for one command, so losing the race costs a single state sample
+        // instead of silencing state for the whole trajectory.
+        std::unique_lock<std::mutex> sdk_lock(_sdk_mutex, std::try_to_lock);
+        if (!sdk_lock.owns_lock()) {
+            return;
+        }
         res = _ptr_robot->GetRobotRealTimeState(&ctrl_state);
     }
     if (res == 0) {
@@ -771,9 +771,20 @@ void robot_command_thread::_state_recv_callback(){
             global_exaxis_pos()[i] = ctrl_state.extAxisStatus[i].pos;
         }
 
+        for (int i = 0; i < 6; i++) {
+            msg.jt_servo_target_pos[i] = ctrl_state.lastServoTarget[i];
+            msg.jt_cur_vel[i] = ctrl_state.actual_qd[i];
+            msg.jt_cur_acc[i] = ctrl_state.actual_qdd[i];
+        }
+        msg.servo_j_cmd_num = ctrl_state.servoJCmdNum;
+        msg.mc_queue_len = ctrl_state.mc_queue_len;
+        msg.frame_cnt = ctrl_state.frame_cnt;
+
         msg.version = "V" + std::to_string(VERSION_MSG_MARJOR) + "." +
             std::to_string(VERSION_MSG_MINOR) + std::to_string(VERSION_MSG_MINOR2);
-        msg.timestamp = RCL_NS_TO_S(rclcpp::Clock().now().nanoseconds());
+        const int64_t state_now_ns = rclcpp::Clock().now().nanoseconds();
+        msg.timestamp = RCL_NS_TO_S(state_now_ns);
+        msg.state_stamp_ns = static_cast<uint64_t>(state_now_ns);
         msg.reconnect_flag = 0;
     } else {
         RCLCPP_WARN(rclcpp::get_logger(LOGGER_NAME),
