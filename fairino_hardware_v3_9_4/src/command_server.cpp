@@ -4,7 +4,11 @@
 #include "fairino_hardware/version_control.h"
 #include "fairino_hardware/global_val_def.hpp"
 #include "sys/mman.h"
+#include <pthread.h>
+#include <sched.h>
+#include <algorithm>
 #include <array>
+#include <cstring>
 #include <unordered_set>
 
 std::atomic_bool _reconnect_flag;
@@ -249,6 +253,9 @@ robot_command_thread::robot_command_thread(const std::string node_name):rclcpp::
     this->declare_parameter<double>("servo_j.deadline_tolerance_sec", 0.00025);
     this->declare_parameter<double>("servo_j.maximum_lateness_sec", 0.0);
     this->declare_parameter<double>("servo_j.feedback_period_sec", 0.05);
+    // 0 keeps the stream worker on the default best-effort policy. A positive
+    // value requests that SCHED_FIFO priority for the worker instead.
+    this->declare_parameter<int>("servo_j.realtime_priority", 0);
     /*********************************************************************************************/
 
     /***********************************创建字符串指令服务器*****************************************/
@@ -312,6 +319,17 @@ robot_command_thread::robot_command_thread(const std::string node_name):rclcpp::
         this->get_parameter("servo_j.maximum_lateness_sec").as_double();
     stream_config.feedback_period_sec =
         this->get_parameter("servo_j.feedback_period_sec").as_double();
+    const int64_t requested_priority =
+        this->get_parameter("servo_j.realtime_priority").as_int();
+    const int64_t maximum_priority = sched_get_priority_max(SCHED_FIFO);
+    _servo_j_realtime_priority = static_cast<int>(
+        std::min(std::max<int64_t>(0, requested_priority), maximum_priority));
+    if (requested_priority != _servo_j_realtime_priority) {
+        RCLCPP_WARN(
+            get_logger(),
+            "servo_j.realtime_priority %ld is outside [0, %ld]; using %d",
+            requested_priority, maximum_priority, _servo_j_realtime_priority);
+    }
     _servo_j_robot = std::make_unique<FairinoServoJRobot>(*_ptr_robot, _sdk_mutex);
     _servo_j_streamer = std::make_unique<fairino_hardware::ServoJStreamer>(
         *_servo_j_robot, _monotonic_clock, stream_config);
@@ -419,9 +437,36 @@ void robot_command_thread::_handle_stream_accepted(
     _stream_worker = std::thread(&robot_command_thread::_execute_stream, this, goal_handle);
 }
 
+void robot_command_thread::_apply_stream_thread_scheduling()
+{
+    if (_servo_j_realtime_priority <= 0) {
+        return;
+    }
+    // The stream loop wakes once per command period (250 Hz at 4 ms) and a
+    // single wake that misses its deadline by more than the configured budget
+    // aborts the trajectory. Under the default policy the worker competes with
+    // every other best-effort thread on the host, so wake latency is bounded
+    // only by scheduler contention.
+    sched_param schedule{};
+    schedule.sched_priority = _servo_j_realtime_priority;
+    const int error = pthread_setschedparam(pthread_self(), SCHED_FIFO, &schedule);
+    if (error != 0) {
+        RCLCPP_WARN(
+            get_logger(),
+            "ServoJ stream worker stays best-effort: SCHED_FIFO priority %d was refused (%s). "
+            "Real-time scheduling needs CAP_SYS_NICE and an RLIMIT_RTPRIO that covers it.",
+            _servo_j_realtime_priority, std::strerror(error));
+        return;
+    }
+    RCLCPP_INFO(
+        get_logger(), "ServoJ stream worker running SCHED_FIFO priority %d",
+        _servo_j_realtime_priority);
+}
+
 void robot_command_thread::_execute_stream(
         const std::shared_ptr<stream_servo_j_goal_handle> goal_handle)
 {
+    _apply_stream_thread_scheduling();
     const auto request = _make_stream_request(*goal_handle->get_goal());
     const auto metrics = _servo_j_streamer->run_reserved(
         request,

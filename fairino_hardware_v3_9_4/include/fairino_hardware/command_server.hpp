@@ -284,6 +284,9 @@ private:
     void _handle_stream_accepted(
       const std::shared_ptr<stream_servo_j_goal_handle> goal_handle);
     void _execute_stream(const std::shared_ptr<stream_servo_j_goal_handle> goal_handle);
+    // Raises the calling stream worker to SCHED_FIFO when configured and
+    // permitted; leaves it best-effort otherwise.
+    void _apply_stream_thread_scheduling();
     fairino_hardware::ServoJStreamRequest _make_stream_request(
       const stream_servo_j_action::Goal & goal) const;
     bool _is_motion_command(const std::string & function_name) const;
@@ -321,6 +324,7 @@ private:
     fairino_hardware::SystemMonotonicClock _monotonic_clock;
     std::unique_ptr<fairino_hardware::ServoJStreamer> _servo_j_streamer;
     std::thread _stream_worker;
+    int _servo_j_realtime_priority = 0;
     int _robot_install;//机械臂安装方式
     std::vector<JointPos> _cmd_jnt_pos_list;//存储关节数据点
     std::vector<DescPose> _cmd_cart_pos_list;//存储笛卡尔数据点
