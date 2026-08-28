@@ -1921,6 +1921,39 @@ std::string robot_command_thread::ServoJ(std::string para){
     return std::to_string(_ptr_robot->ServoJ(&jpos,&eaxispos,0,0,deltaT,0,0));
 }
 
+/**
+ * @brief 机械臂关节空间伺服模式运动（多点位一次输入）
+ * @param [in] para 顺序依次为：点位数量N（最多10组），N组六个关节位置指令(单位deg)，4个外部轴位置指令(单位mm)，指令时间间隔(单位s，建议范围0.001~0.0016)
+ * @param [out] servoJCmdCount ServoJ指令点位计数[0-10000]
+ * @return 指令执行是否成功
+ * @retval 0-成功，其他-错误码
+ */
+std::string robot_command_thread::ServoJMultiPoint(std::string para){
+    std::list<std::string> datalist;
+    _splitString2List(para,datalist);
+
+    int pointNum = std::stoi(datalist.front().c_str());datalist.pop_front();
+
+    std::vector<JointPos> joint_pos_list;
+    for(int i = 0; i < pointNum; i++){
+        JointPos jpos;
+        _fillJointPose(datalist,jpos);
+        joint_pos_list.push_back(jpos);
+    }
+
+    ExaxisPos eaxispos;
+    eaxispos.ePos[0] = std::stod(datalist.front().c_str());datalist.pop_front();
+    eaxispos.ePos[1] = std::stod(datalist.front().c_str());datalist.pop_front();
+    eaxispos.ePos[2] = std::stod(datalist.front().c_str());datalist.pop_front();
+    eaxispos.ePos[3] = std::stod(datalist.front().c_str());datalist.pop_front();
+
+    double cmdT = std::stod(datalist.front().c_str());
+
+    int servoJCmdCount = 0;
+    int res = _ptr_robot->ServoJ(joint_pos_list,&eaxispos,0,0,cmdT,0,0,servoJCmdCount);
+    return std::string(std::to_string(res) + "," + std::to_string(servoJCmdCount));
+}
+
 
 
 /**
@@ -2904,14 +2937,15 @@ std::string robot_command_thread::PhotoelectricSensorTCPCalibration(std::string 
  * @brief 设置控制箱可配置CI端口功能
  * @param [in] config CI0-CI7功能编码；
  * 0-无;1-起弧成功;2-焊机准备;3-传送带检测;4-暂停;5-恢复;6-启动;7-停止;
- 8-暂停/恢复;9-启动/停止;10-脚踏拖动;11-移至作业原点;12-手自动切换;
-13-焊丝寻位成功;14-运动中断;15-启动主程序;16-启动倒带;17-启动确认;
-18-光电检测信号X;19-光电检测信号Y;20-外部急停输入信号1;21-外部急停输入信号2;
-22-一级缩减模式;23-二级缩减模式;24-三级缩减模式(停止);25-恢复焊接;26-终止焊接;
-27-辅助拖动开启;28-辅助拖动关闭;29-辅助拖动开启/关闭;30-清除所有错误;
-31-手自动切换(高低电平);32-使能;33-去使能;34-使能/去使能(上升下降沿);35-定点跟踪开始/结束
-* @return 错误码
-*/
+ * 8-暂停/恢复;9-启动/停止;10-脚踏拖动;11-移至作业原点;12-手自动切换;
+ * 13-焊丝寻位成功;14-运动中断;15-启动主程序;16-启动倒带;17-启动确认;
+ * 18-光电检测信号X;19-光电检测信号Y;20-外部急停输入信号1;21-外部急停输入信号2;
+ * 22-一级缩减模式;23-二级缩减模式;24-三级缩减模式(停止);25-恢复焊接;26-终止焊接;
+ * 27-辅助拖动开启;28-辅助拖动关闭;29-辅助拖动开启/关闭;30-清除所有错误;
+ * 31-手自动切换(高低电平);32-使能;33-去使能;34-使能/去使能(上升下降沿);35-定点跟踪开始/结束;
+ * 36-进入安全速度移动;37-电流环拖动锁定;38-力传感器辅助锁定
+ * @return 错误码
+ */
 std::string robot_command_thread::SetDIConfig(std::string para){
     std::list<std::string> list;
     _splitString2List(para,list);
@@ -2930,14 +2964,18 @@ std::string robot_command_thread::SetDIConfig(std::string para){
  * @brief 获取控制箱可配置CI端口功能
  * @param [out] config CI0-CI7功能编码；
  * 0-无;1-起弧成功;2-焊机准备;3-传送带检测;4-暂停;5-恢复;6-启动;7-停止;
- 8-暂停/恢复;9-启动/停止;10-脚踏拖动;11-移至作业原点;12-手自动切换;
-13-焊丝寻位成功;14-运动中断;15-启动主程序;16-启动倒带;17-启动确认;
-18-光电检测信号X;19-光电检测信号Y;20-外部急停输入信号1;21-外部急停输入信号2;
-22-一级缩减模式;23-二级缩减模式;24-三级缩减模式(停止);25-恢复焊接;26-终止焊接;
-27-辅助拖动开启;28-辅助拖动关闭;29-辅助拖动开启/关闭;30-清除所有错误;
-31-手自动切换(高低电平);32-使能;33-去使能;34-使能/去使能(上升下降沿);35-定点跟踪开始/结束
-* @return 错误码
-*/
+ * 8-暂停/恢复;9-启动/停止;10-脚踏拖动;11-移至作业原点;12-手自动切换;
+ * 13-焊丝寻位成功;14-运动中断;15-启动主程序;16-启动倒带;17-启动确认;
+ * 18-光电检测信号X;19-光电检测信号Y;20-外部急停输入信号1;21-外部急停输入信号2;
+ * 22-一级缩减模式;23-二级缩减模式;24-三级缩减模式(停止);25-恢复焊接;26-终止焊接;
+ * 27-辅助拖动开启;28-辅助拖动关闭;29-辅助拖动开启/关闭;30-清除所有错误;
+ * 31-手自动切换(高低电平);32-使能;33-去使能;34-使能/去使能(上升下降沿);35-定点跟踪开始/结束;
+ * 36-进入安全速度移动;37-电流环拖动锁定;38-力传感器辅助锁定;
+ * 201-外部急停输入信号1-双通道; 202-外部急停输入信号2-双通道; 203-一级缩减模式-双通道; 204-二级缩减模式-双通道; 205-三级缩减模式-双通道;
+ * 206-常规停止-双通道; 207-安全墙1-双通道; 208-安全墙2-双通道; 209-安全墙3-双通道; 210-安全墙4-双通道; 211-安全墙5-双通道;
+ * 212-安全墙6-双通道; 213-安全墙7-双通道; 214-安全墙8-双通道; 215-安全停止重置-双通道;
+ * @return 错误码
+ */
 std::string robot_command_thread::GetDIConfig(std::string para){
         
     int config[8];
@@ -2983,17 +3021,19 @@ std::string robot_command_thread::SetDOConfig(std::string para){
  * @brief 获取可配置CO端口功能
  * @param [out] config CO0-CO7功能编码；
  * 0-无;1-机器人报错;2-机器人运动中;3-喷涂启停;4-喷涂清枪;5-送气信号;6-起弧信号;7-点动送丝;
-8-反向送丝;9-JOB输入口1;10-JOB输入口2;11-JOB输入口3;12-传送带启停控制;13-机器人暂停中;14-到达作业原点;
-15-到达干涉区;16-焊丝寻位启停控制;17-机器人启动完成;18-程序启动停止;19-自动手动模式;20-急停输出信号1-安全;
-21-急停输出信号2-安全;22-LUA脚本程序运行停止;23-安全状态输出-安全;24-保护性停止状态输出-安全;
-25-机器人运动中-安全;26-机器人缩减模式-安全;27-机器人非缩减模式-安全;28-机器人非停止;29-机器人报错-指令点错误;
-30-机器人报错-驱动器错误;31-机器人报错-超出软限位错误;32-机器人报错-碰撞错误;33-机器人报错-活动从站数量错误;
-34-机器人报错-从站错误;35-机器人报错-IO错误;36-机器人报错-夹爪错误;37-机器人报错-文件错误;38-机器人报错-奇异位姿错误;
-39-机器人报错-驱动器通信错误;40-机器人报错-参数错误;41-机器人报错-外部轴超出软限位错误;42-机器人警告-警告;
-43-机器人警告-安全门警告;44-机器人警告-运动警告;45-机器人警告-干涉区警告;46-机器人警告-安全墙警告;
-47-使能状态;48-断线自动抬升中;49-立方体1干涉警告;50-立方体2干涉警告;51-立方体3干涉警告;52-立方体4干涉警告;
-* @return 错误码
-*/
+ * 8-反向送丝;9-JOB输入口1;10-JOB输入口2;11-JOB输入口3;12-传送带启停控制;13-机器人暂停中;14-到达作业原点;
+ * 15-到达干涉区;16-焊丝寻位启停控制;17-机器人启动完成;18-程序启动停止;19-自动手动模式;20-急停输出信号1-安全;
+ * 21-急停输出信号2-安全;22-LUA脚本程序运行停止;23-安全状态输出-安全;24-保护性停止状态输出-安全;
+ * 25-机器人运动中-安全;26-机器人缩减模式-安全;27-机器人非缩减模式-安全;28-机器人非停止;29-机器人报错-指令点错误;
+ * 30-机器人报错-驱动器错误;31-机器人报错-超出软限位错误;32-机器人报错-碰撞错误;33-机器人报错-活动从站数量错误;
+ * 34-机器人报错-从站错误;35-机器人报错-IO错误;36-机器人报错-夹爪错误;37-机器人报错-文件错误;38-机器人报错-奇异位姿错误;
+ * 39-机器人报错-驱动器通信错误;40-机器人报错-参数错误;41-机器人报错-外部轴超出软限位错误;42-机器人警告-警告;
+ * 43-机器人警告-安全门警告;44-机器人警告-运动警告;45-机器人警告-干涉区警告;46-机器人警告-安全墙警告;
+ * 47-使能状态;48-断线自动抬升中;49-立方体1干涉警告;50-立方体2干涉警告;51-立方体3干涉警告;52-立方体4干涉警告;
+ * 201-急停输出信号1-双通道; 202-急停输出信号2-双通道; 203-安全状态输出-双通道; 204-保护性停止状态输出-双通道; 205-机器人运动中-双通道;
+ * 206-机器人缩减模式-双通道; 207-机器人非缩减模式-双通道;
+ * @return 错误码
+ */
 std::string robot_command_thread::GetDOConfig(std::string para){
         
     int config[8];
@@ -4938,6 +4978,7 @@ std::string robot_command_thread::GetInverseKinHasSolution(std::string para){
  * @param [in] tool 工具号
  * @param [in] workPiece 工件号
  * @param [out] joint_pos 关节位置
+ * @param [in] config 关节空间配置，[-1]-参考当前关节位置解算，[0~7]-依据特定关节空间配置求解
  * @return 错误码
  */
 std::string robot_command_thread::GetInverseKinExaxis(std::string para){
@@ -4954,9 +4995,13 @@ std::string robot_command_thread::GetInverseKinExaxis(std::string para){
     exaxis.ePos[3] = std::stod(list.front().c_str());list.pop_front();
     int tool = std::stoi(list.front());list.pop_front();
     int workPiece = std::stoi(list.front());list.pop_front();
+    int config = -1;
+    if(!list.empty()){
+        config = std::stoi(list.front());list.pop_front();
+    }
 
     JointPos joint_pos;
-    int res = _ptr_robot->GetInverseKinExaxis(type,desc_pos,exaxis,tool,workPiece,joint_pos);
+    int res = _ptr_robot->GetInverseKinExaxis(type,desc_pos,exaxis,tool,workPiece,joint_pos,config);
     return std::string(std::to_string(res) + "," + std::to_string(joint_pos.jPos[0]) + "," +\
             std::to_string(joint_pos.jPos[1]) + "," + std::to_string(joint_pos.jPos[2]) + "," +\
             std::to_string(joint_pos.jPos[3]) + "," + std::to_string(joint_pos.jPos[4]) + "," +\
@@ -5566,18 +5611,18 @@ std::string robot_command_thread::GetGripperConfig(std::string para){
 }
 
 /**
- * @brief  获取夹爪运动状态
- * @param  [out] fault  0-无错误，1-有错误
- * @param  [out] staus  0-运动未完成，1-运动完成
- * @retval 0-成功，其他-错误码 
+ * @brief  获取夹爪运动状态（仅末端开放协议定义，已适配设备获取的运动状态为透传值）
+ * @param  [out] fault  0-无错误，其他-有错误
+ * @param  [out] status  0-运动未完成，1-运动完成未检测到物体，2-运动完成检测到物体
+ * @retval 0-成功，其他-错误码
  */
 std::string robot_command_thread::GetGripperMotionDone(std::string para){
     uint16_t fault;
-    uint8_t staus;
+    uint8_t status;
 
-    int res = _ptr_robot->GetGripperMotionDone(&fault,&staus);
+    int res = _ptr_robot->GetGripperMotionDone(&fault,&status);
     return std::string(std::to_string(res) + "," + std::to_string(fault) + "," + \
-            std::to_string(staus));
+            std::to_string(status));
 }
 
 /**
@@ -6130,7 +6175,8 @@ std::string robot_command_thread::FT_Control(std::string para){
  * @param  [in] ft 插入动作触发力，单位N
  * @param  [in] max_t_ms 最大探索时间，单位ms
  * @param  [in] max_vel 最大线速度，单位mm/s
- * @retval 0-成功，其他-错误码 
+ * @param  [in] strategy 未检测到力/力矩的处理策略，0-报错；1-警告，继续运动
+ * @retval 0-成功，其他-错误码
  */
 std::string robot_command_thread::FT_SpiralSearch(std::string para){
     std::list<std::string> list;
@@ -6141,8 +6187,12 @@ std::string robot_command_thread::FT_SpiralSearch(std::string para){
     float ft = std::stod(list.front());list.pop_front();
     float max_t_ms = std::stod(list.front());list.pop_front();
     float max_vel = std::stod(list.front());list.pop_front();
+    int strategy = 0;
+    if(!list.empty()){
+        strategy = std::stoi(list.front());list.pop_front();
+    }
 
-    int res = _ptr_robot->FT_SpiralSearch(rcs,dr,ft,max_t_ms,max_vel);
+    int res = _ptr_robot->FT_SpiralSearch(rcs,dr,ft,max_t_ms,max_vel,strategy);
     return std::string(std::to_string(res));
 }
 
@@ -6183,7 +6233,8 @@ std::string robot_command_thread::FT_RotInsertion(std::string para){
  * @param  [in] lin_a 直线加速度，单位mm/s^2，暂不使用
  * @param  [in] max_dis 最大插入距离，单位mm
  * @param  [in] linorn  插入方向，0-负方向，1-正方向
- * @retval 0-成功，其他-错误码 
+ * @param  [in] strategy 未检测到力/力矩的处理策略，0-报错；1-警告，继续运动
+ * @retval 0-成功，其他-错误码
  */
 std::string robot_command_thread::FT_LinInsertion(std::string para){
     std::list<std::string> list;
@@ -6195,8 +6246,12 @@ std::string robot_command_thread::FT_LinInsertion(std::string para){
     float lin_a = std::stod(list.front());list.pop_front();
     float max_dis = std::stod(list.front());list.pop_front();
     uint8_t linorn = std::stoi(list.front());list.pop_front();
+    int strategy = 0;
+    if(!list.empty()){
+        strategy = std::stoi(list.front());list.pop_front();
+    }
 
-    int res = _ptr_robot->FT_LinInsertion(rcs,ft,lin_v,lin_a,max_dis,linorn);
+    int res = _ptr_robot->FT_LinInsertion(rcs,ft,lin_v,lin_a,max_dis,linorn,strategy);
     return std::string(std::to_string(res));
 }
 
@@ -6209,7 +6264,8 @@ std::string robot_command_thread::FT_LinInsertion(std::string para){
  * @param  [in] lin_a 探索直线加速度，单位mm/s^2，暂不使用，默认为0
  * @param  [in] max_dis 最大探索距离，单位mm
  * @param  [in] ft  动作终止力阈值，单位N
- * @retval 0-成功，其他-错误码 
+ * @param  [in] strategy 未检测到力/力矩的处理策略，0-报错；1-警告，继续运动
+ * @retval 0-成功，其他-错误码
  */
 std::string robot_command_thread::FT_FindSurface(std::string para){
     std::list<std::string> list;
@@ -6222,8 +6278,12 @@ std::string robot_command_thread::FT_FindSurface(std::string para){
     float lin_a = std::stod(list.front());list.pop_front();
     float max_dis = std::stod(list.front());list.pop_front();
     float ft = std::stod(list.front());list.pop_front();
+    int strategy = 0;
+    if(!list.empty()){
+        strategy = std::stoi(list.front());list.pop_front();
+    }
 
-    int res = _ptr_robot->FT_FindSurface(rcs,dir,axis,lin_v,lin_a,max_dis,ft);
+    int res = _ptr_robot->FT_FindSurface(rcs,dir,axis,lin_v,lin_a,max_dis,ft,strategy);
     return std::string(std::to_string(res));
 }
 
@@ -6643,6 +6703,37 @@ std::string robot_command_thread::GetSafetyStopState(std::string para){
     return std::string(std::to_string(res) + "," + std::to_string(si0_state) + "," +\
             std::to_string(si1_state));
 }
+
+/**
+ * @brief 获取安全配置参数校验和
+ * @param [out] status 校验状态，0-有效，1-校验中，2-校验失败
+ * @param [out] checksum 校验和 8位16进制
+ * @retval 0-成功，其他-错误码 
+ */
+std::string robot_command_thread::GetSafetyParamsCheckSum(std::string para){
+    int status;
+    uint32_t checksum;
+
+    int res = _ptr_robot->GetSafetyParamsCheckSum(status, checksum);
+    return std::string(std::to_string(res) + "," + std::to_string(status) + "," + std::to_string(checksum));
+}
+
+/**
+ * @brief 安全操作密码校验
+ * @param [in] status 校验，0-开启，1-关闭
+ * @param [in] password 密码
+ * @retval 0-成功，其他-错误码 
+ */
+std::string robot_command_thread::SafetyOPPasswordCheck(std::string para){
+    std::list<std::string> list;
+    _splitString2List(para, list);
+    int status = std::stoi(list.front().c_str()); list.pop_front();
+    std::string password = list.front();
+
+    int res = _ptr_robot->SafetyOPPasswordCheck(status, password);
+    return std::to_string(res);
+}
+
 
 /**
  * @brief 获取机器人硬件版本
@@ -11895,6 +11986,79 @@ std::string robot_command_thread::WorkPieceTrsfStart(std::string para){
 std::string robot_command_thread::WorkPieceTrsfEnd(std::string para){
     int res = _ptr_robot->WorkPieceTrsfEnd();
     return std::string(std::to_string(res));
+}
+
+
+/**
+ * @brief 等待夹爪运动状态
+ * @param [in] staus 0-运动未完成，1-运动完成未检测到物体 2-运动完成检测到物体
+ * @param [in] timeout 超时时间（ms） -1永久等待
+ * @param [in] strategy 0-停止报错，1-继续运行
+ * @param [in] type 0-平行夹爪，1-旋转夹爪
+ * @return 错误码
+ */
+std::string robot_command_thread::GripperWaitMotionDone(std::string para){
+    std::list<std::string> list;
+    _splitString2List(para, list);
+    int staus = std::stoi(list.front().c_str()); list.pop_front();
+    int timeout = std::stoi(list.front().c_str()); list.pop_front();
+    int strategy = std::stoi(list.front().c_str()); list.pop_front();
+    int type = std::stoi(list.front().c_str()); list.pop_front();
+
+    int res = _ptr_robot->GripperWaitMotionDone(staus, timeout, strategy, type);
+    return std::to_string(res);
+}
+
+/**
+ * @brief 获取当前上位机系统时间并发送给机器人，同步系统时间（由于QNX系统限制，同步精度为分钟级）
+ * @return 错误码
+ */
+std::string robot_command_thread::SetRobotTime(std::string para){
+    int res = _ptr_robot->SetRobotTime();
+    return std::to_string(res);
+}
+
+/**
+ * @brief 安全双通道CI功能配置
+ * @param [in] ID 双通道ID; [0-3]
+ * @param [in] config 功能配置; 0-无配置; 201-外部急停输入信号1; 202-外部急停输入信号2; 203-一级缩减模式; 204-二级缩减模式; 205-三级缩减模式; 206-常规停止; 207-安全墙1; 208-安全墙2; 209-安全墙3; 210-安全墙4; 211-安全墙5; 212-安全墙6; 213-安全墙7; 214-安全墙8; 215-安全停止重置;
+ * @return 错误码
+ */
+std::string robot_command_thread::SetSafetyDIConfig(std::string para){
+    std::list<std::string> list;
+    _splitString2List(para, list);
+    int ID = std::stoi(list.front().c_str()); list.pop_front();
+    int config = std::stoi(list.front().c_str()); list.pop_front();
+
+    int res = _ptr_robot->SetSafetyDIConfig(ID, config);
+    return std::to_string(res);
+}
+
+/**
+ * @brief 安全双通道CO功能配置
+ * @param [in] ID 双通道ID; [0-3]
+ * @param [in] config 功能配置; 0-无配置; 201-急停输出信号1; 202-急停输出信号2; 203-安全状态输出; 204-保护性停止状态输出; 205-机器人运动中; 206-机器人缩减模式; 207-机器人非缩减模式;
+ * @return 错误码
+ */
+std::string robot_command_thread::SetSafetyDOConfig(std::string para){
+    std::list<std::string> list;
+    _splitString2List(para, list);
+    int ID = std::stoi(list.front().c_str()); list.pop_front();
+    int config = std::stoi(list.front().c_str()); list.pop_front();
+
+    int res = _ptr_robot->SetSafetyDOConfig(ID, config);
+    return std::to_string(res);
+}
+
+/**
+ * @brief 切换手动高速模式
+ * @param [in] state 0-退出手动高速；1-进入手动高速
+ * @return 错误码
+ */
+std::string robot_command_thread::HiSpeedManualSwitch(std::string para){
+    int state = std::stoi(para);
+    int res = _ptr_robot->HiSpeedManualSwitch(state);
+    return std::to_string(res);
 }
 
 

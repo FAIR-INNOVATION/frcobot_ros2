@@ -715,6 +715,8 @@ private:
     const std::map<std::string,std::string(robot_command_thread::*)(std::string)> _fr_function_list{
     {"GetVersion",&robot_command_thread::GetVersion},
     {"GetMsgVersion",&robot_command_thread::GetMsgVersion},
+    {"GetRobotVersion",&robot_command_thread::GetRobotVersion},
+    {"GetControllerVersion",&robot_command_thread::GetControllerVersion},
     {"Slave",&robot_command_thread::Slave},
     {"FeedBackIDSet",&robot_command_thread::FeedBackIDSet}
     };
