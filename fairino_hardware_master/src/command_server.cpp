@@ -682,8 +682,7 @@ void robot_command_thread::_splitString2Vec(std::string str,std::vector<std::str
  * @retval 0,version
  */
 std::string robot_command_thread::GetVersion(std::string para){
-    std::string ver = "fairino_hardware:V" + std::to_string(VERSION_MAJOR) + "." +
-        std::to_string(VERSION_MINOR) + "." + std::to_string(VERSION_MINOR2);
+    std::string ver = "fairino_hardware:V0.0.0";
     return std::string("0," + ver);
 }
 
@@ -693,9 +692,25 @@ std::string robot_command_thread::GetVersion(std::string para){
  * @retval 0,version
  */
 std::string robot_command_thread::GetMsgVersion(std::string para){
-    std::string ver = "fairino_msgs:V" + std::to_string(VERSION_MSG_MARJOR) + "." +
-        std::to_string(VERSION_MSG_MINOR) + "." + std::to_string(VERSION_MSG_MINOR2);
+    std::string ver = "fairino_msgs:V0.0.0";
     return std::string("0," + ver);
+}
+/**
+ * @brief 获取机械臂版本号
+ * @return 错误码及版本号
+ * @retval res,softwareversion
+ */
+std::string robot_command_thread::GetRobotVersion(std::string para){
+    return std::string("0,robot:v0.0.0");
+}
+
+/**
+ * @brief 获取机械臂控制器版本号
+ * @return 错误码及版本号
+ * @retval res,sofewareversion
+ */
+std::string robot_command_thread::GetControllerVersion(std::string para){
+    return std::string("0,robot_controller:v0.0.0");
 }
 
 /**
@@ -802,6 +817,30 @@ void robot_command_thread::_state_recv_callback(){
                 msg_sub_1_->slave_status_1 = master_client_1_->service_is_ready();
                 msg_sub_1_->slave_status_2 = master_client_2_->service_is_ready();
                 msg_sub_1_->slave_domain_id = current_domain;
+                if(master_client_1_->service_is_ready()){
+                    if (msg_sub_1_) { 
+                        msg_sub_1_->slave1_reconnect_flag = msg_sub_1_->reconnect_flag;
+                        msg_sub_1_->slave1_exaxistatus_errorcode = msg_sub_1_->exaxistatus1[0];
+                    }else{
+                        msg_sub_1_->slave1_reconnect_flag = 1;
+                        msg_sub_1_->slave1_exaxistatus_errorcode = 1;
+                    }
+                }else{
+                    msg_sub_1_->slave1_reconnect_flag = 1;
+                    msg_sub_1_->slave1_exaxistatus_errorcode = 1;
+                }
+                if(master_client_2_->service_is_ready()){
+                    if (msg_sub_2_) { 
+                        msg_sub_1_->slave2_reconnect_flag = msg_sub_2_->reconnect_flag;
+                        msg_sub_1_->slave2_exaxistatus_errorcode = msg_sub_2_->exaxistatus1[0];
+                    }else{
+                        msg_sub_1_->slave2_reconnect_flag = 1;
+                        msg_sub_1_->slave2_exaxistatus_errorcode = 1;
+                    }
+                }else{
+                    msg_sub_1_->slave2_reconnect_flag = 1;
+                    msg_sub_1_->slave2_exaxistatus_errorcode = 1;
+                }
                 _state_publisher->publish(*msg_sub_1_);
             }else{
                 auto msg = robot_feedback_msg();
@@ -809,6 +848,30 @@ void robot_command_thread::_state_recv_callback(){
                 msg.slave_status_1 = master_client_1_->service_is_ready();
                 msg.slave_status_2 = master_client_2_->service_is_ready();
                 msg.slave_domain_id = current_domain;
+                if(master_client_1_->service_is_ready()){
+                    if (msg_sub_1_) { 
+                        msg.slave1_reconnect_flag = msg_sub_1_->reconnect_flag;
+                        msg.slave1_exaxistatus_errorcode = msg_sub_1_->exaxistatus1[0];
+                    }else{
+                        msg.slave1_reconnect_flag = 1;
+                        msg.slave1_exaxistatus_errorcode = 1;
+                    }
+                }else{
+                    msg.slave1_reconnect_flag = 1;
+                    msg.slave1_exaxistatus_errorcode = 1;
+                }
+                if(master_client_2_->service_is_ready()){
+                    if (msg_sub_2_) { 
+                        msg.slave2_reconnect_flag = msg_sub_2_->reconnect_flag;
+                        msg.slave2_exaxistatus_errorcode = msg_sub_2_->exaxistatus1[0];
+                    }else{
+                        msg.slave2_reconnect_flag = 1;
+                        msg.slave2_exaxistatus_errorcode = 1;
+                    }
+                }else{
+                    msg.slave2_reconnect_flag = 1;
+                    msg.slave2_exaxistatus_errorcode = 1;
+                }
                 _state_publisher->publish(msg);
             }
         }else{
@@ -817,6 +880,30 @@ void robot_command_thread::_state_recv_callback(){
             msg.slave_status_1 = master_client_1_->service_is_ready();
             msg.slave_status_2 = master_client_2_->service_is_ready();
             msg.slave_domain_id = current_domain;
+            if(master_client_1_->service_is_ready()){
+                if (msg_sub_1_) { 
+                    msg.slave1_reconnect_flag = msg_sub_1_->reconnect_flag;
+                    msg.slave1_exaxistatus_errorcode = msg_sub_1_->exaxistatus1[0];
+                }else{
+                    msg.slave1_reconnect_flag = 1;
+                    msg.slave1_exaxistatus_errorcode = 1;
+                }
+            }else{
+                msg.slave1_reconnect_flag = 1;
+                msg.slave1_exaxistatus_errorcode = 1;
+            }
+            if(master_client_2_->service_is_ready()){
+                if (msg_sub_2_) { 
+                    msg.slave2_reconnect_flag = msg_sub_2_->reconnect_flag;
+                    msg.slave2_exaxistatus_errorcode = msg_sub_2_->exaxistatus1[0];
+                }else{
+                    msg.slave2_reconnect_flag = 1;
+                    msg.slave2_exaxistatus_errorcode = 1;
+                }
+            }else{
+                msg.slave2_reconnect_flag = 1;
+                msg.slave2_exaxistatus_errorcode = 1;
+            }
             _state_publisher->publish(msg);
         }
     }else if(current_domain == 2){
@@ -826,6 +913,30 @@ void robot_command_thread::_state_recv_callback(){
                 msg_sub_2_->slave_status_1 = master_client_1_->service_is_ready();
                 msg_sub_2_->slave_status_2 = master_client_2_->service_is_ready();
                 msg_sub_2_->slave_domain_id = current_domain;
+                if(master_client_1_->service_is_ready()){
+                    if (msg_sub_1_) { 
+                        msg_sub_2_->slave1_reconnect_flag = msg_sub_1_->reconnect_flag;
+                        msg_sub_2_->slave1_exaxistatus_errorcode = msg_sub_1_->exaxistatus1[0];
+                    }else{
+                        msg_sub_2_->slave1_reconnect_flag = 1;
+                        msg_sub_2_->slave1_exaxistatus_errorcode = 1;
+                    }
+                }else{
+                    msg_sub_2_->slave1_reconnect_flag = 1;
+                    msg_sub_2_->slave1_exaxistatus_errorcode = 1;
+                }
+                if(master_client_2_->service_is_ready()){
+                    if (msg_sub_2_) { 
+                        msg_sub_2_->slave2_reconnect_flag = msg_sub_2_->reconnect_flag;
+                        msg_sub_2_->slave2_exaxistatus_errorcode = msg_sub_2_->exaxistatus1[0];
+                        }else{
+                        msg_sub_2_->slave2_reconnect_flag = 1;
+                        msg_sub_2_->slave2_exaxistatus_errorcode = 1;
+                    }
+                }else{
+                    msg_sub_2_->slave2_reconnect_flag = 1;
+                    msg_sub_2_->slave2_exaxistatus_errorcode = 1;
+                }
                 _state_publisher->publish(*msg_sub_2_);
             }else{
                 auto msg = robot_feedback_msg();
@@ -833,6 +944,30 @@ void robot_command_thread::_state_recv_callback(){
                 msg.slave_status_1 = master_client_1_->service_is_ready();
                 msg.slave_status_2 = master_client_2_->service_is_ready();
                 msg.slave_domain_id = current_domain;
+                if(master_client_1_->service_is_ready()){
+                    if (msg_sub_1_) { 
+                        msg.slave1_reconnect_flag = msg_sub_1_->reconnect_flag;
+                        msg.slave1_exaxistatus_errorcode = msg_sub_1_->exaxistatus1[0];
+                    }else{
+                        msg.slave1_reconnect_flag = 1;
+                        msg.slave1_exaxistatus_errorcode = 1;
+                    }
+                }else{
+                    msg.slave1_reconnect_flag = 1;
+                    msg.slave1_exaxistatus_errorcode = 1;
+                }
+                if(master_client_2_->service_is_ready()){
+                    if (msg_sub_2_) { 
+                        msg.slave2_reconnect_flag = msg_sub_2_->reconnect_flag;
+                        msg.slave2_exaxistatus_errorcode = msg_sub_2_->exaxistatus1[0];
+                    }else{
+                        msg.slave2_reconnect_flag = 1;
+                        msg.slave2_exaxistatus_errorcode = 1;
+                    }
+                }else{
+                    msg.slave2_reconnect_flag = 1;
+                    msg.slave2_exaxistatus_errorcode = 1;
+                }
                 _state_publisher->publish(msg);
             }
         }else{
@@ -841,6 +976,30 @@ void robot_command_thread::_state_recv_callback(){
             msg.slave_status_1 = master_client_1_->service_is_ready();
             msg.slave_status_2 = master_client_2_->service_is_ready();
             msg.slave_domain_id = current_domain;
+            if(master_client_1_->service_is_ready()){
+                if (msg_sub_1_) { 
+                    msg.slave1_reconnect_flag = msg_sub_1_->reconnect_flag;
+                    msg.slave1_exaxistatus_errorcode = msg_sub_1_->exaxistatus1[0];
+                }else{
+                    msg.slave1_reconnect_flag = 1;
+                    msg.slave1_exaxistatus_errorcode = 1;
+                }
+            }else{
+                msg.slave1_reconnect_flag = 1;
+                msg.slave1_exaxistatus_errorcode = 1;
+            }
+            if(master_client_2_->service_is_ready()){
+                if (msg_sub_2_) { 
+                    msg.slave2_reconnect_flag = msg_sub_2_->reconnect_flag;
+                    msg.slave2_exaxistatus_errorcode = msg_sub_2_->exaxistatus1[0];
+                }else{
+                    msg.slave2_reconnect_flag = 1;
+                    msg.slave2_exaxistatus_errorcode = 1;
+                }
+            }else{
+                msg.slave2_reconnect_flag = 1;
+                msg.slave2_exaxistatus_errorcode = 1;
+            }
             _state_publisher->publish(msg);
         }
     }else{
@@ -849,6 +1008,30 @@ void robot_command_thread::_state_recv_callback(){
         msg.slave_status_1 = master_client_1_->service_is_ready();
         msg.slave_status_2 = master_client_2_->service_is_ready();
         msg.slave_domain_id = current_domain;
+        if(master_client_1_->service_is_ready()){
+            if (msg_sub_1_) { 
+                msg.slave1_reconnect_flag = msg_sub_1_->reconnect_flag;
+                msg.slave1_exaxistatus_errorcode = msg_sub_1_->exaxistatus1[0];
+            }else{
+                msg.slave1_reconnect_flag = 1;
+                msg.slave1_exaxistatus_errorcode = 1;
+            }
+        }else{
+            msg.slave1_reconnect_flag = 1;
+            msg.slave1_exaxistatus_errorcode = 1;
+        }
+        if(master_client_2_->service_is_ready()){
+            if (msg_sub_2_) { 
+                msg.slave2_reconnect_flag = msg_sub_2_->reconnect_flag;
+                msg.slave2_exaxistatus_errorcode = msg_sub_2_->exaxistatus1[0];
+            }else{
+                msg.slave2_reconnect_flag = 1;
+                msg.slave2_exaxistatus_errorcode = 1;
+            }
+        }else{
+            msg.slave2_reconnect_flag = 1;
+            msg.slave2_exaxistatus_errorcode = 1;
+        }
         _state_publisher->publish(msg);
     }
 }

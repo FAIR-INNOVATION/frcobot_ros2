@@ -359,8 +359,7 @@ robot_command_thread::robot_command_thread(const std::string node_name):rclcpp::
         RobotState::SocketConnTimeout,
         RobotState::SocketReadTimeout,
         RobotState::TsWebStateComErr,
-        RobotState::ExaxisCoordID,
-        RobotState::ProgramRunState
+        RobotState::ExaxisCoordID
     };
     int rnt = _ptr_robot->SetRobotRealtimeStateConfig(states, 8);
     while(connect_count <_connect_retry_SDK){
@@ -381,7 +380,7 @@ robot_command_thread::robot_command_thread(const std::string node_name):rclcpp::
     /*********************************************************************************************/
      _state_publisher = this->create_publisher<robot_feedback_msg>("nonrt_state_data",1);
     _locktimer1 = this->create_wall_timer(10ms,std::bind(&robot_command_thread::_state_recv_callback,this));//创建一个定时器任务用于获取非实时状态数据,触发间隔为100ms
-    _locktimer2 = this->create_wall_timer(100ms,std::bind(&robot_command_thread::_ping_recv_callback, this));
+    _locktimer2 = this->create_wall_timer(300ms,std::bind(&robot_command_thread::_ping_recv_callback, this));
 }
 
 
@@ -1620,24 +1619,7 @@ std::string robot_command_thread::MoveJ(std::string para){
             return "-1";
         }
         cartpos = _cmd_cart_pos_list.at(index-1);
-        // if(_ptr_robot->GetInverseKin(0,&cartpos,-1,&tmp_jnt_pos) != 0){
-        // 从参数迭代器中提前取出tool和user用于逆运动学计算
-        {
-            auto tmp_iter = iter_data;
-            tmp_iter++; // 跳过head_str
-            if(tmp_iter != end){
-                tmp_iter++; // 跳过speed
-                if(tmp_iter != end){
-                    tool = std::stoi(tmp_iter->str());
-                    tmp_iter++;
-                    if(tmp_iter != end){
-                        user = std::stoi(tmp_iter->str());
-                    }
-                }
-            }
-        }
-        ExaxisPos exaxis{exaxis_1,exaxis_2,exaxis_3,exaxis_4};
-        if(_ptr_robot->GetInverseKinExaxis(0,cartpos,exaxis,tool,user,tmp_jnt_pos) != 0){
+        if(_ptr_robot->GetInverseKin(0,&cartpos,-1,&tmp_jnt_pos) != 0){
             RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),msgout[msg_id(inv_kin_error)]);
             return "-1";
         }
@@ -1667,10 +1649,6 @@ std::string robot_command_thread::MoveJ(std::string para){
         eaxis3 = std::stod(iter_data->str());iter_data++;
         eaxis4 = std::stod(iter_data->str());iter_data++;
     }
-    eaxis1 = exaxis_1;
-    eaxis2 = exaxis_2;
-    eaxis3 = exaxis_3;
-    eaxis4 = exaxis_4;
     ExaxisPos extpos{eaxis1,eaxis2,eaxis3,eaxis4};
     DescPose offsetpos{offset_pos_x,offset_pos_y,offset_pos_z,offset_pos_rx,offset_pos_ry,offset_pos_rz};
 
@@ -3004,55 +2982,6 @@ std::string robot_command_thread::GetDOConfig(std::string para){
     std::to_string(config[3]) + "," + std::to_string(config[4]) + "," + \
     std::to_string(config[5])+ "," + std::to_string(config[6]) + "," + \
     std::to_string(config[7]));
-}
-
-/**
- * @brief 获取扩展DI功能配置
- * @param [out] DIConfig 扩展DI输入配置；DIConfig[0]-焊机起弧成功扩展DI端口；
-                                DIConfig[1]-焊机准备就绪扩展DI端口；
-                                DIConfig[2]-断线自动抬升开始扩展DI端口；
-                                DIConfig[3]-碰撞检测扩展DI端口；
-                                DIConfig[4]-激光焊机运行状态扩展DI端口；
-                                DIConfig[5]-激光焊机故障状态扩展DI端口；
-                                DIConfig[6]-激光焊机故障状态扩展DI端口；
-                                DIConfig[7-15]-预留
- * @return  错误码
- */
-std::string robot_command_thread::GetExtDIConfig(std::string para){
-
-    int DIConfig[16];
-
-    int res = _ptr_robot->GetExtDIConfig(DIConfig);
-    return std::string(std::to_string(res) + "," + std::to_string(DIConfig[0]) + "," + \
-    std::to_string(DIConfig[1]) + "," + std::to_string(DIConfig[2]) + "," + \
-    std::to_string(DIConfig[3]) + "," + std::to_string(DIConfig[4]) + "," + \
-    std::to_string(DIConfig[5])+ "," + std::to_string(DIConfig[6]));
-}
-
-/**
- * @brief 获取扩展DO功能配置
- * @param [out] DOConfig 扩展DO输入配置；DOConfig[0]-焊机起弧扩展DO端口；
-                                DOConfig[1]-气体检测扩展DO端口；
-                                DOConfig[2]-正向送丝扩展DO端口；
-                                DOConfig[3]-反向送丝扩展DO端口；
-                                DOConfig[4]-焊丝寻位扩展DO端口；
-                                DOConfig[5]-焊机控制模式扩展DO端口；
-                                DOConfig[6]-激光焊机使能扩展DO端口；
-                                DOConfig[7]-激光焊机启动(出光)扩展DO端口；
-                                DOConfig[8]-激光焊机复位扩展DO端口；
-                                DOConfig[9-15]-预留
- * @return  错误码
- */
-std::string robot_command_thread::GetExtDOConfig(std::string para){
-
-    int DOConfig[16];
-
-    int res = _ptr_robot->GetExtDOConfig(DOConfig);
-    return std::string(std::to_string(res) + "," + std::to_string(DOConfig[0]) + "," + \
-    std::to_string(DOConfig[1]) + "," + std::to_string(DOConfig[2]) + "," + \
-    std::to_string(DOConfig[3]) + "," + std::to_string(DOConfig[4]) + "," + \
-    std::to_string(DOConfig[5])+ "," + std::to_string(DOConfig[6]) + "," + \
-    std::to_string(DOConfig[7]) + "," + std::to_string(DOConfig[8]));
 }
 
 /**
@@ -6488,25 +6417,6 @@ std::string robot_command_thread::ConveyorSetParam(std::string para){
 }
 
 /**
- * @brief 传送带原地跟踪参数配置
- * @param [in] trackMode 0-时间；1-距离；2-时间和距离任意满足一个
- * @param [in] trackTime 跟踪时间，单位s
- * @param [in] trackDis 跟踪距离
- * @return 错误码
- */
-std::string robot_command_thread::SetStationaryTrackPara(std::string para){
-    std::list<std::string> list;
-    _splitString2List(para,list);
-
-    int trackMode = std::stoi(list.front());list.pop_front();
-    double trackTime = std::stod(list.front());list.pop_front();
-    int trackDis = std::stoi(list.front());list.pop_front();
-
-    int res = _ptr_robot->SetStationaryTrackPara(trackMode,trackTime,trackDis);
-    return std::string(std::to_string(res));
-}
-
-/**
  * @brief 传动带抓取点补偿
  * @param [in] cmp 补偿位置 double[3]{x, y, z}
  * @retval 0-成功，其他-错误码 
@@ -8389,7 +8299,6 @@ std::string robot_command_thread::GetAxleLuaEnableStatus(std::string para){
  * @param forceSensorEnable 力传感器启用状态，0-不启用；1-启用
  * @param gripperEnable 夹爪启用状态，0-不启用；1-启用
  * @param IOEnable IO设备启用状态，0-不启用；1-启用
- * @param dexhandEnable 灵巧手启用状态，0-不启用；1-启用
  * @return  错误码
  */
 std::string robot_command_thread::SetAxleLuaEnableDeviceType(std::string para){
@@ -8399,9 +8308,8 @@ std::string robot_command_thread::SetAxleLuaEnableDeviceType(std::string para){
     int forceSensorEnable = std::stoi(list.front());list.pop_front();
     int gripperEnable = std::stoi(list.front());list.pop_front();
     int IOEnable = std::stoi(list.front());list.pop_front();
-    int dexhandEnable = std::stoi(list.front());list.pop_front();
 
-    int res = _ptr_robot->SetAxleLuaEnableDeviceType(forceSensorEnable,gripperEnable,IOEnable,dexhandEnable);
+    int res = _ptr_robot->SetAxleLuaEnableDeviceType(forceSensorEnable,gripperEnable,IOEnable);
     return std::string(std::to_string(res));
 }
 
@@ -8410,19 +8318,16 @@ std::string robot_command_thread::SetAxleLuaEnableDeviceType(std::string para){
  * @param enable enable[0]:forceSensorEnable 力传感器启用状态，0-不启用；1-启用
  * @param enable enable[1]:gripperEnable 夹爪启用状态，0-不启用；1-启用
  * @param enable enable[2]:IOEnable IO设备启用状态，0-不启用；1-启用
- * @param dexhandEnable 灵巧手启用状态，0-不启用；1-启用
  * @return  错误码
  */
 std::string robot_command_thread::GetAxleLuaEnableDeviceType(std::string para){
     int forceSensorEnable;
     int gripperEnable;
     int IOEnable;
-    int dexhandEnable;
 
-    int res = _ptr_robot->GetAxleLuaEnableDeviceType(&forceSensorEnable,&gripperEnable,&IOEnable,&dexhandEnable);
+    int res = _ptr_robot->GetAxleLuaEnableDeviceType(&forceSensorEnable,&gripperEnable,&IOEnable);
     return std::string(std::to_string(res) + "," + std::to_string(forceSensorEnable) + "," + \
-            std::to_string(gripperEnable) + "," + std::to_string(IOEnable) + "," + \
-            std::to_string(dexhandEnable));
+            std::to_string(gripperEnable) + "," + std::to_string(IOEnable));
 }
 
 /**
@@ -8430,16 +8335,14 @@ std::string robot_command_thread::GetAxleLuaEnableDeviceType(std::string para){
  * @param forceSensorEnable 力传感器启用设备编号 0-未启用；1-启用
  * @param gripperEnable 夹爪启用设备编号，0-不启用；1-启用
  * @param IODeviceEnable IO设备启用设备编号，0-不启用；1-启用
- * @param dexhandEnable 灵巧手启用状态，0-不启用；1-启用
  * @return  错误码
  */
 std::string robot_command_thread::GetAxleLuaEnableDevice(std::string para){
     int forceSensorEnable[8];
     int gripperEnable[8];
     int IOEnable[8];
-    int dexhandEnable;
 
-    int res = _ptr_robot->GetAxleLuaEnableDevice(forceSensorEnable,gripperEnable,IOEnable,&dexhandEnable);
+    int res = _ptr_robot->GetAxleLuaEnableDevice(forceSensorEnable,gripperEnable,IOEnable);
     return std::string(std::to_string(res) + "," + std::to_string(forceSensorEnable[0]) + "," + \
             std::to_string(forceSensorEnable[1]) + "," + std::to_string(forceSensorEnable[2]) + "," + \
             std::to_string(forceSensorEnable[3]) + "," + std::to_string(forceSensorEnable[4]) + "," + \
@@ -8452,7 +8355,7 @@ std::string robot_command_thread::GetAxleLuaEnableDevice(std::string para){
             std::to_string(IOEnable[1]) + "," + std::to_string(IOEnable[2]) + "," + \
             std::to_string(IOEnable[3]) + "," + std::to_string(IOEnable[4]) + "," + \
             std::to_string(IOEnable[5]) + "," + std::to_string(IOEnable[6]) + "," + \
-            std::to_string(IOEnable[7]) + "," + std::to_string(dexhandEnable));
+            std::to_string(IOEnable[7]));
 }
 
 /**
@@ -8590,19 +8493,6 @@ std::string robot_command_thread::SetWeldMachineCtrlMode(std::string para){
     
     int res = _ptr_robot->SetWeldMachineCtrlMode(mode,ioType);
     return std::string(std::to_string(res));
-}
-
-/**
- * @brief 获取焊机控制模式
- * @param [out] mode 焊机控制模式;0-直流一元模式；1-脉冲一元模式；2-JOB模式；3-近控模式；4-分别模式；5-CC/CV模式；6-TIG；7-CMT
- * @return 错误码
- */
-std::string robot_command_thread::GetWeldMachineCtrlMode(std::string para){
-
-    int mode;
-
-    int res = _ptr_robot->GetWeldMachineCtrlMode(mode);
-    return std::string(std::to_string(res) + "," + std::to_string(mode));
 }
 
 /**
@@ -10010,10 +9900,6 @@ std::string robot_command_thread::SetTorqueDetectionSwitch(std::string para){
 * @brief 根据编号获取工具坐标系
 * @param [in] id 工具坐标系编号
 * @param [out] coord 坐标系数值
-* @param [out] type 工具类型 0-工具；1-传感器
-* @param [out] install 安装位置 0-机器人末端；1-机器人外部
-* @param [out] toolID 工具ID 
-* @param [out] loadNo 负载编号
 * @return 错误码
 */
 std::string robot_command_thread::GetToolCoordWithID(std::string para){
@@ -10022,25 +9908,18 @@ std::string robot_command_thread::GetToolCoordWithID(std::string para){
 
     int id = std::stoi(list.front());list.pop_front();
     DescPose coord;
-    int type;
-    int install;
-    int toolID;
-    int loadNo;
 
-    int res = _ptr_robot->GetToolCoordWithID(id,coord,type,install,toolID,loadNo);
+    int res = _ptr_robot->GetToolCoordWithID(id,coord);
     return std::string(std::to_string(res) + ","  + std::to_string(coord.tran.x) + "," + \
             std::to_string(coord.tran.y) + "," + std::to_string(coord.tran.z) + "," + \
             std::to_string(coord.rpy.rx) + "," + std::to_string(coord.rpy.ry) + "," + \
-            std::to_string(coord.rpy.rz) + "," + std::to_string(type) + "," + \
-            std::to_string(install) + "," + std::to_string(toolID) + "," + \
-            std::to_string(loadNo));            
+            std::to_string(coord.rpy.rz));            
 }  
 
 /**
 * @brief 根据编号获取工件坐标系
 * @param [in] id 工件坐标系编号
 * @param [out] coord 坐标系数值
-* @param [out] refFrame 参考坐标系
 * @return 错误码
 */
 std::string robot_command_thread::GetWObjCoordWithID(std::string para){
@@ -10049,20 +9928,18 @@ std::string robot_command_thread::GetWObjCoordWithID(std::string para){
 
     int id = std::stoi(list.front());list.pop_front();
     DescPose coord;
-    int refFrame;
 
-    int res = _ptr_robot->GetWObjCoordWithID(id,coord,refFrame);
+    int res = _ptr_robot->GetWObjCoordWithID(id,coord);
     return std::string(std::to_string(res) + ","  + std::to_string(coord.tran.x) + "," + \
             std::to_string(coord.tran.y) + "," + std::to_string(coord.tran.z) + "," + \
             std::to_string(coord.rpy.rx) + "," + std::to_string(coord.rpy.ry) + "," + \
-            std::to_string(coord.rpy.rz) + "," + std::to_string(refFrame));
+            std::to_string(coord.rpy.rz));            
 }  
 
 /**
 * @brief 根据编号获取外部工具坐标系
 * @param [in] id 外部工具坐标系编号
 * @param [out] coord 坐标系数值
-* @param [out] tcoord 机器人末端安装工件坐标系位姿
 * @return 错误码
 */
 std::string robot_command_thread::GetExToolCoordWithID(std::string para){
@@ -10071,24 +9948,18 @@ std::string robot_command_thread::GetExToolCoordWithID(std::string para){
 
     int id = std::stoi(list.front());list.pop_front();
     DescPose coord;
-    DescPose tcoord;
 
-    int res = _ptr_robot->GetExToolCoordWithID(id,coord,tcoord);
+    int res = _ptr_robot->GetExToolCoordWithID(id,coord);
     return std::string(std::to_string(res) + ","  + std::to_string(coord.tran.x) + "," + \
             std::to_string(coord.tran.y) + "," + std::to_string(coord.tran.z) + "," + \
             std::to_string(coord.rpy.rx) + "," + std::to_string(coord.rpy.ry) + "," + \
-            std::to_string(coord.rpy.rz) + ","  + std::to_string(tcoord.tran.x) + "," + \
-            std::to_string(tcoord.tran.y) + "," + std::to_string(tcoord.tran.z) + "," + \
-            std::to_string(tcoord.rpy.rx) + "," + std::to_string(tcoord.rpy.ry) + "," + \
-            std::to_string(tcoord.rpy.rz));            
+            std::to_string(coord.rpy.rz));            
 } 
 
 /**
 * @brief 根据编号获取扩展轴坐标系
 * @param [in] id 外部工具坐标系编号
 * @param [out] coord 坐标系数值
-* @param [out] axisCoordNum 扩展轴号；bit0-bit3对应扩展轴1-扩展轴4；如axisCoordNum值为3,对应应用扩展轴[1，2]
-* @param [out] calibFlag 标定标志；0-未标定；1-已标定
 * @return 错误码
 */
 std::string robot_command_thread::GetExAxisCoordWithID(std::string para){
@@ -10097,15 +9968,12 @@ std::string robot_command_thread::GetExAxisCoordWithID(std::string para){
 
     int id = std::stoi(list.front());list.pop_front();
     DescPose coord;
-    int axisCoordNum;
-    int calibFlag;
 
-    int res = _ptr_robot->GetExAxisCoordWithID(id,coord,axisCoordNum,calibFlag);
+    int res = _ptr_robot->GetExAxisCoordWithID(id,coord);
     return std::string(std::to_string(res) + ","  + std::to_string(coord.tran.x) + "," + \
             std::to_string(coord.tran.y) + "," + std::to_string(coord.tran.z) + "," + \
             std::to_string(coord.rpy.rx) + "," + std::to_string(coord.rpy.ry) + "," + \
-            std::to_string(coord.rpy.rz) + "," + std::to_string(axisCoordNum) + "," + \
-            std::to_string(calibFlag));            
+            std::to_string(coord.rpy.rz));            
 } 
 
 /**
@@ -10781,7 +10649,7 @@ std::string robot_command_thread::SetAdmittanceParams(std::string para){
  * @param [in] torqueCoeff J1-J6力矩补偿系数[0-1]
  * @return 错误码
  */
-std::string robot_command_thread::SetCoderCompenParams(std::string para){
+std::string robot_command_thread::SerCoderCompenParams(std::string para){
     std::list<std::string> list;
     _splitString2List(para,list);
 
@@ -10794,7 +10662,7 @@ std::string robot_command_thread::SetCoderCompenParams(std::string para){
     torqueCoeff[4] = std::stod(list.front());list.pop_front();
     torqueCoeff[5] = std::stod(list.front());list.pop_front();
 
-    int res = _ptr_robot->SetCoderCompenParams(status,torqueCoeff);
+    int res = _ptr_robot->SerCoderCompenParams(status,torqueCoeff);
     return std::string(std::to_string(res));
 }
 
@@ -10913,17 +10781,6 @@ std::string robot_command_thread::MoveStationary(std::string para){
     para.clear();
     
     int res = _ptr_robot->MoveStationary();
-    return std::string(std::to_string(res));
-}
-
-/**
- * @brief 等待原地空运动完成
- * @return 错误码
- */
-std::string robot_command_thread::WaitStationaryMotionDone(std::string para){
-    para.clear();
-
-    int res = _ptr_robot->WaitStationaryMotionDone();
     return std::string(std::to_string(res));
 }
 
@@ -11068,7 +10925,6 @@ std::string robot_command_thread::SendUDPFrame(std::string para){
  * @param [in] enable 0-关；1-手动模式启用；2-所有模式启用
  * @param [in] maxTCPVel 限制最大TCP速度;[0-1000]mm/s
  * @param [in] strategy 超速后策略；0-停止报警；1-自动限速；2-停止报警并去使能
- * @param [in] maxJointVel 6个关节最大速度(°/s) 默认为45°/s(可选参数)
  * @return 错误码
  */
 std::string robot_command_thread::SetVelReducePara(std::string para){
@@ -11079,18 +10935,8 @@ std::string robot_command_thread::SetVelReducePara(std::string para){
     double maxTCPVel = std::stod(list.front());list.pop_front();
     int strategy = std::stoi(list.front());list.pop_front();
 
-    int res;
-    if(list.size() >= 6){
-        std::vector<double> maxJointVel;
-        for(int i = 0; i < 6; i++){
-            maxJointVel.push_back(std::stod(list.front()));list.pop_front();
-        }
-        res = _ptr_robot->SetVelReducePara(enable,maxTCPVel,strategy,maxJointVel);
-    }
-    else{
-        res = _ptr_robot->SetVelReducePara(enable,maxTCPVel,strategy);
-    }
-    return std::string(std::to_string(res));
+    int res = _ptr_robot->SetVelReducePara(enable,maxTCPVel,strategy);
+    return std::string(std::to_string(res));            
 } 
 
 /**
@@ -11573,330 +11419,6 @@ std::string robot_command_thread::ExtAxisGetParamConfig(std::string para){
 
 
 
-/**
- * @brief 关闭RPC连接
- * @retval 0-成功，其他-错误码
- */
-std::string robot_command_thread::CloseRPC(std::string para){
-    int res = _ptr_robot->CloseRPC();
-    return std::string(std::to_string(res));
-}
-
-/**
- * @brief 获取机器人软件版本信息
- * @param[out] robotModel 机器人型号
- * @param[out] webVersion web版本
- * @param[out] controllerVersion 控制器版本
- * @retval 0-成功，其他-错误码
- */
-std::string robot_command_thread::GetSoftwareVersion(std::string para){
-    char robotModel[64];
-    char webVersion[64];
-    char controllerVersion[64];
-    int res = _ptr_robot->GetSoftwareVersion(robotModel, webVersion, controllerVersion);
-    return std::string(std::to_string(res) + "," + std::string(robotModel) + "," +
-                       std::string(webVersion) + "," + std::string(controllerVersion));
-}
-
-/**
- * @brief 设置机器人实时状态反馈配置
- * @param [in] para-第一个参数为周期(ms)，后续参数为RobotState枚举值序列
- * @retval 0-成功，其他-错误码
- */
-std::string robot_command_thread::SetRobotRealtimeStateConfig(std::string para){
-    std::list<std::string> list;
-    _splitString2List(para,list);
-
-    int period = std::stoi(list.front());list.pop_front();
-    std::vector<RobotState> states;
-    while(!list.empty()){
-        states.push_back(static_cast<RobotState>(std::stoi(list.front())));
-        list.pop_front();
-    }
-    int res = _ptr_robot->SetRobotRealtimeStateConfig(states, period);
-    return std::string(std::to_string(res));
-}
-
-/**
- * @brief 获取机器人实时状态反馈配置
- * @param[out] period 周期(ms)
- * @param[out] states RobotState枚举值序列
- * @retval 0-成功，其他-错误码
- */
-std::string robot_command_thread::GetRobotRealtimeStateConfig(std::string para){
-    std::vector<RobotState> states;
-    int period;
-    int res = _ptr_robot->GetRobotRealtimeStateConfig(states, period);
-    std::string result = std::to_string(res) + "," + std::to_string(period);
-    for(auto& s : states){
-        result += "," + std::to_string(static_cast<int>(s));
-    }
-    return result;
-}
-
-/**
- * @brief 获取机器人单帧实时状态数据
- * @return 错误码+关节当前位置6个+工具当前位置6个+关节当前扭矩6个
- * @retval 0-成功，其他-错误码
- */
-std::string robot_command_thread::GetRobotRealTimeState(std::string para){
-    ROBOT_STATE_PKG pkg;
-    int res = _ptr_robot->GetRobotRealTimeState(&pkg);
-    std::string result = std::to_string(res);
-    for(int i = 0; i < 6; i++){
-        result += "," + std::to_string(pkg.jt_cur_pos[i]);
-    }
-    for(int i = 0; i < 6; i++){
-        result += "," + std::to_string(pkg.tl_cur_pos[i]);
-    }
-    for(int i = 0; i < 6; i++){
-        result += "," + std::to_string(pkg.jt_cur_tor[i]);
-    }
-    return result;
-}
-
-/**
- * @brief 往实时状态配置中添加一项数据
- * @param [in] para-RobotState枚举值
- * @retval 0-成功，其他-错误码
- */
-std::string robot_command_thread::AddRobotRealtimeState(std::string para){
-    RobotState state = static_cast<RobotState>(std::stoi(para));
-    int res = _ptr_robot->AddRobotRealtimeState(state);
-    return std::string(std::to_string(res));
-}
-
-/**
- * @brief 从实时状态配置中删除一项数据
- * @param [in] para-RobotState枚举值
- * @retval 0-成功，其他-错误码
- */
-std::string robot_command_thread::DeleteRobotRealtimeState(std::string para){
-    RobotState state = static_cast<RobotState>(std::stoi(para));
-    int res = _ptr_robot->DeleteRobotRealtimeState(state);
-    return std::string(std::to_string(res));
-}
-
-/**
- * @brief 力与关节阻抗控制启停
- * @param [in] para-status(状态), impedanceFlag(阻抗标志), lamdeDain[6], KGain[6], BGain[6], dragMaxTcpVel, dragMaxTcpOriVel
- * @retval 0-成功，其他-错误码
- */
-std::string robot_command_thread::ForceAndJointImpedanceStartStop(std::string para){
-    std::list<std::string> list;
-    _splitString2List(para,list);
-
-    int status = std::stoi(list.front());list.pop_front();
-    int impedanceFlag = std::stoi(list.front());list.pop_front();
-
-    std::vector<double> lamdeDain(6);
-    for(int i = 0; i < 6; i++){
-        lamdeDain[i] = std::stod(list.front());list.pop_front();
-    }
-    std::vector<double> KGain(6);
-    for(int i = 0; i < 6; i++){
-        KGain[i] = std::stod(list.front());list.pop_front();
-    }
-    std::vector<double> BGain(6);
-    for(int i = 0; i < 6; i++){
-        BGain[i] = std::stod(list.front());list.pop_front();
-    }
-    double dragMaxTcpVel = std::stod(list.front());list.pop_front();
-    double dragMaxTcpOriVel = std::stod(list.front());list.pop_front();
-
-    int res = _ptr_robot->ForceAndJointImpedanceStartStop(status, impedanceFlag, lamdeDain, KGain, BGain, dragMaxTcpVel, dragMaxTcpOriVel);
-    return std::string(std::to_string(res));
-}
-
-/**
- * @brief 轴传感器寄存器写入
- * @param [in] para-devAddr(设备地址),regHAddr(寄存器高地址),regLAddr(寄存器低地址),regNum(寄存器数量),data1(数据1),data2(数据2),isNoBlock(是否非阻塞)
- * @retval 0-成功，其他-错误码
- */
-std::string robot_command_thread::AxleSensorRegWrite(std::string para){
-    std::list<std::string> list;
-    _splitString2List(para,list);
-
-    int devAddr = std::stoi(list.front());list.pop_front();
-    int regHAddr = std::stoi(list.front());list.pop_front();
-    int regLAddr = std::stoi(list.front());list.pop_front();
-    int regNum = std::stoi(list.front());list.pop_front();
-    int data1 = std::stoi(list.front());list.pop_front();
-    int data2 = std::stoi(list.front());list.pop_front();
-    int isNoBlock = std::stoi(list.front());list.pop_front();
-
-    int res = _ptr_robot->AxleSensorRegWrite(devAddr, regHAddr, regLAddr, regNum, data1, data2, isNoBlock);
-    return std::string(std::to_string(res));
-}
-
-
-/**
- * @brief 灵巧手运动控制
- * @param [in] para-idstart(起始ID),slaveNum(从站数量),pos[16](位置),speed[16](速度),force[16](力矩),max_time(最大时间)
- * @retval 0-成功，其他-错误码
- */
-std::string robot_command_thread::SetDexterousHandsMove(std::string para){
-    std::list<std::string> list;
-    _splitString2List(para,list);
-
-    int idstart = std::stoi(list.front());list.pop_front();
-    int slaveNum = std::stoi(list.front());list.pop_front();
-    double pos[16];
-    for(int i = 0; i < 16; i++){
-        pos[i] = std::stod(list.front());list.pop_front();
-    }
-    int speed[16];
-    for(int i = 0; i < 16; i++){
-        speed[i] = std::stoi(list.front());list.pop_front();
-    }
-    int force[16];
-    for(int i = 0; i < 16; i++){
-        force[i] = std::stoi(list.front());list.pop_front();
-    }
-    int max_time = std::stoi(list.front());list.pop_front();
-
-    int res = _ptr_robot->SetDexterousHandsMove(idstart, slaveNum, pos, speed, force, max_time);
-    return std::string(std::to_string(res));
-}
-
-/**
- * @brief 灵巧手动作控制
- * @param [in] para-id(灵巧手ID),act(动作)
- * @retval 0-成功，其他-错误码
- */
-std::string robot_command_thread::SetDexterousHandsAct(std::string para){
-    std::list<std::string> list;
-    _splitString2List(para,list);
-
-    int id = std::stoi(list.front());list.pop_front();
-    int act = std::stoi(list.front());list.pop_front();
-
-    int res = _ptr_robot->SetDexterousHandsAct(id, act);
-    return std::string(std::to_string(res));
-}
-
-/**
- * @brief 清除灵巧手错误
- * @retval 0-成功，其他-错误码
- */
-std::string robot_command_thread::ClearDexterousHandsError(std::string para){
-    int res = _ptr_robot->ClearDexterousHandsError();
-    return std::string(std::to_string(res));
-}
-
-/**
- * @brief 设置灵巧手功能
- * @param [in] para-id(灵巧手ID),func[32](功能数组)
- * @retval 0-成功，其他-错误码
- */
-std::string robot_command_thread::SetDexterousHandsFunc(std::string para){
-    std::list<std::string> list;
-    _splitString2List(para,list);
-
-    int id = std::stoi(list.front());list.pop_front();
-    int func[32];
-    for(int i = 0; i < 32; i++){
-        func[i] = std::stoi(list.front());list.pop_front();
-    }
-
-    int res = _ptr_robot->SetDexterousHandsFunc(id, func);
-    return std::string(std::to_string(res));
-}
-
-/**
- * @brief 获取灵巧手功能配置
- * @param [in] para-id(灵巧手ID)
- * @param[out] func[32] 功能数组
- * @retval 0-成功，其他-错误码
- */
-std::string robot_command_thread::GetDexterousHandsFunc(std::string para){
-    std::list<std::string> list;
-    _splitString2List(para,list);
-
-    int id = std::stoi(list.front());list.pop_front();
-    int func[32] = {0};
-
-    int res = _ptr_robot->GetDexterousHandsFunc(id, func);
-    std::string result = std::to_string(res);
-    for(int i = 0; i < 32; i++){
-        result += "," + std::to_string(func[i]);
-    }
-    return result;
-}
-
-
-/**
- * @brief 设置即时速度
- * @param [in] para-vel(速度值)
- * @retval 0-成功，其他-错误码
- */
-std::string robot_command_thread::SetSpeedInstant(std::string para){
-    int res = _ptr_robot->SetSpeedInstant(std::stoi(para));
-    return std::string(std::to_string(res));
-}
-
-/**
- * @brief 获取摆动回中心配置
- * @param[out] flag 回中心标志
- * @retval 0-成功，其他-错误码
- */
-std::string robot_command_thread::GetWeaveBackCenterConfig(std::string para){
-    int flag;
-    int res = _ptr_robot->GetWeaveBackCenterConfig(flag);
-    return std::string(std::to_string(res) + "," + std::to_string(flag));
-}
-
-/**
- * @brief 设置摆动回中心配置
- * @param [in] para-flag(回中心标志)
- * @retval 0-成功，其他-错误码
- */
-std::string robot_command_thread::SetWeaveBackCenterConfig(std::string para){
-    int res = _ptr_robot->SetWeaveBackCenterConfig(std::stoi(para));
-    return std::string(std::to_string(res));
-}
-
-/**
- * @brief 设置摆动偏移RT
- * @param [in] para-x,y,z,rx,ry,rz(偏移量)
- * @retval 0-成功，其他-错误码
- */
-std::string robot_command_thread::SetWeaveOffsetRT(std::string para){
-    std::list<std::string> list;
-    _splitString2List(para,list);
-
-    DescPose offset;
-    _fillDescPose(list,offset);
-
-    int res = _ptr_robot->SetWeaveOffsetRT(offset);
-    return std::string(std::to_string(res));
-}
-
-/**
- * @brief 工件坐标系点位转换开始
- * @param [in] workpieceID 工件号[0-14]
- * @return 错误码，成功返回0
- */
-std::string robot_command_thread::WorkPieceTrsfStart(std::string para){
-    std::list<std::string> list;
-    _splitString2List(para,list);
-
-    int workpieceID = std::stoi(list.front());list.pop_front();
-
-    int res = _ptr_robot->WorkPieceTrsfStart(workpieceID);
-    std::string result = std::to_string(res);
-    return result;
-}
-
-/**
- * @brief 工件坐标系点位转换结束
- * @return 错误码，成功返回0
- */
-std::string robot_command_thread::WorkPieceTrsfEnd(std::string para){
-    int res = _ptr_robot->WorkPieceTrsfEnd();
-    return std::string(std::to_string(res));
-}
-
 
 /**
  * @brief 数据端口topic监听回调函数
@@ -11904,239 +11426,217 @@ std::string robot_command_thread::WorkPieceTrsfEnd(std::string para){
 void robot_command_thread::_state_recv_callback(){
     auto msg = robot_feedback_msg();
     static ROBOT_STATE_PKG ctrl_state;
+    int res = _ptr_robot->GetRobotRealTimeState(&ctrl_state);
+    if(res == 0){
+        msg.j1_cur_pos = ctrl_state.jt_cur_pos[0];
+        msg.j2_cur_pos = ctrl_state.jt_cur_pos[1];
+        msg.j3_cur_pos = ctrl_state.jt_cur_pos[2];
+        msg.j4_cur_pos = ctrl_state.jt_cur_pos[3];
+        msg.j5_cur_pos = ctrl_state.jt_cur_pos[4];
+        msg.j6_cur_pos = ctrl_state.jt_cur_pos[5];
+        msg.j1_cur_tor = ctrl_state.jt_cur_tor[0];
+        msg.j2_cur_tor = ctrl_state.jt_cur_tor[1];
+        msg.j3_cur_tor = ctrl_state.jt_cur_tor[2];
+        msg.j4_cur_tor = ctrl_state.jt_cur_tor[3];
+        msg.j5_cur_tor = ctrl_state.jt_cur_tor[4];
+        msg.j6_cur_tor = ctrl_state.jt_cur_tor[5];
+        msg.cart_x_cur_pos = ctrl_state.tl_cur_pos[0];
+        msg.cart_y_cur_pos = ctrl_state.tl_cur_pos[1];
+        msg.cart_z_cur_pos = ctrl_state.tl_cur_pos[2];
+        msg.cart_a_cur_pos = ctrl_state.tl_cur_pos[3];
+        msg.cart_b_cur_pos = ctrl_state.tl_cur_pos[4];
+        msg.cart_c_cur_pos = ctrl_state.tl_cur_pos[5];
+        msg.flange_x_cur_pos = ctrl_state.flange_cur_pos[0];
+        msg.flange_y_cur_pos = ctrl_state.flange_cur_pos[1];
+        msg.flange_z_cur_pos = ctrl_state.flange_cur_pos[2];
+        msg.flange_a_cur_pos = ctrl_state.flange_cur_pos[3];
+        msg.flange_b_cur_pos = ctrl_state.flange_cur_pos[4];
+        msg.flange_c_cur_pos = ctrl_state.flange_cur_pos[5];
+        msg.exaxispos1 = ctrl_state.extAxisStatus[0].pos;
+        msg.exaxistatus1[0] = ctrl_state.extAxisStatus[0].errorCode;
+        msg.exaxistatus1[1] = ctrl_state.extAxisStatus[0].ready;      
+        msg.exaxistatus1[2] = ctrl_state.extAxisStatus[0].inPos;      
+        msg.exaxistatus1[3] = ctrl_state.extAxisStatus[0].alarm;      
+        msg.exaxistatus1[4] = ctrl_state.extAxisStatus[0].flerr;      
+        msg.exaxistatus1[5] = ctrl_state.extAxisStatus[0].nlimit;     
+        msg.exaxistatus1[6] = ctrl_state.extAxisStatus[0].pLimit;     
+        msg.exaxistatus1[7] = ctrl_state.extAxisStatus[0].mdbsOffLine;
+        msg.exaxistatus1[8] = ctrl_state.extAxisStatus[0].mdbsTimeout;
+        msg.exaxistatus1[9] = ctrl_state.extAxisStatus[0].homingStatus;
+        msg.exaxispos2 = ctrl_state.extAxisStatus[1].pos;
+        msg.exaxistatus2[0] = ctrl_state.extAxisStatus[1].errorCode;
+        msg.exaxistatus2[1] = ctrl_state.extAxisStatus[1].ready;      
+        msg.exaxistatus2[2] = ctrl_state.extAxisStatus[1].inPos;      
+        msg.exaxistatus2[3] = ctrl_state.extAxisStatus[1].alarm;      
+        msg.exaxistatus2[4] = ctrl_state.extAxisStatus[1].flerr;      
+        msg.exaxistatus2[5] = ctrl_state.extAxisStatus[1].nlimit;     
+        msg.exaxistatus2[6] = ctrl_state.extAxisStatus[1].pLimit;     
+        msg.exaxistatus2[7] = ctrl_state.extAxisStatus[1].mdbsOffLine;
+        msg.exaxistatus2[8] = ctrl_state.extAxisStatus[1].mdbsTimeout;
+        msg.exaxistatus2[9] = ctrl_state.extAxisStatus[1].homingStatus;
+        msg.exaxispos3 = ctrl_state.extAxisStatus[2].pos;
+        msg.exaxistatus3[0] = ctrl_state.extAxisStatus[2].errorCode;
+        msg.exaxistatus3[1] = ctrl_state.extAxisStatus[2].ready;      
+        msg.exaxistatus3[2] = ctrl_state.extAxisStatus[2].inPos;      
+        msg.exaxistatus3[3] = ctrl_state.extAxisStatus[2].alarm;      
+        msg.exaxistatus3[4] = ctrl_state.extAxisStatus[2].flerr;      
+        msg.exaxistatus3[5] = ctrl_state.extAxisStatus[2].nlimit;     
+        msg.exaxistatus3[6] = ctrl_state.extAxisStatus[2].pLimit;     
+        msg.exaxistatus3[7] = ctrl_state.extAxisStatus[2].mdbsOffLine;
+        msg.exaxistatus3[8] = ctrl_state.extAxisStatus[2].mdbsTimeout;
+        msg.exaxistatus3[9] = ctrl_state.extAxisStatus[2].homingStatus;
+        msg.exaxispos4 = ctrl_state.extAxisStatus[3].pos;
+        msg.exaxistatus4[0] = ctrl_state.extAxisStatus[3].errorCode;
+        msg.exaxistatus4[1] = ctrl_state.extAxisStatus[3].ready;      
+        msg.exaxistatus4[2] = ctrl_state.extAxisStatus[3].inPos;      
+        msg.exaxistatus4[3] = ctrl_state.extAxisStatus[3].alarm;      
+        msg.exaxistatus4[4] = ctrl_state.extAxisStatus[3].flerr;      
+        msg.exaxistatus4[5] = ctrl_state.extAxisStatus[3].nlimit;     
+        msg.exaxistatus4[6] = ctrl_state.extAxisStatus[3].pLimit;     
+        msg.exaxistatus4[7] = ctrl_state.extAxisStatus[3].mdbsOffLine;
+        msg.exaxistatus4[8] = ctrl_state.extAxisStatus[3].mdbsTimeout;
+        msg.exaxistatus4[9] = ctrl_state.extAxisStatus[3].homingStatus;
+        msg.ft_fx_data = ctrl_state.ft_sensor_data[0];
+        msg.ft_fy_data = ctrl_state.ft_sensor_data[1];
+        msg.ft_fz_data = ctrl_state.ft_sensor_data[2];
+        msg.ft_tx_data = ctrl_state.ft_sensor_data[3];
+        msg.ft_ty_data = ctrl_state.ft_sensor_data[4];
+        msg.ft_tz_data = ctrl_state.ft_sensor_data[5];
+        msg.ft_actstatus = ctrl_state.ft_sensor_active;
+        msg.robot_mode = ctrl_state.robot_mode;
+        msg.tool_num = ctrl_state.tool;
+        msg.work_num = ctrl_state.user;
+        msg.prg_state = ctrl_state.program_state;
+        msg.abnormal_stop = ctrl_state.abnomalStop;
+        msg.prg_name = std::string(ctrl_state.currentLuaFileName);
+        msg.prg_total_line = ctrl_state.programTotalLine;
+        msg.prg_cur_line = ctrl_state.luaLineNum;
+        msg.dgt_output_h = ctrl_state.cl_dgt_output_h;
+        msg.dgt_output_l = ctrl_state.cl_dgt_output_l;
+        msg.dgt_input_h = ctrl_state.cl_dgt_input_h;
+        msg.dgt_input_l = ctrl_state.cl_dgt_input_l;
+        msg.tl_dgt_output_l = ctrl_state.tl_dgt_output_l;
+        msg.tl_dgt_input_l = ctrl_state.tl_dgt_input_l;
+        msg.emg = ctrl_state.EmergencyStop;
+        msg.safetyboxsig[0] = ctrl_state.safetyBoxSingal[0];
+        msg.safetyboxsig[1] = ctrl_state.safetyBoxSingal[1];
+        msg.safetyboxsig[2] = ctrl_state.safetyBoxSingal[2];
+        msg.safetyboxsig[3] = ctrl_state.safetyBoxSingal[3];
+        msg.safetyboxsig[4] = ctrl_state.safetyBoxSingal[4];
+        msg.safetyboxsig[5] = ctrl_state.safetyBoxSingal[5];
+        msg.robot_motion_done = ctrl_state.motion_done;
+        msg.grip_motion_done = ctrl_state.gripper_motiondone;
+        msg.weldbreakoffstate = ctrl_state.weldingBreakOffState.breakOffState;
+        msg.weldarcstate = ctrl_state.weldingBreakOffState.weldArcState;
+        msg.welding_voltage = ctrl_state.weldVoltage;
+        msg.welding_current = ctrl_state.weldCurrent;
+        msg.weldtrackspeed = ctrl_state.weldTrackVel;
+        msg.main_error_code = ctrl_state.main_code;
+        msg.sub_error_code = ctrl_state.sub_code;
+        // msg.check_sum
+        msg.version = "V" + std::to_string(VERSION_MSG_MARJOR) + "." + \
+                    std::to_string(VERSION_MSG_MINOR) + std::to_string(VERSION_MSG_MINOR2);
+        auto cur_clock = rclcpp::Clock();//使用系统时钟作为时间戳
+        msg.timestamp = RCL_NS_TO_S(cur_clock.now().nanoseconds());
+        msg.tpd_exception = ctrl_state.tpdException;
+        msg.alarm_reboot_robot = ctrl_state.alarmRebootRobot;
+        msg.modbusmasterconnectstate = ctrl_state.modbusMasterConnect;
+        msg.mdbsslaveconnect = ctrl_state.modbusSlaveConnect;
+        msg.socket_conn_timeout = ctrl_state.socketConnTimeout;
+        msg.socket_read_timeout = ctrl_state.socketReadTimeout;
 
-    int state;
-    int tmpres = _ptr_robot->GetSDKComState(&state);
-    if(state == 0){
-        int res = _ptr_robot->GetRobotRealTimeState(&ctrl_state);
-        if(res == 0){
-            msg.j1_cur_pos = ctrl_state.jt_cur_pos[0];
-            msg.j2_cur_pos = ctrl_state.jt_cur_pos[1];
-            msg.j3_cur_pos = ctrl_state.jt_cur_pos[2];
-            msg.j4_cur_pos = ctrl_state.jt_cur_pos[3];
-            msg.j5_cur_pos = ctrl_state.jt_cur_pos[4];
-            msg.j6_cur_pos = ctrl_state.jt_cur_pos[5];
-            msg.j1_cur_tor = ctrl_state.jt_cur_tor[0];
-            msg.j2_cur_tor = ctrl_state.jt_cur_tor[1];
-            msg.j3_cur_tor = ctrl_state.jt_cur_tor[2];
-            msg.j4_cur_tor = ctrl_state.jt_cur_tor[3];
-            msg.j5_cur_tor = ctrl_state.jt_cur_tor[4];
-            msg.j6_cur_tor = ctrl_state.jt_cur_tor[5];
-            msg.cart_x_cur_pos = ctrl_state.tl_cur_pos[0];
-            msg.cart_y_cur_pos = ctrl_state.tl_cur_pos[1];
-            msg.cart_z_cur_pos = ctrl_state.tl_cur_pos[2];
-            msg.cart_a_cur_pos = ctrl_state.tl_cur_pos[3];
-            msg.cart_b_cur_pos = ctrl_state.tl_cur_pos[4];
-            msg.cart_c_cur_pos = ctrl_state.tl_cur_pos[5];
-            msg.flange_x_cur_pos = ctrl_state.flange_cur_pos[0];
-            msg.flange_y_cur_pos = ctrl_state.flange_cur_pos[1];
-            msg.flange_z_cur_pos = ctrl_state.flange_cur_pos[2];
-            msg.flange_a_cur_pos = ctrl_state.flange_cur_pos[3];
-            msg.flange_b_cur_pos = ctrl_state.flange_cur_pos[4];
-            msg.flange_c_cur_pos = ctrl_state.flange_cur_pos[5];
-            msg.exaxispos1 = ctrl_state.extAxisStatus[0].pos;
-            exaxis_1 = ctrl_state.extAxisStatus[0].pos;
-            msg.exaxistatus1[0] = ctrl_state.extAxisStatus[0].errorCode;
-            msg.exaxistatus1[1] = ctrl_state.extAxisStatus[0].ready;      
-            msg.exaxistatus1[2] = ctrl_state.extAxisStatus[0].inPos;      
-            msg.exaxistatus1[3] = ctrl_state.extAxisStatus[0].alarm;      
-            msg.exaxistatus1[4] = ctrl_state.extAxisStatus[0].flerr;      
-            msg.exaxistatus1[5] = ctrl_state.extAxisStatus[0].nlimit;     
-            msg.exaxistatus1[6] = ctrl_state.extAxisStatus[0].pLimit;     
-            msg.exaxistatus1[7] = ctrl_state.extAxisStatus[0].mdbsOffLine;
-            msg.exaxistatus1[8] = ctrl_state.extAxisStatus[0].mdbsTimeout;
-            msg.exaxistatus1[9] = ctrl_state.extAxisStatus[0].homingStatus;
-            msg.exaxispos2 = ctrl_state.extAxisStatus[1].pos;
-            exaxis_2 = ctrl_state.extAxisStatus[1].pos;
-            msg.exaxistatus2[0] = ctrl_state.extAxisStatus[1].errorCode;
-            msg.exaxistatus2[1] = ctrl_state.extAxisStatus[1].ready;      
-            msg.exaxistatus2[2] = ctrl_state.extAxisStatus[1].inPos;      
-            msg.exaxistatus2[3] = ctrl_state.extAxisStatus[1].alarm;      
-            msg.exaxistatus2[4] = ctrl_state.extAxisStatus[1].flerr;      
-            msg.exaxistatus2[5] = ctrl_state.extAxisStatus[1].nlimit;     
-            msg.exaxistatus2[6] = ctrl_state.extAxisStatus[1].pLimit;     
-            msg.exaxistatus2[7] = ctrl_state.extAxisStatus[1].mdbsOffLine;
-            msg.exaxistatus2[8] = ctrl_state.extAxisStatus[1].mdbsTimeout;
-            msg.exaxistatus2[9] = ctrl_state.extAxisStatus[1].homingStatus;
-            msg.exaxispos3 = ctrl_state.extAxisStatus[2].pos;
-            exaxis_3 = ctrl_state.extAxisStatus[2].pos;
-            msg.exaxistatus3[0] = ctrl_state.extAxisStatus[2].errorCode;
-            msg.exaxistatus3[1] = ctrl_state.extAxisStatus[2].ready;      
-            msg.exaxistatus3[2] = ctrl_state.extAxisStatus[2].inPos;      
-            msg.exaxistatus3[3] = ctrl_state.extAxisStatus[2].alarm;      
-            msg.exaxistatus3[4] = ctrl_state.extAxisStatus[2].flerr;      
-            msg.exaxistatus3[5] = ctrl_state.extAxisStatus[2].nlimit;     
-            msg.exaxistatus3[6] = ctrl_state.extAxisStatus[2].pLimit;     
-            msg.exaxistatus3[7] = ctrl_state.extAxisStatus[2].mdbsOffLine;
-            msg.exaxistatus3[8] = ctrl_state.extAxisStatus[2].mdbsTimeout;
-            msg.exaxistatus3[9] = ctrl_state.extAxisStatus[2].homingStatus;
-            msg.exaxispos4 = ctrl_state.extAxisStatus[3].pos;
-            exaxis_4 = ctrl_state.extAxisStatus[3].pos;
-            msg.exaxistatus4[0] = ctrl_state.extAxisStatus[3].errorCode;
-            msg.exaxistatus4[1] = ctrl_state.extAxisStatus[3].ready;      
-            msg.exaxistatus4[2] = ctrl_state.extAxisStatus[3].inPos;      
-            msg.exaxistatus4[3] = ctrl_state.extAxisStatus[3].alarm;      
-            msg.exaxistatus4[4] = ctrl_state.extAxisStatus[3].flerr;      
-            msg.exaxistatus4[5] = ctrl_state.extAxisStatus[3].nlimit;     
-            msg.exaxistatus4[6] = ctrl_state.extAxisStatus[3].pLimit;     
-            msg.exaxistatus4[7] = ctrl_state.extAxisStatus[3].mdbsOffLine;
-            msg.exaxistatus4[8] = ctrl_state.extAxisStatus[3].mdbsTimeout;
-            msg.exaxistatus4[9] = ctrl_state.extAxisStatus[3].homingStatus;
-            msg.ft_fx_data = ctrl_state.ft_sensor_data[0];
-            msg.ft_fy_data = ctrl_state.ft_sensor_data[1];
-            msg.ft_fz_data = ctrl_state.ft_sensor_data[2];
-            msg.ft_tx_data = ctrl_state.ft_sensor_data[3];
-            msg.ft_ty_data = ctrl_state.ft_sensor_data[4];
-            msg.ft_tz_data = ctrl_state.ft_sensor_data[5];
-            msg.ft_actstatus = ctrl_state.ft_sensor_active;
-            msg.robot_mode = ctrl_state.robot_mode;
-            msg.tool_num = ctrl_state.tool;
-            msg.work_num = ctrl_state.user;
-            msg.prg_state = ctrl_state.program_state;
-            msg.abnormal_stop = ctrl_state.abnomalStop;
-            msg.prg_name = std::string(ctrl_state.currentLuaFileName);
-            msg.prg_total_line = ctrl_state.programTotalLine;
-            msg.prg_cur_line = ctrl_state.luaLineNum;
-            msg.dgt_output_h = ctrl_state.cl_dgt_output_h;
-            msg.dgt_output_l = ctrl_state.cl_dgt_output_l;
-            msg.dgt_input_h = ctrl_state.cl_dgt_input_h;
-            msg.dgt_input_l = ctrl_state.cl_dgt_input_l;
-            msg.tl_dgt_output_l = ctrl_state.tl_dgt_output_l;
-            msg.tl_dgt_input_l = ctrl_state.tl_dgt_input_l;
-            msg.emg = ctrl_state.EmergencyStop;
-            msg.safetyboxsig[0] = ctrl_state.safetyBoxSingal[0];
-            msg.safetyboxsig[1] = ctrl_state.safetyBoxSingal[1];
-            msg.safetyboxsig[2] = ctrl_state.safetyBoxSingal[2];
-            msg.safetyboxsig[3] = ctrl_state.safetyBoxSingal[3];
-            msg.safetyboxsig[4] = ctrl_state.safetyBoxSingal[4];
-            msg.safetyboxsig[5] = ctrl_state.safetyBoxSingal[5];
-            msg.robot_motion_done = ctrl_state.motion_done;
-            msg.grip_motion_done = ctrl_state.gripper_motiondone;
-            msg.weldbreakoffstate = ctrl_state.weldingBreakOffState.breakOffState;
-            msg.weldarcstate = ctrl_state.weldingBreakOffState.weldArcState;
-            msg.welding_voltage = ctrl_state.weldVoltage;
-            msg.welding_current = ctrl_state.weldCurrent;
-            msg.weldtrackspeed = ctrl_state.weldTrackVel;
-            msg.main_error_code = ctrl_state.main_code;
-            msg.sub_error_code = ctrl_state.sub_code;
-            // msg.check_sum
-            msg.version = "V" + std::to_string(VERSION_MSG_MARJOR) + "." + \
-                        std::to_string(VERSION_MSG_MINOR) + std::to_string(VERSION_MSG_MINOR2);
-            auto cur_clock = rclcpp::Clock();//使用系统时钟作为时间戳
-            msg.timestamp = RCL_NS_TO_S(cur_clock.now().nanoseconds());
-            msg.tpd_exception = ctrl_state.tpdException;
-            msg.alarm_reboot_robot = ctrl_state.alarmRebootRobot;
-            msg.modbusmasterconnectstate = ctrl_state.modbusMasterConnect;
-            msg.mdbsslaveconnect = ctrl_state.modbusSlaveConnect;
-            msg.socket_conn_timeout = ctrl_state.socketConnTimeout;
-            msg.socket_read_timeout = ctrl_state.socketReadTimeout;
-
-            msg.btn_box_stop_signa = ctrl_state.btnBoxStopSignal;
-            msg.strangeposflag = ctrl_state.strangePosFlag;
-            msg.drag_alarm = ctrl_state.dragAlarm;
-            msg.alarm = ctrl_state.alarm;
-            msg.safetydoor_alarm = ctrl_state.safetyDoorAlarm;
-            msg.safetyplanealarm = ctrl_state.safetyPlaneAlarm;
-            msg.motionalarm = ctrl_state.motonAlarm;
-            msg.interferealarm = ctrl_state.interfaceAlarm;
-            msg.endluaerrcode = ctrl_state.endLuaErrCode;
-            msg.dr_alarm = ctrl_state.driverAlarm;
-            msg.udpcmdstate = ctrl_state.udpCmdState;
-            msg.aliveslavenumerror = ctrl_state.aliveSlaveNumError;
-            msg.gripperfaultnum = ctrl_state.gripper_fault_id;
-            msg.slavecomerror[0] = ctrl_state.slaveComError[0];
-            msg.slavecomerror[1] = ctrl_state.slaveComError[1];
-            msg.slavecomerror[2] = ctrl_state.slaveComError[2];
-            msg.slavecomerror[3] = ctrl_state.slaveComError[3];
-            msg.slavecomerror[4] = ctrl_state.slaveComError[4];
-            msg.slavecomerror[5] = ctrl_state.slaveComError[5];
-            msg.slavecomerror[6] = ctrl_state.slaveComError[6];
-            msg.slavecomerror[7] = ctrl_state.slaveComError[7];
-            msg.cmdpointerror = ctrl_state.cmdPointError;
-            msg.ioerror = ctrl_state.IOError;
-            msg.grippererro = ctrl_state.gripperError;
-            msg.fileerror = ctrl_state.fileError;
-            msg.paraerror = ctrl_state.paraError;
-            msg.exaxis_out_slimit_error = ctrl_state.exaxisOutLimitError;
-            msg.dr_com_err[0] = ctrl_state.driverComError[0];
-            msg.dr_com_err[1] = ctrl_state.driverComError[1];
-            msg.dr_com_err[2] = ctrl_state.driverComError[2];
-            msg.dr_com_err[3] = ctrl_state.driverComError[3];
-            msg.dr_com_err[4] = ctrl_state.driverComError[4];
-            msg.dr_com_err[5] = ctrl_state.driverComError[5];
-            msg.dr_err = ctrl_state.driverError;
-            msg.out_sflimit_err = ctrl_state.outSoftLimitError;
-            msg.collision_err = ctrl_state.collisionState;
-            msg.weld_readystate = ctrl_state.weldReadyState;
-            msg.alarm_check_emerg_stop_btn = ctrl_state.alarmCheckEmergStopBtn;
-            msg.ts_web_state_com_error = ctrl_state.tsWebStateComErr;
-            msg.ts_tm_cmd_com_error = ctrl_state.tsTmCmdComError;
-            msg.ts_tm_state_com_error = ctrl_state.tsTmStateComError;
-            msg.ctrlboxerror = ctrl_state.ctrlBoxError;
-            msg.safety_data_state = ctrl_state.safetyDataState;
-            msg.forcesensorerrstate = ctrl_state.forceSensorErrState;
-            msg.ctrlopenluaerrcode[0] = ctrl_state.ctrlOpenLuaErrCode[0];
-            msg.ctrlopenluaerrcode[1] = ctrl_state.ctrlOpenLuaErrCode[1];
-            msg.ctrlopenluaerrcode[2] = ctrl_state.ctrlOpenLuaErrCode[2];
-            msg.ctrlopenluaerrcode[3] = ctrl_state.ctrlOpenLuaErrCode[3];
-            msg.auxservoservoid = ctrl_state.aux_state.servoId;
-            msg.auxservoerrcode = ctrl_state.aux_state.servoErrCode;
-            msg.auxservostate = ctrl_state.aux_state.servoState;
-            msg.auxservoactualpos = ctrl_state.aux_state.servoPos;
-            msg.auxservoctualspeed = ctrl_state.aux_state.servoVel;
-            msg.auxservoactualtorque = ctrl_state.aux_state.servoTorque;
-            msg.extpioinput[0] = ctrl_state.extDIState[0];
-            msg.extpioinput[1] = ctrl_state.extDIState[1];
-            msg.extpioinput[2] = ctrl_state.extDIState[2];
-            msg.extpioinput[3] = ctrl_state.extDIState[3];
-            msg.extpioinput[4] = ctrl_state.extDIState[4];
-            msg.extpioinput[5] = ctrl_state.extDIState[5];
-            msg.extpioinput[6] = ctrl_state.extDIState[6];
-            msg.extpioinput[7] = ctrl_state.extDIState[7];
-            msg.extpiooutput[0] = ctrl_state.extDOState[0];
-            msg.extpiooutput[1] = ctrl_state.extDOState[1];
-            msg.extpiooutput[2] = ctrl_state.extDOState[2];
-            msg.extpiooutput[3] = ctrl_state.extDOState[3];
-            msg.extpiooutput[4] = ctrl_state.extDOState[4];
-            msg.extpiooutput[5] = ctrl_state.extDOState[5];
-            msg.extpiooutput[6] = ctrl_state.extDOState[6];
-            msg.extpiooutput[7] = ctrl_state.extDOState[7];
-            msg.extadcinput[0] = ctrl_state.extAIState[0];
-            msg.extadcinput[1] = ctrl_state.extAIState[1];
-            msg.extadcinput[2] = ctrl_state.extAIState[2];
-            msg.extadcinput[3] = ctrl_state.extAIState[3];
-            msg.extadcoutput[0] = ctrl_state.extAOState[0];
-            msg.extadcoutput[1] = ctrl_state.extAOState[1];
-            msg.extadcoutput[2] = ctrl_state.extAOState[2];
-            msg.extadcoutput[3] = ctrl_state.extAOState[3];
-            msg.reconnect_flag = res;
-            msg.exaxiscoordid = ctrl_state.exaxisCoordID;
-            msg.slave_status_1 = 0;
-            msg.slave_status_2 = 0;
-            msg.slave_domain_id = 0;
-            msg.program_run_state = ctrl_state.programRunState;
-            msg.speed_scale_manual = ctrl_state.speedScaleManual;
-            msg.speed_scale_auto = ctrl_state.speedScaleAuto;
-            msg.slave1_reconnect_flag = 0;
-            msg.slave2_reconnect_flag = 0;
-            msg.slave1_exaxistatus_errorcode = 0;
-            msg.slave2_exaxistatus_errorcode = 0;
+        msg.btn_box_stop_signa = ctrl_state.btnBoxStopSignal;
+        msg.strangeposflag = ctrl_state.strangePosFlag;
+        msg.drag_alarm = ctrl_state.dragAlarm;
+        msg.alarm = ctrl_state.alarm;
+        msg.safetydoor_alarm = ctrl_state.safetyDoorAlarm;
+        msg.safetyplanealarm = ctrl_state.safetyPlaneAlarm;
+        msg.motionalarm = ctrl_state.motonAlarm;
+        msg.interferealarm = ctrl_state.interfaceAlarm;
+        msg.endluaerrcode = ctrl_state.endLuaErrCode;
+        msg.dr_alarm = ctrl_state.driverAlarm;
+        msg.udpcmdstate = ctrl_state.udpCmdState;
+        msg.aliveslavenumerror = ctrl_state.aliveSlaveNumError;
+        msg.gripperfaultnum = ctrl_state.gripper_fault_id;
+        msg.slavecomerror[0] = ctrl_state.slaveComError[0];
+        msg.slavecomerror[1] = ctrl_state.slaveComError[1];
+        msg.slavecomerror[2] = ctrl_state.slaveComError[2];
+        msg.slavecomerror[3] = ctrl_state.slaveComError[3];
+        msg.slavecomerror[4] = ctrl_state.slaveComError[4];
+        msg.slavecomerror[5] = ctrl_state.slaveComError[5];
+        msg.slavecomerror[6] = ctrl_state.slaveComError[6];
+        msg.slavecomerror[7] = ctrl_state.slaveComError[7];
+        msg.cmdpointerror = ctrl_state.cmdPointError;
+        msg.ioerror = ctrl_state.IOError;
+        msg.grippererro = ctrl_state.gripperError;
+        msg.fileerror = ctrl_state.fileError;
+        msg.paraerror = ctrl_state.paraError;
+        msg.exaxis_out_slimit_error = ctrl_state.exaxisOutLimitError;
+        msg.dr_com_err[0] = ctrl_state.driverComError[0];
+        msg.dr_com_err[1] = ctrl_state.driverComError[1];
+        msg.dr_com_err[2] = ctrl_state.driverComError[2];
+        msg.dr_com_err[3] = ctrl_state.driverComError[3];
+        msg.dr_com_err[4] = ctrl_state.driverComError[4];
+        msg.dr_com_err[5] = ctrl_state.driverComError[5];
+        msg.dr_err = ctrl_state.driverError;
+        msg.out_sflimit_err = ctrl_state.outSoftLimitError;
+        msg.collision_err = ctrl_state.collisionState;
+        msg.weld_readystate = ctrl_state.weldReadyState;
+        msg.alarm_check_emerg_stop_btn = ctrl_state.alarmCheckEmergStopBtn;
+        msg.ts_web_state_com_error = ctrl_state.tsWebStateComErr;
+        msg.ts_tm_cmd_com_error = ctrl_state.tsTmCmdComError;
+        msg.ts_tm_state_com_error = ctrl_state.tsTmStateComError;
+        msg.ctrlboxerror = ctrl_state.ctrlBoxError;
+        msg.safety_data_state = ctrl_state.safetyDataState;
+        msg.forcesensorerrstate = ctrl_state.forceSensorErrState;
+        msg.ctrlopenluaerrcode[0] = ctrl_state.ctrlOpenLuaErrCode[0];
+        msg.ctrlopenluaerrcode[1] = ctrl_state.ctrlOpenLuaErrCode[1];
+        msg.ctrlopenluaerrcode[2] = ctrl_state.ctrlOpenLuaErrCode[2];
+        msg.ctrlopenluaerrcode[3] = ctrl_state.ctrlOpenLuaErrCode[3];
+        msg.auxservoservoid = ctrl_state.aux_state.servoId;
+        msg.auxservoerrcode = ctrl_state.aux_state.servoErrCode;
+        msg.auxservostate = ctrl_state.aux_state.servoState;
+        msg.auxservoactualpos = ctrl_state.aux_state.servoPos;
+        msg.auxservoctualspeed = ctrl_state.aux_state.servoVel;
+        msg.auxservoactualtorque = ctrl_state.aux_state.servoTorque;
+        msg.extpioinput[0] = ctrl_state.extDIState[0];
+        msg.extpioinput[1] = ctrl_state.extDIState[1];
+        msg.extpioinput[2] = ctrl_state.extDIState[2];
+        msg.extpioinput[3] = ctrl_state.extDIState[3];
+        msg.extpioinput[4] = ctrl_state.extDIState[4];
+        msg.extpioinput[5] = ctrl_state.extDIState[5];
+        msg.extpioinput[6] = ctrl_state.extDIState[6];
+        msg.extpioinput[7] = ctrl_state.extDIState[7];
+        msg.extpiooutput[0] = ctrl_state.extDOState[0];
+        msg.extpiooutput[1] = ctrl_state.extDOState[1];
+        msg.extpiooutput[2] = ctrl_state.extDOState[2];
+        msg.extpiooutput[3] = ctrl_state.extDOState[3];
+        msg.extpiooutput[4] = ctrl_state.extDOState[4];
+        msg.extpiooutput[5] = ctrl_state.extDOState[5];
+        msg.extpiooutput[6] = ctrl_state.extDOState[6];
+        msg.extpiooutput[7] = ctrl_state.extDOState[7];
+        msg.extadcinput[0] = ctrl_state.extAIState[0];
+        msg.extadcinput[1] = ctrl_state.extAIState[1];
+        msg.extadcinput[2] = ctrl_state.extAIState[2];
+        msg.extadcinput[3] = ctrl_state.extAIState[3];
+        msg.extadcoutput[0] = ctrl_state.extAOState[0];
+        msg.extadcoutput[1] = ctrl_state.extAOState[1];
+        msg.extadcoutput[2] = ctrl_state.extAOState[2];
+        msg.extadcoutput[3] = ctrl_state.extAOState[3];
+        msg.reconnect_flag = res;
+        msg.exaxiscoordid = ctrl_state.exaxisCoordID;
 
 
-            // _state_publisher->publish(msg);
-            // RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"exaxistatus1=%d",msg.exaxistatus1[0]);
-            // RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"j1_cur_pos=%f",msg.j1_cur_pos);
-            // RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"j2_cur_pos=%f",msg.j2_cur_pos);
-            // RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"j3_cur_pos=%f",msg.j3_cur_pos);
-            // RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"j4_cur_pos=%f",msg.j4_cur_pos);
-            // RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"j5_cur_pos=%f",msg.j5_cur_pos);
-            // RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"j6_cur_pos=%f",msg.j6_cur_pos);
-        }else{
-            RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"state feedback error: error_code=%d",res);
-            msg.reconnect_flag = 1;
-        }
+        // _state_publisher->publish(msg);
+        // RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"exaxistatus1=%d",msg.exaxistatus1[0]);
+        // RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"j1_cur_pos=%f",msg.j1_cur_pos);
+        // RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"j2_cur_pos=%f",msg.j2_cur_pos);
+        // RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"j3_cur_pos=%f",msg.j3_cur_pos);
+        // RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"j4_cur_pos=%f",msg.j4_cur_pos);
+        // RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"j5_cur_pos=%f",msg.j5_cur_pos);
+        // RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"j6_cur_pos=%f",msg.j6_cur_pos);
     }else{
-        RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"connect error: error_code=%d",state);
+        RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"state feedback error: error_code=%d",res);
         msg.reconnect_flag = 1;
     }
     _state_publisher->publish(msg);

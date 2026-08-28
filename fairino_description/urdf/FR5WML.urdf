@@ -1,0 +1,461 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
+     Commit Version: 1.5.1-0-g916b5db  Build Version: 1.5.7152.31018
+     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+<robot
+  name="FR5WML">
+  <link
+    name="base_link">
+    <inertial>
+      <origin
+        xyz="-0.00017171 -0.00016075 0.041272"
+        rpy="0 0 0" />
+      <mass
+        value="4.3824" />
+      <inertia
+        ixx="0.010669"
+        ixy="2.9786E-05"
+        ixz="-2.7211E-05"
+        iyy="0.010667"
+        iyz="-2.5402E-05"
+        izz="0.017207" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fairino_description/meshes/FR5WML/visual/base_link.dae" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fairino_description/meshes/FR5WML/collision/base_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <link
+    name="shoulder_Link">
+    <inertial>
+      <origin
+        xyz="-0.00016 -0.02851 0.00416"
+        rpy="0 0 0" />
+      <mass
+        value="11.49" />
+      <inertia
+        ixx="0.04363659"
+        ixy="-0.00008398"
+        ixz="-0.00010772"
+        iyy="0.03443223"
+        iyz="0.00135296"
+        izz="0.0422736" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fairino_description/meshes/FR5WML/visual/shoulder_Link.dae" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fairino_description/meshes/FR5WML/collision/shoulder_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="j1"
+    type="revolute">
+    <origin
+      xyz="0 0 0"
+      rpy="0 0 0" />
+    <parent
+      link="base_link" />
+    <child
+      link="shoulder_Link" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-3.0543"
+      upper="3.0543"
+      effort="635"
+      velocity="3.15" />
+    <calibration
+      rising="0"
+      falling="0" />
+    <dynamics
+      damping="0"
+      friction="0" />
+    <safety_controller
+      soft_upper="0"
+      soft_lower="0"
+      k_position="0"
+      k_velocity="0" />
+  </joint>
+  <link
+    name="upperarm_Link">
+    <inertial>
+      <origin
+        xyz="0.64259 0.00004 0.16562"
+        rpy="0 0 0" />
+      <mass
+        value="21.3" />
+      <inertia
+        ixx="0.06998418"
+        ixy="0.00107245"
+        ixz="-0.05317001"
+        iyy="3.59685655"
+        iyz="0.0000122"
+        izz="3.58314098" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fairino_description/meshes/FR5WML/visual/upperarm_Link.dae" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fairino_description/meshes/FR5WML/collision/upperarm_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="j2"
+    type="revolute">
+    <origin
+      xyz="0 0 0.18"
+      rpy="1.5708 0 0" />
+    <parent
+      link="shoulder_Link" />
+    <child
+      link="upperarm_Link" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-4.6251"
+      upper="1.4835"
+      effort="635"
+      velocity="3.15" />
+    <calibration
+      rising="0"
+      falling="0" />
+    <dynamics
+      damping="0"
+      friction="0" />
+    <safety_controller
+      soft_upper="0"
+      soft_lower="0"
+      k_position="0"
+      k_velocity="0" />
+  </joint>
+  <link
+    name="forearm_Link">
+    <inertial>
+      <origin
+        xyz="0.32139 0.00016 0.05276"
+        rpy="0 0 0" />
+      <mass
+        value="4.61" />
+      <inertia
+        ixx="0.00791545"
+        ixy="0.00009431"
+        ixz="-0.00002323"
+        iyy="0.45358577"
+        iyz="0.00000681"
+        izz="0.45292129" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fairino_description/meshes/FR5WML/visual/forearm_Link.dae" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fairino_description/meshes/FR5WML/collision/forearm_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="j3"
+    type="revolute">
+    <origin
+      xyz="-0.97 0 0.045"
+      rpy="0 0 0" />
+    <parent
+      link="upperarm_Link" />
+    <child
+      link="forearm_Link" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-2.8274"
+      upper="2.8274"
+      effort="635"
+      velocity="3.15" />
+    <calibration
+      rising="0"
+      falling="0" />
+    <dynamics
+      damping="0"
+      friction="0" />
+    <safety_controller
+      soft_upper="0"
+      soft_lower="0"
+      k_position="0"
+      k_velocity="0" />
+  </joint>
+  <link
+    name="wrist1_Link">
+    <inertial>
+      <origin
+        xyz="0.00021 -0.00306 0.01307"
+        rpy="0 0 0" />
+      <mass
+        value="1.66" />
+      <inertia
+        ixx="0.0023974"
+        ixy="-0.00001136"
+        ixz="-0.00000925"
+        iyy="0.00231599"
+        iyz="0.0000771"
+        izz="0.00179732" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fairino_description/meshes/FR5WML/visual/wrist1_Link.dae" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fairino_description/meshes/FR5WML/collision/wrist1_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="j4"
+    type="revolute">
+    <origin
+      xyz="-0.816 0 0"
+      rpy="0 0 0" />
+    <parent
+      link="forearm_Link" />
+    <child
+      link="wrist1_Link" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-4.6251"
+      upper="1.4835"
+      effort="110"
+      velocity="3.2" />
+    <calibration
+      rising="0"
+      falling="0" />
+    <dynamics
+      damping="0"
+      friction="0" />
+    <safety_controller
+      soft_upper="0"
+      soft_lower="0"
+      k_position="0"
+      k_velocity="0" />
+  </joint>
+  <link
+    name="wrist2_Link">
+    <inertial>
+      <origin
+        xyz="-0.00021 0.00306 0.01307"
+        rpy="0 0 0" />
+      <mass
+        value="1.66" />
+      <inertia
+        ixx="0.0023974"
+        ixy="-0.00001136"
+        ixz="0.00000925"
+        iyy="0.00231599"
+        iyz="-0.0000771"
+        izz="0.00179732" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fairino_description/meshes/FR5WML/visual/wrist2_Link.dae" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fairino_description/meshes/FR5WML/collision/wrist2_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="j5"
+    type="revolute">
+    <origin
+      xyz="0 0 0.114"
+      rpy="-1.5708 0 3.1416" />
+    <parent
+      link="wrist1_Link" />
+    <child
+      link="wrist2_Link" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-3.0543"
+      upper="3.0543"
+      effort="110"
+      velocity="3.2" />
+    <calibration
+      rising="0"
+      falling="0" />
+    <dynamics
+      damping="0"
+      friction="0" />
+    <safety_controller
+      soft_upper="0"
+      soft_lower="0"
+      k_position="0"
+      k_velocity="0" />
+  </joint>
+  <link
+    name="wrist3_Link">
+    <inertial>
+      <origin
+        xyz="0.00145 0.00109 -0.01998"
+        rpy="0 0 0" />
+      <mass
+        value="0.36" />
+      <inertia
+        ixx="0.00023004"
+        ixy="0.00000109"
+        ixz="-0.00000007"
+        iyy="0.0002307"
+        iyz="0.00000018"
+        izz="0.00036173" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fairino_description/meshes/FR5WML/visual/wrist3_Link.dae" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://fairino_description/meshes/FR5WML/collision/wrist3_Link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="j6"
+    type="revolute">
+    <origin
+      xyz="0 0 0.114"
+      rpy="-1.5708 0 -3.1416" />
+    <parent
+      link="wrist2_Link" />
+    <child
+      link="wrist3_Link" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="-6.2831"
+      upper="6.2831"
+      effort="110"
+      velocity="3.2" />
+    <calibration
+      rising="0"
+      falling="0" />
+    <dynamics
+      damping="0"
+      friction="0" />
+    <safety_controller
+      soft_upper="0"
+      soft_lower="0"
+      k_position="0"
+      k_velocity="0" />
+  </joint>
+</robot>

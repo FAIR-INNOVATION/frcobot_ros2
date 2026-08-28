@@ -86,7 +86,6 @@ CNDE_recv_thread::~CNDE_recv_thread(){
 void CNDE_recv_thread::_state_recv_callback(){
     char buf[256];
     static CNDEState rt_state;
-    static auto cur_clock = rclcpp::Clock();//使用系统时钟作为时间戳
 
     socklen_t addr_len = sizeof(udp_client1);
     auto recv_size = recvfrom(_socketfd1,buf,104,0,(struct sockaddr*)udp_client1,&addr_len);
@@ -105,6 +104,7 @@ void CNDE_recv_thread::_state_recv_callback(){
             shm_shared_data.flange_cur_pos[i] = rt_state.tcp_pos[i];
         }
 
+        static auto cur_clock = rclcpp::Clock();//使用系统时钟作为时间戳
         shm_shared_data.timestamp = cur_clock.now().nanoseconds();
 
         for(int i=0;i<4;i++){

@@ -85,6 +85,8 @@ public:
     std::string SetFrictionValue_wall(std::string para);
     std::string SetFrictionValue_ceiling(std::string para);
     std::string SetFrictionValue_freedom(std::string para);
+    std::string GetSafetyParamsCheckSum(std::string para);
+    std::string SafetyOPPasswordCheck(std::string para);
 
     //外设控制
     std::string ActGripper(std::string para);
@@ -129,6 +131,7 @@ public:
     std::string MoveC(std::string para);
     std::string Circle(std::string para);
     std::string ServoJ(std::string para);
+    std::string ServoJMultiPoint(std::string para);
     std::string SplineStart(std::string para);
     std::string SplinePTP(std::string para);
     std::string SplineEnd(std::string para);
@@ -675,6 +678,19 @@ public:
     std::string WorkPieceTrsfStart(std::string para);
     std::string WorkPieceTrsfEnd(std::string para);
 
+    //夹爪
+    std::string GripperWaitMotionDone(std::string para);
+
+    //系统时间同步
+    std::string SetRobotTime(std::string para);
+
+    //安全双通道配置
+    std::string SetSafetyDIConfig(std::string para);
+    std::string SetSafetyDOConfig(std::string para);
+
+    //手动高速模式
+    std::string HiSpeedManualSwitch(std::string para);
+
 
 
 
@@ -800,6 +816,7 @@ private:
     {"MoveC",&robot_command_thread::MoveC},
     {"Circle",&robot_command_thread::Circle},
     {"ServoJ",&robot_command_thread::ServoJ},
+    {"ServoJMultiPoint",&robot_command_thread::ServoJMultiPoint},
     {"SplineStart",&robot_command_thread::SplineStart},
     {"SplinePTP",&robot_command_thread::SplinePTP},
     {"SplineEnd",&robot_command_thread::SplineEnd},
@@ -1055,6 +1072,8 @@ private:
     {"GetRobotEmergencyStopState",&robot_command_thread::GetRobotEmergencyStopState},
     {"GetSDKComState",&robot_command_thread::GetSDKComState},
     {"GetSafetyStopState",&robot_command_thread::GetSafetyStopState},
+    {"GetSafetyParamsCheckSum",&robot_command_thread::GetSafetyParamsCheckSum},
+    {"SafetyOPPasswordCheck",&robot_command_thread::SafetyOPPasswordCheck},
     {"GetHardwareVersion",&robot_command_thread::GetHardwareVersion},
     {"GetFirmwareVersion",&robot_command_thread::GetFirmwareVersion},
     {"PointTableSwitch",&robot_command_thread::PointTableSwitch},
@@ -1315,7 +1334,12 @@ private:
     {"SetWeaveBackCenterConfig",&robot_command_thread::SetWeaveBackCenterConfig},
     {"SetWeaveOffsetRT",&robot_command_thread::SetWeaveOffsetRT},
     {"WorkPieceTrsfStart",&robot_command_thread::WorkPieceTrsfStart},
-    {"WorkPieceTrsfEnd",&robot_command_thread::WorkPieceTrsfEnd}
+    {"WorkPieceTrsfEnd",&robot_command_thread::WorkPieceTrsfEnd},
+    {"GripperWaitMotionDone",&robot_command_thread::GripperWaitMotionDone},
+    {"SetRobotTime",&robot_command_thread::SetRobotTime},
+    {"SetSafetyDIConfig",&robot_command_thread::SetSafetyDIConfig},
+    {"SetSafetyDOConfig",&robot_command_thread::SetSafetyDOConfig},
+    {"HiSpeedManualSwitch",&robot_command_thread::HiSpeedManualSwitch}
     };
 };
 
