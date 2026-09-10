@@ -209,8 +209,31 @@ hardware_interface::return_type FairinoHardwareInterface::write(const rclcpp::Ti
         //RCLCPP_INFO(rclcpp::get_logger("FairinoHardwareInterface"), "ServoJ下发位置:%f,%f,%f,%f,%f,%f",\
             cmd.jPos[0],cmd.jPos[1],cmd.jPos[2],cmd.jPos[3],cmd.jPos[4],cmd.jPos[5]);
         int returncode = _ptr_robot->ServoJ(&cmd,&extcmd,0,0,0.0016,0,0);
+        // Halt the stream when the arm rejects ServoJ instead of hammering it.
+        // A single stray rejection can be transient, but a SUSTAINED run of them
+        // (e.g. error code 14 when the FR5 refuses a fast multi-joint setpoint)
+        // means the arm is not executing; continuing to stream just produces a
+        // 100+/sec error storm that latches a robot-side fault and forces a full
+        // down/up recovery. Returning ERROR propagates the fault to ros2_control,
+        // which deactivates the controller and stops the stream cleanly (the move
+        // aborts like a normal fault rather than storming).
+        static int servoj_consecutive_errors = 0;
+        static constexpr int kServoJErrorHaltThreshold = 5;  // ~40 ms at 125 Hz / ~8 ms at 625 Hz
         if(returncode != 0){
-            RCLCPP_INFO(rclcpp::get_logger("FairinoHardwareInterface"), "ServoJ指令下发错误,错误码:%d",returncode);
+            servoj_consecutive_errors++;
+            RCLCPP_WARN(rclcpp::get_logger("FairinoHardwareInterface"),
+                "ServoJ指令下发错误,错误码:%d (consecutive:%d/%d)",
+                returncode, servoj_consecutive_errors, kServoJErrorHaltThreshold);
+            if(servoj_consecutive_errors >= kServoJErrorHaltThreshold){
+                RCLCPP_ERROR(rclcpp::get_logger("FairinoHardwareInterface"),
+                    "ServoJ rejected %d consecutive commands (code:%d) — halting stream to "
+                    "avoid an error storm; aborting trajectory.",
+                    servoj_consecutive_errors, returncode);
+                servoj_consecutive_errors = 0;
+                return hardware_interface::return_type::ERROR;
+            }
+        }else{
+            servoj_consecutive_errors = 0;  // reset on any successful command
         }
     }else if(_control_mode == 1){//扭矩控制模式
         if (std::any_of(&_jnt_torque_command[0], &_jnt_torque_command[5],\
