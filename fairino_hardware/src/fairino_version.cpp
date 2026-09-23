@@ -340,15 +340,24 @@ void robot_version_thread::_state_recv_callback(){
             
 
             // 原始库文件
-            // 修改第二位数字，减去6
-            int second_digit = ver[3] - '0';  // 将字符转换为数字
-            second_digit -= 6;  // 第二位数字减去6
+            // ver 形如 "v3_9_8" 或 "v4_0_0"：
+            //   索引1 = 主版本号，索引3 = 次版本号，索引5 = 补丁版本号
+            int major_digit = ver[1] - '0';    // 主版本号
+            int second_digit = ver[3] - '0';   // 次版本号
+            int third_digit = ver[5] - '0';    // 补丁版本号
 
-            // 获取第三位数字
-            int third_digit = ver[5] - '0';  // 将字符转换为数字
+            // 库文件名的次版本号：3.x 系列为“次版本号-6”，4.x 系列规则不同
+            int lib_minor;
+            if (major_digit == 4) {
+                // 4.0.0 对应 libfairino.so.2.4.0
+                lib_minor = second_digit + 4;   // 0 + 4 = 4
+            } else {
+                // 原有 3.x 系列逻辑：库次版本号 = 控制器次版本号 - 6
+                lib_minor = second_digit - 6;
+            }
 
             // 构建新的库文件名
-            std::string original_lib = "libfairino.so.2." + std::to_string(second_digit )+ "." + std::to_string(third_digit);
+            std::string original_lib = "libfairino.so.2." + std::to_string(lib_minor) + "." + std::to_string(third_digit);
 
             // 输出新的库文件名
             // std::cout << "新库文件名: " << original_lib << std::endl;
