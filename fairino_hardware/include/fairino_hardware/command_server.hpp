@@ -10,6 +10,7 @@
 #include "mutex"
 #include "sys/socket.h"
 #include "sys/types.h"
+#include "sys/mman.h"
 #include "netinet/in.h"
 #include "netinet/tcp.h"
 #include "arpa/inet.h"
@@ -19,6 +20,7 @@
 #include <queue>
 #include "libfairino/include/robot.h"
 #include <atomic>
+#include "semaphore.h"
 
 using remote_cmd_server_srv_msg = fairino_msgs::srv::RemoteCmdInterface;
 using remote_script_srv_msg = fairino_msgs::srv::RemoteScriptContent;
@@ -58,6 +60,11 @@ public:
     std::string SetSpeed(std::string para);
     std::string SetToolCoord(std::string para);
     std::string SetToolList(std::string para);
+    std::string SetToolPoint(std::string para);
+    std::string ComputeTool(std::string para);
+    std::string SetTcp4RefPoint(std::string para);
+    std::string ComputeTcp4(std::string para);
+
     std::string SetExToolCoord(std::string para);
     std::string SetExToolList(std::string para);
     std::string SetWObjCoord(std::string para);
@@ -106,7 +113,13 @@ public:
     std::string ExtAxisGetCoord(std::string para);
     std::string ExtAxisMove(std::string para);
     std::string ExtAxisSyncMoveJ(std::string para);
-    
+    std::string ExtAxisSyncMoveL(std::string para);
+    std::string ExtAxisSetRefPoint(std::string para);
+    std::string ExtAxisComputeECoordSys(std::string para);
+    std::string ExtAxisActiveECoordSys(std::string para);
+    std::string SetAxisDHParaConfig(std::string para);
+    std::string ExtDevLoadUDPDriver(std::string para);
+
     //运动指令
     std::string StartJOG(std::string para);
     std::string StopJOG(std::string para);
@@ -178,12 +191,15 @@ public:
     std::string ComputeWObjCoordWithPoints(std::string para);
 
     //焊接中断恢复功能
+    std::string WeldingSetCurrent(std::string para);
+    std::string WeldingSetVoltage(std::string para);
     std::string WeldingSetCheckArcInterruptionParam(std::string para);
     std::string WeldingGetCheckArcInterruptionParam(std::string para);
     std::string WeldingSetReWeldAfterBreakOffParam(std::string para);
     std::string WeldingGetReWeldAfterBreakOffParam(std::string para);
     std::string WeldingStartReWeldAfterBreakOff(std::string para);
     std::string WeldingAbortWeldAfterBreakOff(std::string para);
+    
 
     //new-387
     std::string GetAxlePointRecordBtnState(std::string para);
@@ -192,10 +208,6 @@ public:
     std::string WaitAI(std::string para);
     std::string WaitToolAI(std::string para);
     std::string SetSysVarValue(std::string para);
-    std::string SetToolPoint(std::string para);
-    std::string ComputeTool(std::string para);
-    std::string SetTcp4RefPoint(std::string para);
-    std::string ComputeTcp4(std::string para);
     std::string SetExTCPPoint(std::string para);
     std::string ComputeExTCF(std::string para);
     std::string SetWObjCoordPoint(std::string para);
@@ -303,6 +315,7 @@ public:
     std::string ConveyorTrackStart(std::string para);
     std::string ConveyorTrackEnd(std::string para);
     std::string ConveyorSetParam(std::string para);
+    std::string SetStationaryTrackPara(std::string para);
     std::string ConveyorCatchPointComp(std::string para);
     std::string TrackMoveL(std::string para);
     std::string GetSSHKeygen(std::string para);
@@ -317,36 +330,20 @@ public:
     std::string PointTableDownLoad(std::string para);
     std::string PointTableUpLoad(std::string para);
     std::string PointTableUpdateLua(std::string para);
-    std::string ARCStart(std::string para);
-    std::string ARCEnd(std::string para);
-    std::string WeldingSetCurrentRelation(std::string para);
-    std::string WeldingSetVoltageRelation(std::string para);
-    std::string WeldingGetCurrentRelation(std::string para);
-    std::string WeldingGetVoltageRelation(std::string para);
-    std::string WeldingSetCurrent(std::string para);
-    std::string WeldingSetVoltage(std::string para);
     std::string WeaveSetPara(std::string para);
     std::string WeaveOnlineSetPara(std::string para);
     std::string WeaveStart(std::string para);
     std::string WeaveEnd(std::string para);
-    std::string SetForwardWireFeed(std::string para);
-    std::string SetReverseWireFeed(std::string para);
-    std::string SetAspirated(std::string para);
     std::string SegmentWeldStart(std::string para);
     std::string LoggerInit(std::string para);
     std::string SetLoggerLevel(std::string para);
     std::string AuxServoGetParam(std::string para);
     std::string AuxServoGetStatus(std::string para);
-    std::string GetExDevProtocol(std::string para);
-    std::string SetExDevProtocol(std::string para);
     std::string SetOaccScale(std::string para);
     std::string MoveAOStart(std::string para);
     std::string MoveAOStop(std::string para);
     std::string MoveToolAOStart(std::string para);
     std::string MoveToolAOStop(std::string para);
-    std::string ExtDevSetUDPComParam(std::string para);
-    std::string ExtDevGetUDPComParam(std::string para);
-    std::string ExtDevLoadUDPDriver(std::string para);
     std::string ExtDevUnloadUDPDriver(std::string para);
     std::string SetAuxDIFilterTime(std::string para);
     std::string SetAuxAIFilterTime(std::string para);
@@ -354,18 +351,9 @@ public:
     std::string WaitAuxAI(std::string para);
     std::string GetAuxDI(std::string para);
     std::string GetAuxAI(std::string para);
-    std::string ExtDevUDPClientComReset(std::string para);
-    std::string ExtDevUDPClientComClose(std::string para);
-    std::string ExtAxisParamConfig(std::string para);
-    std::string SetRobotPosToAxis(std::string para);
-    std::string SetAxisDHParaConfig(std::string para);
-    std::string ExtAxisSetRefPoint(std::string para);
-    std::string ExtAxisComputeECoordSys(std::string para);
-    std::string ExtAxisActiveECoordSys(std::string para);
     std::string SetRefPointInExAxisEnd(std::string para);
     std::string PositionorSetRefPoint(std::string para);
     std::string PositionorComputeECoordSys(std::string para);
-    std::string ExtAxisSyncMoveL(std::string para);
     std::string ExtAxisSyncMoveC(std::string para);
     std::string WireSearchStart(std::string para);
     std::string WireSearchEnd(std::string para);
@@ -401,13 +389,6 @@ public:
     std::string WeaveEndSim(std::string para);
     std::string WeaveInspectStart(std::string para);
     std::string WeaveInspectEnd(std::string para);
-    std::string SetAirControlExtDoNum(std::string para);
-    std::string SetArcStartExtDoNum(std::string para);
-    std::string SetWireReverseFeedExtDoNum(std::string para);
-    std::string SetWireForwardFeedExtDoNum(std::string para);
-    std::string SetArcDoneExtDiNum(std::string para);
-    std::string SetWeldReadyExtDiNum(std::string para);
-    std::string SetExtDIWeldBreakOffRecover(std::string para);
     std::string SetCollisionDetectionMethod(std::string para);
     std::string SetStaticCollisionOnOff(std::string para);
     std::string SetPowerLimit(std::string para);
@@ -425,10 +406,6 @@ public:
     std::string AngularSpeedEnd(std::string para);
     std::string SoftwareUpgrade(std::string para);
     std::string GetSoftwareUpgradeState(std::string para);
-    std::string AuxServoSetAcc(std::string para);
-    std::string AuxServoSetEmergencyStopAcc(std::string para);
-    std::string AuxServoGetAcc(std::string para);
-    std::string AuxServoGetEmergencyStopAcc(std::string para);
     std::string GetAxleCommunicationParam(std::string para);
     std::string SetAxleCommunicationParam(std::string para);
     std::string SetAxleFileType(std::string para);
@@ -440,10 +417,6 @@ public:
     std::string GetAxleLuaEnableDevice(std::string para);
     std::string SetAxleLuaGripperFunc(std::string para);
     std::string GetAxleLuaGripperFunc(std::string para);
-    std::string SetCtrlOpenLUAName(std::string para);
-    std::string GetCtrlOpenLUAName(std::string para);
-    std::string LoadCtrlOpenLUA(std::string para);
-    std::string UnloadCtrlOpenLUA(std::string para);
     std::string SetCtrlOpenLuaErrCode(std::string para);
     std::string SlaveFileWrite(std::string para);
     std::string AxleLuaUpload(std::string para);
@@ -451,6 +424,7 @@ public:
     std::string SetWireSearchExtDIONum(std::string para);
     std::string SetWeldMachineCtrlModeExtDoNum(std::string para);
     std::string SetWeldMachineCtrlMode(std::string para);
+    std::string GetWeldMachineCtrlMode(std::string para);
     std::string SingularAvoidStart(std::string para);
     std::string SingularAvoidEnd(std::string para);
     std::string PtpFIRPlanningStart(std::string para);
@@ -495,10 +469,6 @@ public:
     std::string ShutDownRobotOS(std::string para);
     std::string ConveyorComDetect(std::string para);
     std::string ConveyorComDetectTrigger(std::string para);
-    std::string ArcWeldTraceAIChannelCurrent(std::string para);
-    std::string ArcWeldTraceAIChannelVoltage(std::string para);
-    std::string ArcWeldTraceCurrentPara(std::string para);
-    std::string ArcWeldTraceVoltagePara(std::string para);
     std::string WeldingSetVoltageGradualChangeStart(std::string para);
     std::string WeldingSetVoltageGradualChangeEnd(std::string para);
     std::string WeldingSetCurrentGradualChangeStart(std::string para);
@@ -561,20 +531,30 @@ public:
     std::string JointHysteresisError(std::string para);
     std::string JointRepeatability(std::string para);
     std::string SetAdmittanceParams(std::string para);
-    std::string SerCoderCompenParams(std::string para);
+    std::string SetCoderCompenParams(std::string para);
     std::string TCPComputeRPY(std::string para);
     std::string TCPComputeXYZ(std::string para);
     std::string TCPRecordFlangePosStart(std::string para);
     std::string TCPRecordFlangePosEnd(std::string para);
     std::string TCPGetRecordFlangePos(std::string para);
+
+    //力控功能
+    // std::string FT_InsertComp(std::string para);
+
+    // //TCF光点标定
     std::string PhotoelectricSensorTCPCalibration(std::string para);
+
+
     std::string MoveStationary(std::string para);
+    std::string WaitStationaryMotionDone(std::string para);
     std::string GetProgramRunErrCode(std::string para);
     std::string SetAxleGenComEnable(std::string para);
     std::string GetAxleGenComCycleData(std::string para);
     std::string SndRcvAxleGenComCmdData(std::string para);
     std::string SetRobotStopOnComDisc(std::string para);
     std::string GetRobotStopOnComDisc(std::string para);
+
+
     std::string SetDIConfig(std::string para);
     std::string GetDIConfig(std::string para);
     std::string SetDOConfig(std::string para);
@@ -591,22 +571,124 @@ public:
     std::string GetStandardDILevel(std::string para);
     std::string SetStandardDOLevel(std::string para);
     std::string GetStandardDOLevel(std::string para);
+    std::string GetExtDIConfig(std::string para);
+    std::string GetExtDOConfig(std::string para);
     std::string SetExAxisCmdDoneTime(std::string para);
-    std::string OpenLuaDownload(std::string para);
+    std::string OpenLuaDownload(std::string para);    
+    std::string ExtDevGetUDPComParam(std::string para); 
+    std::string ExtDevSetUDPComParam(std::string para); 
+    std::string SetRobotPosToAxis(std::string para); 
+    std::string ExtAxisParamConfig(std::string para); 
+    std::string WeldingSetCurrentRelation(std::string para);
+    std::string WeldingSetVoltageRelation(std::string para);
+    std::string ARCStart(std::string para);
+    std::string ARCEnd(std::string para);
+    std::string SetForwardWireFeed(std::string para);
+    std::string SetReverseWireFeed(std::string para);
+    std::string ArcWeldTraceAIChannelCurrent(std::string para); 
+    std::string ArcWeldTraceAIChannelVoltage(std::string para);
+    std::string ArcWeldTraceCurrentPara(std::string para);
+    std::string ArcWeldTraceVoltagePara(std::string para);
+    std::string SetArcDoneExtDiNum(std::string para);
+    std::string SetWeldReadyExtDiNum(std::string para);
+    std::string SetExtDIWeldBreakOffRecover(std::string para);
+    std::string SetWireReverseFeedExtDoNum(std::string para);
+    std::string SetWireForwardFeedExtDoNum(std::string para);
+    std::string SetAirControlExtDoNum(std::string para);
+    std::string SetArcStartExtDoNum(std::string para);
+    std::string SetCtrlOpenLUAName(std::string para);
+    std::string SetExDevProtocol(std::string para);
+    std::string LoadCtrlOpenLUA(std::string para);
+    std::string UnloadCtrlOpenLUA(std::string para);
+    std::string AuxServoSetAcc(std::string para);
+    std::string AuxServoSetEmergencyStopAcc(std::string para);
+    std::string WeldingGetCurrentRelation(std::string para);
+    std::string WeldingGetVoltageRelation(std::string para);
+    std::string GetExDevProtocol(std::string para);
+    std::string AuxServoGetAcc(std::string para);
+    std::string AuxServoGetEmergencyStopAcc(std::string para);
+    std::string SetAspirated(std::string para);
+    std::string ExtDevUDPClientComReset(std::string para);
+    std::string ExtDevUDPClientComClose(std::string para);
+    std::string GetCtrlOpenLUAName(std::string para);
+    std::string OpenLuaDelete(std::string para);
+    std::string AllOpenLuaDelete(std::string para);
     std::string SendUDPFrame(std::string para);
     std::string SetVelReducePara(std::string para);
     std::string OriginPointWeaveStart(std::string para);
     std::string OriginPointWeaveEnd(std::string para);
-    std::string OpenLuaDelete(std::string para);
-    std::string AllOpenLuaDelete(std::string para);
     std::string SetUserLEDColor(std::string para);
     std::string MoveToTPDStart(std::string para);
+    std::string SetRobotRealtimeStatePeriod(std::string para);
+    std::string ServoJV(std::string para);
+    std::string ServoMITStart(std::string para);
+    std::string ServoMITEnd(std::string para);
+    std::string ServoMIT(std::string para);
+    std::string SetLaserWeldingParam(std::string para);
+    std::string SetLaserWeldingStartEnd(std::string para);
+    std::string SetLaserWeldingEnable(std::string para);
+    std::string ResetLaserWeldingErr(std::string para);
+    std::string GetLaserWeldingRunningState(std::string para);
+    std::string GetLaserWeldingErrState(std::string para);
+    std::string GetLaserWeldingParamTarget(std::string para);
+    std::string GetLaserWeldingParamActual(std::string para);
+    std::string SetLaserWeldingEnableExtDoNum(std::string para);
+    std::string SetLaserWeldingStartExtDoNum(std::string para);
+    std::string SetLaserWeldingErrResetExtDoNum(std::string para);
+    std::string SetLaserWeldingRunningStateExtDiNum(std::string para);
+    std::string SetLaserWeldingErrStateExtDiNum(std::string para);
+    std::string ExtAxisGetParamConfig(std::string para);
+
+    //SDK连接管理
+    std::string CloseRPC(std::string para);
+    std::string GetSoftwareVersion(std::string para);
+
+    //实时状态配置
+    std::string SetRobotRealtimeStateConfig(std::string para);
+    std::string GetRobotRealtimeStateConfig(std::string para);
+    std::string GetRobotRealTimeState(std::string para);
+    std::string AddRobotRealtimeState(std::string para);
+    std::string DeleteRobotRealtimeState(std::string para);
+
+    //力与关节阻抗控制
+    std::string ForceAndJointImpedanceStartStop(std::string para);
+
+    //轴传感器
+    std::string AxleSensorRegWrite(std::string para);
+
+    //灵巧手控制
+    std::string SetDexterousHandsMove(std::string para);
+    std::string SetDexterousHandsAct(std::string para);
+    std::string ClearDexterousHandsError(std::string para);
+    std::string SetDexterousHandsFunc(std::string para);
+    std::string GetDexterousHandsFunc(std::string para);
+
+    //速度控制
+    std::string SetSpeedInstant(std::string para);
+
+    //摆动控制
+    std::string GetWeaveBackCenterConfig(std::string para);
+    std::string SetWeaveBackCenterConfig(std::string para);
+    std::string SetWeaveOffsetRT(std::string para);
+
+    //工件坐标系点位转换
+    std::string WorkPieceTrsfStart(std::string para);
+    std::string WorkPieceTrsfEnd(std::string para);
+
+
+
+
 private:
 
     
     void _state_recv_callback();
     rclcpp::Publisher<robot_feedback_msg>::SharedPtr _state_publisher;//进程内通信，用于发送状态数据字符串
     rclcpp::TimerBase::SharedPtr _locktimer1;
+
+
+    void _ping_recv_callback();
+    rclcpp::TimerBase::SharedPtr _locktimer2;
+    bool _check_ping(const std::string& ip_address);
 
 
     std::unique_ptr<FRRobot> _ptr_robot;//机械臂SDK库指针
@@ -661,7 +743,11 @@ private:
     {"SetSpeed",&robot_command_thread::SetSpeed},
     {"Mode",&robot_command_thread::Mode},
     {"SetToolCoord",&robot_command_thread::SetToolCoord},
+    {"ComputeTool",&robot_command_thread::ComputeTool},
+    {"SetTcp4RefPoint",&robot_command_thread::SetTcp4RefPoint},
+    {"ComputeTcp4",&robot_command_thread::ComputeTcp4},
     {"SetToolList",&robot_command_thread::SetToolList},
+    {"SetToolPoint",&robot_command_thread::SetToolPoint},
     {"SetExToolCoord",&robot_command_thread::SetExToolCoord},
     {"SetExToolList",&robot_command_thread::SetExToolList},
     {"SetWObjCoord",&robot_command_thread::SetWObjCoord},
@@ -692,6 +778,12 @@ private:
     {"ExtAxisStartJog",&robot_command_thread::ExtAxisStartJog},
     {"ExtAxisSetHoming",&robot_command_thread::ExtAxisSetHoming},
     {"ExtAxisSyncMoveJ",&robot_command_thread::ExtAxisSyncMoveJ},
+    {"ExtAxisSyncMoveL",&robot_command_thread::ExtAxisSyncMoveL},
+    {"ExtAxisSetRefPoint",&robot_command_thread::ExtAxisSetRefPoint},
+    {"ExtAxisComputeECoordSys",&robot_command_thread::ExtAxisComputeECoordSys},
+    {"ExtAxisActiveECoordSys",&robot_command_thread::ExtAxisActiveECoordSys},
+    {"SetAxisDHParaConfig",&robot_command_thread::SetAxisDHParaConfig},
+    {"ExtDevLoadUDPDriver",&robot_command_thread::ExtDevLoadUDPDriver},
     {"StopExtAxisJog",&robot_command_thread::StopExtAxisJog},
     {"ExtAxisGetCoord",&robot_command_thread::ExtAxisGetCoord},
     {"ExtAxisMove",&robot_command_thread::ExtAxisMove},
@@ -746,22 +838,82 @@ private:
     {"GetLuaList",&robot_command_thread::GetLuaList},
     {"ComputeToolCoordWithPoints",&robot_command_thread::ComputeToolCoordWithPoints},
     {"ComputeWObjCoordWithPoints",&robot_command_thread::ComputeWObjCoordWithPoints},
+    {"WeldingSetCurrent",&robot_command_thread::WeldingSetCurrent},
+    {"WeldingSetVoltage",&robot_command_thread::WeldingSetVoltage},
     {"WeldingSetCheckArcInterruptionParam",&robot_command_thread::WeldingSetCheckArcInterruptionParam},
     {"WeldingGetCheckArcInterruptionParam",&robot_command_thread::WeldingGetCheckArcInterruptionParam},
     {"WeldingSetReWeldAfterBreakOffParam",&robot_command_thread::WeldingSetReWeldAfterBreakOffParam},
     {"WeldingGetReWeldAfterBreakOffParam",&robot_command_thread::WeldingGetReWeldAfterBreakOffParam},
     {"WeldingStartReWeldAfterBreakOff",&robot_command_thread::WeldingStartReWeldAfterBreakOff},
     {"WeldingAbortWeldAfterBreakOff",&robot_command_thread::WeldingAbortWeldAfterBreakOff},
+    // {"FT_InsertComp",&robot_command_thread::FT_InsertComp},
+    {"PhotoelectricSensorTCPCalibration",&robot_command_thread::PhotoelectricSensorTCPCalibration},
+    {"SetDIConfig",&robot_command_thread::SetDIConfig},
+    {"GetDIConfig",&robot_command_thread::GetDIConfig},
+    {"SetDOConfig",&robot_command_thread::SetDOConfig},
+    {"GetDOConfig",&robot_command_thread::GetDOConfig},
+    {"SetToolDIConfig",&robot_command_thread::SetToolDIConfig},
+    {"GetToolDIConfig",&robot_command_thread::GetToolDIConfig},
+    {"SetDIConfigLevel",&robot_command_thread::SetDIConfigLevel},
+    {"GetDIConfigLevel",&robot_command_thread::GetDIConfigLevel},
+    {"SetDOConfigLevel",&robot_command_thread::SetDOConfigLevel},
+    {"GetDOConfigLevel",&robot_command_thread::GetDOConfigLevel},
+    {"SetToolDIConfigLevel",&robot_command_thread::SetToolDIConfigLevel},
+    {"GetToolDIConfigLevel",&robot_command_thread::GetToolDIConfigLevel},
+    {"SetStandardDILevel",&robot_command_thread::SetStandardDILevel},
+    {"GetStandardDILevel",&robot_command_thread::GetStandardDILevel},
+    {"SetStandardDOLevel",&robot_command_thread::SetStandardDOLevel},
+    {"GetStandardDOLevel",&robot_command_thread::GetStandardDOLevel},
+    {"GetExtDIConfig",&robot_command_thread::GetExtDIConfig},
+    {"GetExtDOConfig",&robot_command_thread::GetExtDOConfig},
+    {"SetExAxisCmdDoneTime",&robot_command_thread::SetExAxisCmdDoneTime},
+    {"OpenLuaDownload",&robot_command_thread::OpenLuaDownload},
+    {"ExtDevGetUDPComParam",&robot_command_thread::ExtDevGetUDPComParam},
+    {"ExtDevSetUDPComParam",&robot_command_thread::ExtDevSetUDPComParam},
+    {"SetRobotPosToAxis",&robot_command_thread::SetRobotPosToAxis},
+    {"ExtAxisParamConfig",&robot_command_thread::ExtAxisParamConfig},
+    {"WeldingSetCurrentRelation",&robot_command_thread::WeldingSetCurrentRelation},
+    {"WeldingSetVoltageRelation",&robot_command_thread::WeldingSetVoltageRelation},
+    {"ARCStart",&robot_command_thread::ARCStart},
+    {"ARCEnd",&robot_command_thread::ARCEnd},
+    {"SetForwardWireFeed",&robot_command_thread::SetForwardWireFeed},
+    {"SetReverseWireFeed",&robot_command_thread::SetReverseWireFeed},
+    {"ArcWeldTraceAIChannelCurrent",&robot_command_thread::ArcWeldTraceAIChannelCurrent},
+    {"ArcWeldTraceAIChannelVoltage",&robot_command_thread::ArcWeldTraceAIChannelVoltage},
+    {"ArcWeldTraceCurrentPara",&robot_command_thread::ArcWeldTraceCurrentPara},
+    {"ArcWeldTraceVoltagePara",&robot_command_thread::ArcWeldTraceVoltagePara},
+    {"SetArcDoneExtDiNum",&robot_command_thread::SetArcDoneExtDiNum},
+    {"SetWeldReadyExtDiNum",&robot_command_thread::SetWeldReadyExtDiNum},
+    {"SetExtDIWeldBreakOffRecover",&robot_command_thread::SetExtDIWeldBreakOffRecover},
+    {"SetWireReverseFeedExtDoNum",&robot_command_thread::SetWireReverseFeedExtDoNum},
+    {"SetWireForwardFeedExtDoNum",&robot_command_thread::SetWireForwardFeedExtDoNum},
+    {"SetAirControlExtDoNum",&robot_command_thread::SetAirControlExtDoNum},
+    {"SetArcStartExtDoNum",&robot_command_thread::SetArcStartExtDoNum},
+    {"SetWireSearchExtDIONum",&robot_command_thread::SetWireSearchExtDIONum},
+    {"SetWeldMachineCtrlMode",&robot_command_thread::SetWeldMachineCtrlMode},
+    {"GetWeldMachineCtrlMode",&robot_command_thread::GetWeldMachineCtrlMode},
+    {"SetCtrlOpenLUAName",&robot_command_thread::SetCtrlOpenLUAName},
+    {"OpenLuaUpload",&robot_command_thread::OpenLuaUpload},
+    {"SetExDevProtocol",&robot_command_thread::SetExDevProtocol},
+    {"LoadCtrlOpenLUA",&robot_command_thread::LoadCtrlOpenLUA},
+    {"UnloadCtrlOpenLUA",&robot_command_thread::UnloadCtrlOpenLUA},
+    {"AuxServoSetAcc",&robot_command_thread::AuxServoSetAcc},
+    {"AuxServoSetEmergencyStopAcc",&robot_command_thread::AuxServoSetEmergencyStopAcc},
+    {"WeldingGetCurrentRelation",&robot_command_thread::WeldingGetCurrentRelation},
+    {"WeldingGetVoltageRelation",&robot_command_thread::WeldingGetVoltageRelation},
+    {"GetExDevProtocol",&robot_command_thread::GetExDevProtocol},
+    {"AuxServoGetParam",&robot_command_thread::AuxServoGetParam},
+    {"AuxServoGetAcc",&robot_command_thread::AuxServoGetAcc},
+    {"AuxServoGetEmergencyStopAcc",&robot_command_thread::AuxServoGetEmergencyStopAcc},
+    {"SetAspirated",&robot_command_thread::SetAspirated},
+    {"ExtDevUDPClientComReset",&robot_command_thread::ExtDevUDPClientComReset},
+    {"ExtDevUDPClientComClose",&robot_command_thread::ExtDevUDPClientComClose},
+    {"GetCtrlOpenLUAName",&robot_command_thread::GetCtrlOpenLUAName},
+    {"OpenLuaDelete",&robot_command_thread::OpenLuaDelete},
+    {"AllOpenLuaDelete",&robot_command_thread::AllOpenLuaDelete},
     {"GetSDKVersion",&robot_command_thread::GetSDKVersion},
     {"GetControllerIP",&robot_command_thread::GetControllerIP},
     {"IsInDragTeach",&robot_command_thread::IsInDragTeach},
-    {"NewSpiral",&robot_command_thread::NewSpiral},
-    {"ServoMoveStart",&robot_command_thread::ServoMoveStart},
-    {"ServoMoveEnd",&robot_command_thread::ServoMoveEnd},
-    {"ServoCart",&robot_command_thread::ServoCart},
-    {"MoveCart",&robot_command_thread::MoveCart},
-    {"PauseMotion",&robot_command_thread::PauseMotion},
-    {"ResumeMotion",&robot_command_thread::ResumeMotion},
     {"GetDI",&robot_command_thread::GetDI},
     {"GetToolDI",&robot_command_thread::GetToolDI},
     {"WaitDI",&robot_command_thread::WaitDI},
@@ -769,16 +921,19 @@ private:
     {"WaitToolDI",&robot_command_thread::WaitToolDI},
     {"GetAI",&robot_command_thread::GetAI},
     {"GetToolAI",&robot_command_thread::GetToolAI},
+    {"NewSpiral",&robot_command_thread::NewSpiral},
+    {"ServoMoveStart",&robot_command_thread::ServoMoveStart},
+    {"ServoMoveEnd",&robot_command_thread::ServoMoveEnd},
+    {"ServoCart",&robot_command_thread::ServoCart},
+    {"MoveCart",&robot_command_thread::MoveCart},
+    {"PauseMotion",&robot_command_thread::PauseMotion},
+    {"ResumeMotion",&robot_command_thread::ResumeMotion},
     {"GetAxlePointRecordBtnState",&robot_command_thread::GetAxlePointRecordBtnState},
     {"GetToolDO",&robot_command_thread::GetToolDO},
     {"GetDO",&robot_command_thread::GetDO},
     {"WaitAI",&robot_command_thread::WaitAI},
     {"WaitToolAI",&robot_command_thread::WaitToolAI},
     {"SetSysVarValue",&robot_command_thread::SetSysVarValue},
-    {"SetToolPoint",&robot_command_thread::SetToolPoint},
-    {"ComputeTool",&robot_command_thread::ComputeTool},
-    {"SetTcp4RefPoint",&robot_command_thread::SetTcp4RefPoint},
-    {"ComputeTcp4",&robot_command_thread::ComputeTcp4},
     {"SetExTCPPoint",&robot_command_thread::SetExTCPPoint},
     {"ComputeExTCF",&robot_command_thread::ComputeExTCF},
     {"SetWObjCoordPoint",&robot_command_thread::SetWObjCoordPoint},
@@ -886,6 +1041,7 @@ private:
     {"ConveyorTrackStart",&robot_command_thread::ConveyorTrackStart},
     {"ConveyorTrackEnd",&robot_command_thread::ConveyorTrackEnd},
     {"ConveyorSetParam",&robot_command_thread::ConveyorSetParam},
+    {"SetStationaryTrackPara",&robot_command_thread::SetStationaryTrackPara},
     {"ConveyorCatchPointComp",&robot_command_thread::ConveyorCatchPointComp},
     {"TrackMoveL",&robot_command_thread::TrackMoveL},
     {"GetSSHKeygen",&robot_command_thread::GetSSHKeygen},
@@ -900,36 +1056,19 @@ private:
     {"PointTableDownLoad",&robot_command_thread::PointTableDownLoad},
     {"PointTableUpLoad",&robot_command_thread::PointTableUpLoad},
     {"PointTableUpdateLua",&robot_command_thread::PointTableUpdateLua},
-    {"ARCStart",&robot_command_thread::ARCStart},
-    {"ARCEnd",&robot_command_thread::ARCEnd},
-    {"WeldingSetCurrentRelation",&robot_command_thread::WeldingSetCurrentRelation},
-    {"WeldingSetVoltageRelation",&robot_command_thread::WeldingSetVoltageRelation},
-    {"WeldingGetCurrentRelation",&robot_command_thread::WeldingGetCurrentRelation},
-    {"WeldingGetVoltageRelation",&robot_command_thread::WeldingGetVoltageRelation},
-    {"WeldingSetCurrent",&robot_command_thread::WeldingSetCurrent},
-    {"WeldingSetVoltage",&robot_command_thread::WeldingSetVoltage},
     {"WeaveSetPara",&robot_command_thread::WeaveSetPara},
     {"WeaveOnlineSetPara",&robot_command_thread::WeaveOnlineSetPara},
     {"WeaveStart",&robot_command_thread::WeaveStart},
     {"WeaveEnd",&robot_command_thread::WeaveEnd},
-    {"SetForwardWireFeed",&robot_command_thread::SetForwardWireFeed},
-    {"SetReverseWireFeed",&robot_command_thread::SetReverseWireFeed},
-    {"SetAspirated",&robot_command_thread::SetAspirated},
     {"SegmentWeldStart",&robot_command_thread::SegmentWeldStart},
     {"LoggerInit",&robot_command_thread::LoggerInit},
     {"SetLoggerLevel",&robot_command_thread::SetLoggerLevel},
-    {"AuxServoGetParam",&robot_command_thread::AuxServoGetParam},
     {"AuxServoGetStatus",&robot_command_thread::AuxServoGetStatus},
-    {"GetExDevProtocol",&robot_command_thread::GetExDevProtocol},
-    {"SetExDevProtocol",&robot_command_thread::SetExDevProtocol},
     {"SetOaccScale",&robot_command_thread::SetOaccScale},
     {"MoveAOStart",&robot_command_thread::MoveAOStart},
     {"MoveAOStop",&robot_command_thread::MoveAOStop},
     {"MoveToolAOStart",&robot_command_thread::MoveToolAOStart},
     {"MoveToolAOStop",&robot_command_thread::MoveToolAOStop},
-    {"ExtDevSetUDPComParam",&robot_command_thread::ExtDevSetUDPComParam},
-    {"ExtDevGetUDPComParam",&robot_command_thread::ExtDevGetUDPComParam},
-    {"ExtDevLoadUDPDriver",&robot_command_thread::ExtDevLoadUDPDriver},
     {"ExtDevUnloadUDPDriver",&robot_command_thread::ExtDevUnloadUDPDriver},
     {"SetAuxDIFilterTime",&robot_command_thread::SetAuxDIFilterTime},
     {"SetAuxAIFilterTime",&robot_command_thread::SetAuxAIFilterTime},
@@ -937,18 +1076,9 @@ private:
     {"WaitAuxAI",&robot_command_thread::WaitAuxAI},
     {"GetAuxDI",&robot_command_thread::GetAuxDI},
     {"GetAuxAI",&robot_command_thread::GetAuxAI},
-    {"ExtDevUDPClientComReset",&robot_command_thread::ExtDevUDPClientComReset},
-    {"ExtDevUDPClientComClose",&robot_command_thread::ExtDevUDPClientComClose},
-    {"ExtAxisParamConfig",&robot_command_thread::ExtAxisParamConfig},
-    {"SetRobotPosToAxis",&robot_command_thread::SetRobotPosToAxis},
-    {"SetAxisDHParaConfig",&robot_command_thread::SetAxisDHParaConfig},
-    {"ExtAxisSetRefPoint",&robot_command_thread::ExtAxisSetRefPoint},
-    {"ExtAxisComputeECoordSys",&robot_command_thread::ExtAxisComputeECoordSys},
-    {"ExtAxisActiveECoordSys",&robot_command_thread::ExtAxisActiveECoordSys},
     {"SetRefPointInExAxisEnd",&robot_command_thread::SetRefPointInExAxisEnd},
     {"PositionorSetRefPoint",&robot_command_thread::PositionorSetRefPoint},
     {"PositionorComputeECoordSys",&robot_command_thread::PositionorComputeECoordSys},
-    {"ExtAxisSyncMoveL",&robot_command_thread::ExtAxisSyncMoveL},
     {"ExtAxisSyncMoveC",&robot_command_thread::ExtAxisSyncMoveC},
     {"WireSearchStart",&robot_command_thread::WireSearchStart},
     {"WireSearchEnd",&robot_command_thread::WireSearchEnd},
@@ -984,13 +1114,6 @@ private:
     {"WeaveEndSim",&robot_command_thread::WeaveEndSim},
     {"WeaveInspectStart",&robot_command_thread::WeaveInspectStart},
     {"WeaveInspectEnd",&robot_command_thread::WeaveInspectEnd},
-    {"SetAirControlExtDoNum",&robot_command_thread::SetAirControlExtDoNum},
-    {"SetArcStartExtDoNum",&robot_command_thread::SetArcStartExtDoNum},
-    {"SetWireReverseFeedExtDoNum",&robot_command_thread::SetWireReverseFeedExtDoNum},
-    {"SetWireForwardFeedExtDoNum",&robot_command_thread::SetWireForwardFeedExtDoNum},
-    {"SetArcDoneExtDiNum",&robot_command_thread::SetArcDoneExtDiNum},
-    {"SetWeldReadyExtDiNum",&robot_command_thread::SetWeldReadyExtDiNum},
-    {"SetExtDIWeldBreakOffRecover",&robot_command_thread::SetExtDIWeldBreakOffRecover},
     {"SetCollisionDetectionMethod",&robot_command_thread::SetCollisionDetectionMethod},
     {"SetStaticCollisionOnOff",&robot_command_thread::SetStaticCollisionOnOff},
     {"SetPowerLimit",&robot_command_thread::SetPowerLimit},
@@ -1008,10 +1131,6 @@ private:
     {"AngularSpeedEnd",&robot_command_thread::AngularSpeedEnd},
     {"SoftwareUpgrade",&robot_command_thread::SoftwareUpgrade},
     {"GetSoftwareUpgradeState",&robot_command_thread::GetSoftwareUpgradeState},
-    {"AuxServoSetAcc",&robot_command_thread::AuxServoSetAcc},
-    {"AuxServoSetEmergencyStopAcc",&robot_command_thread::AuxServoSetEmergencyStopAcc},
-    {"AuxServoGetAcc",&robot_command_thread::AuxServoGetAcc},
-    {"AuxServoGetEmergencyStopAcc",&robot_command_thread::AuxServoGetEmergencyStopAcc},
     {"GetAxleCommunicationParam",&robot_command_thread::GetAxleCommunicationParam},
     {"SetAxleCommunicationParam",&robot_command_thread::SetAxleCommunicationParam},
     {"SetAxleFileType",&robot_command_thread::SetAxleFileType},
@@ -1023,17 +1142,11 @@ private:
     {"GetAxleLuaEnableDevice",&robot_command_thread::GetAxleLuaEnableDevice},
     {"SetAxleLuaGripperFunc",&robot_command_thread::SetAxleLuaGripperFunc},
     {"GetAxleLuaGripperFunc",&robot_command_thread::GetAxleLuaGripperFunc},
-    {"SetCtrlOpenLUAName",&robot_command_thread::SetCtrlOpenLUAName},
-    {"GetCtrlOpenLUAName",&robot_command_thread::GetCtrlOpenLUAName},
-    {"LoadCtrlOpenLUA",&robot_command_thread::LoadCtrlOpenLUA},
-    {"UnloadCtrlOpenLUA",&robot_command_thread::UnloadCtrlOpenLUA},
     {"SetCtrlOpenLuaErrCode",&robot_command_thread::SetCtrlOpenLuaErrCode},
     {"SlaveFileWrite",&robot_command_thread::SlaveFileWrite},
     {"AxleLuaUpload",&robot_command_thread::AxleLuaUpload},
     {"SetSysServoBootMode",&robot_command_thread::SetSysServoBootMode},
-    {"SetWireSearchExtDIONum",&robot_command_thread::SetWireSearchExtDIONum},
     {"SetWeldMachineCtrlModeExtDoNum",&robot_command_thread::SetWeldMachineCtrlModeExtDoNum},
-    {"SetWeldMachineCtrlMode",&robot_command_thread::SetWeldMachineCtrlMode},
     {"SingularAvoidStart",&robot_command_thread::SingularAvoidStart},
     {"SingularAvoidEnd",&robot_command_thread::SingularAvoidEnd},
     {"PtpFIRPlanningStart",&robot_command_thread::PtpFIRPlanningStart},
@@ -1078,10 +1191,6 @@ private:
     {"ShutDownRobotOS",&robot_command_thread::ShutDownRobotOS},
     {"ConveyorComDetect",&robot_command_thread::ConveyorComDetect},
     {"ConveyorComDetectTrigger",&robot_command_thread::ConveyorComDetectTrigger},
-    {"ArcWeldTraceAIChannelCurrent",&robot_command_thread::ArcWeldTraceAIChannelCurrent},
-    {"ArcWeldTraceAIChannelVoltage",&robot_command_thread::ArcWeldTraceAIChannelVoltage},
-    {"ArcWeldTraceCurrentPara",&robot_command_thread::ArcWeldTraceCurrentPara},
-    {"ArcWeldTraceVoltagePara",&robot_command_thread::ArcWeldTraceVoltagePara},
     {"WeldingSetVoltageGradualChangeStart",&robot_command_thread::WeldingSetVoltageGradualChangeStart},
     {"WeldingSetVoltageGradualChangeEnd",&robot_command_thread::WeldingSetVoltageGradualChangeEnd},
     {"WeldingSetCurrentGradualChangeStart",&robot_command_thread::WeldingSetCurrentGradualChangeStart},
@@ -1113,7 +1222,6 @@ private:
     {"SetSuckerCtrl",&robot_command_thread::SetSuckerCtrl},
     {"GetSuckerState",&robot_command_thread::GetSuckerState},
     {"WaitSuckerState",&robot_command_thread::WaitSuckerState},
-    {"OpenLuaUpload",&robot_command_thread::OpenLuaUpload},
     {"ImpedanceControlStartStop",&robot_command_thread::ImpedanceControlStartStop},
     {"SetTorqueDetectionSwitch",&robot_command_thread::SetTorqueDetectionSwitch},
     {"GetToolCoordWithID",&robot_command_thread::GetToolCoordWithID},
@@ -1144,47 +1252,68 @@ private:
     {"JointHysteresisError",&robot_command_thread::JointHysteresisError},
     {"JointRepeatability",&robot_command_thread::JointRepeatability},
     {"SetAdmittanceParams",&robot_command_thread::SetAdmittanceParams},
-    {"SerCoderCompenParams",&robot_command_thread::SerCoderCompenParams},
+    {"SetCoderCompenParams",&robot_command_thread::SetCoderCompenParams},
     {"TCPComputeRPY",&robot_command_thread::TCPComputeRPY},
     {"TCPComputeXYZ",&robot_command_thread::TCPComputeXYZ},
     {"TCPRecordFlangePosStart",&robot_command_thread::TCPRecordFlangePosStart},
     {"TCPRecordFlangePosEnd",&robot_command_thread::TCPRecordFlangePosEnd},
     {"TCPGetRecordFlangePos",&robot_command_thread::TCPGetRecordFlangePos},
-    {"PhotoelectricSensorTCPCalibration",&robot_command_thread::PhotoelectricSensorTCPCalibration},
     {"MoveStationary",&robot_command_thread::MoveStationary},
+    {"WaitStationaryMotionDone",&robot_command_thread::WaitStationaryMotionDone},
     {"GetProgramRunErrCode",&robot_command_thread::GetProgramRunErrCode},
     {"SetAxleGenComEnable",&robot_command_thread::SetAxleGenComEnable},
     {"GetAxleGenComCycleData",&robot_command_thread::GetAxleGenComCycleData},
     {"SndRcvAxleGenComCmdData",&robot_command_thread::SndRcvAxleGenComCmdData},
     {"SetRobotStopOnComDisc",&robot_command_thread::SetRobotStopOnComDisc},
     {"GetRobotStopOnComDisc",&robot_command_thread::GetRobotStopOnComDisc},
-    {"SetDIConfig",&robot_command_thread::SetDIConfig},
-    {"GetDIConfig",&robot_command_thread::GetDIConfig},
-    {"SetDOConfig",&robot_command_thread::SetDOConfig},
-    {"GetDOConfig",&robot_command_thread::GetDOConfig},
-    {"SetToolDIConfig",&robot_command_thread::SetToolDIConfig},
-    {"GetToolDIConfig",&robot_command_thread::GetToolDIConfig},
-    {"SetDIConfigLevel",&robot_command_thread::SetDIConfigLevel},
-    {"GetDIConfigLevel",&robot_command_thread::GetDIConfigLevel},
-    {"SetDOConfigLevel",&robot_command_thread::SetDOConfigLevel},
-    {"GetDOConfigLevel",&robot_command_thread::GetDOConfigLevel},
-    {"SetToolDIConfigLevel",&robot_command_thread::SetToolDIConfigLevel},
-    {"GetToolDIConfigLevel",&robot_command_thread::GetToolDIConfigLevel},
-    {"SetStandardDILevel",&robot_command_thread::SetStandardDILevel},
-    {"GetStandardDILevel",&robot_command_thread::GetStandardDILevel},
-    {"SetStandardDOLevel",&robot_command_thread::SetStandardDOLevel},
-    {"GetStandardDOLevel",&robot_command_thread::GetStandardDOLevel},
-    {"SetExAxisCmdDoneTime",&robot_command_thread::SetExAxisCmdDoneTime},
-    {"OpenLuaDownload",&robot_command_thread::OpenLuaDownload},
     {"SendUDPFrame",&robot_command_thread::SendUDPFrame},
     {"SetVelReducePara",&robot_command_thread::SetVelReducePara},
     {"OriginPointWeaveStart",&robot_command_thread::OriginPointWeaveStart},
     {"OriginPointWeaveEnd",&robot_command_thread::OriginPointWeaveEnd},
-    {"OpenLuaDelete",&robot_command_thread::OpenLuaDelete},
-    {"AllOpenLuaDelete",&robot_command_thread::AllOpenLuaDelete},
     {"SetUserLEDColor",&robot_command_thread::SetUserLEDColor},
-    {"MoveToTPDStart",&robot_command_thread::MoveToTPDStart}
+    {"MoveToTPDStart",&robot_command_thread::MoveToTPDStart},
+    {"SetRobotRealtimeStatePeriod",&robot_command_thread::SetRobotRealtimeStatePeriod},
+    {"ServoJV",&robot_command_thread::ServoJV},
+    {"ServoMITStart",&robot_command_thread::ServoMITStart},
+    {"ServoMITEnd",&robot_command_thread::ServoMITEnd},
+    {"ServoMIT",&robot_command_thread::ServoMIT},
+    {"SetLaserWeldingParam",&robot_command_thread::SetLaserWeldingParam},
+    {"SetLaserWeldingStartEnd",&robot_command_thread::SetLaserWeldingStartEnd},
+    {"SetLaserWeldingEnable",&robot_command_thread::SetLaserWeldingEnable},
+    {"ResetLaserWeldingErr",&robot_command_thread::ResetLaserWeldingErr},
+    {"GetLaserWeldingRunningState",&robot_command_thread::GetLaserWeldingRunningState},
+    {"GetLaserWeldingErrState",&robot_command_thread::GetLaserWeldingErrState},
+    {"GetLaserWeldingParamTarget",&robot_command_thread::GetLaserWeldingParamTarget},
+    {"GetLaserWeldingParamActual",&robot_command_thread::GetLaserWeldingParamActual},
+    {"SetLaserWeldingEnableExtDoNum",&robot_command_thread::SetLaserWeldingEnableExtDoNum},
+    {"SetLaserWeldingStartExtDoNum",&robot_command_thread::SetLaserWeldingStartExtDoNum},
+    {"SetLaserWeldingErrResetExtDoNum",&robot_command_thread::SetLaserWeldingErrResetExtDoNum},
+    {"SetLaserWeldingRunningStateExtDiNum",&robot_command_thread::SetLaserWeldingRunningStateExtDiNum},
+    {"SetLaserWeldingErrStateExtDiNum",&robot_command_thread::SetLaserWeldingErrStateExtDiNum},
+    {"ExtAxisGetParamConfig",&robot_command_thread::ExtAxisGetParamConfig},
+    {"CloseRPC",&robot_command_thread::CloseRPC},
+    {"GetSoftwareVersion",&robot_command_thread::GetSoftwareVersion},
+    {"SetRobotRealtimeStateConfig",&robot_command_thread::SetRobotRealtimeStateConfig},
+    {"GetRobotRealtimeStateConfig",&robot_command_thread::GetRobotRealtimeStateConfig},
+    {"GetRobotRealTimeState",&robot_command_thread::GetRobotRealTimeState},
+    {"AddRobotRealtimeState",&robot_command_thread::AddRobotRealtimeState},
+    {"DeleteRobotRealtimeState",&robot_command_thread::DeleteRobotRealtimeState},
+    {"ForceAndJointImpedanceStartStop",&robot_command_thread::ForceAndJointImpedanceStartStop},
+    {"AxleSensorRegWrite",&robot_command_thread::AxleSensorRegWrite},
+    {"SetDexterousHandsMove",&robot_command_thread::SetDexterousHandsMove},
+    {"SetDexterousHandsAct",&robot_command_thread::SetDexterousHandsAct},
+    {"ClearDexterousHandsError",&robot_command_thread::ClearDexterousHandsError},
+    {"SetDexterousHandsFunc",&robot_command_thread::SetDexterousHandsFunc},
+    {"GetDexterousHandsFunc",&robot_command_thread::GetDexterousHandsFunc},
+    {"SetSpeedInstant",&robot_command_thread::SetSpeedInstant},
+    {"GetWeaveBackCenterConfig",&robot_command_thread::GetWeaveBackCenterConfig},
+    {"SetWeaveBackCenterConfig",&robot_command_thread::SetWeaveBackCenterConfig},
+    {"SetWeaveOffsetRT",&robot_command_thread::SetWeaveOffsetRT},
+    {"WorkPieceTrsfStart",&robot_command_thread::WorkPieceTrsfStart},
+    {"WorkPieceTrsfEnd",&robot_command_thread::WorkPieceTrsfEnd}
     };
 };
+
+
 
 #endif

@@ -19,6 +19,7 @@
 
 class FRTcpClient;
 class FRUdpClient;
+class FRCNDEClient;
 
 class FR_LIB_EXPORT FRRobot
 {
@@ -852,11 +853,18 @@ public:
 	errno_t GetStandardDOLevel(int config[8]);
 
 	/**
-	 * @brief  设置全局速度
-	 * @param  [in]  vel  速度百分比，范围[0~100]
-	 * @return  错误码
+	 * @brief 设置全局速度
+	 * @param [in] vel 速度百分比，范围[0~100]
+	 * @return 错误码
 	 */
 	errno_t SetSpeed(int vel);
+
+	/**
+	 * @brief 即时设置全局速度
+	 * @param [in] vel 速度百分比，范围[0~100]
+	 * @return 错误码
+	 */
+	errno_t SetSpeedInstant(int vel);
 
 	/**
 	 * @brief  设置系统变量值
@@ -933,18 +941,18 @@ public:
 
 	/**
 	 * @brief  设置外部工具坐标系
-	 * @param  [in] id 坐标系编号，范围[0~14]
-	 * @param  [in] etcp  工具中心点相对末端法兰中心位姿
-	 * @param  [in] etool  待定
+	 * @param  [in] id 坐标系编号，20-39对应外部工具坐标系0-19
+	 * @param  [in] etcp 基座到外部固定工具TCP位姿
+	 * @param  [in] etool 安装在机器人末端的工件坐标系位姿
 	 * @return  错误码
 	 */
 	errno_t SetExToolCoord(int id, DescPose *etcp, DescPose *etool);
 
 	/**
 	 * @brief  设置外部工具坐标系列表
-	 * @param  [in] id 坐标系编号，范围[0~14]
-	 * @param  [in] etcp  工具中心点相对末端法兰中心位姿
-	 * @param  [in] etool  待定
+	 * @param  [in] id 坐标系编号，20-39对应外部工具坐标系0-19
+	 * @param  [in] etcp 基座到外部固定工具TCP位姿
+	 * @param  [in] etool 安装在机器人末端的工件坐标系位姿
 	 * @return  错误码
 	 */
 	errno_t SetExToolList(int id, DescPose *etcp, DescPose *etool);
@@ -1455,11 +1463,12 @@ public:
 	errno_t GetTrajectoryPointNum(int *pnum);
 
 	/**
-	 * @brief  设置轨迹运行中的速度
-	 * @param  [in] ovl 速度百分比
-	 * @return  错误码
+	 * @brief 设置轨迹运行中的速度
+	 * @param [in] ovl 速度百分比[0-100.0]
+	 * @param [in] mode 模式；0-降速模式；1-直接切换
+	 * @return 错误码
 	 */
-	errno_t SetTrajectoryJSpeed(float ovl);
+	errno_t SetTrajectoryJSpeed(float ovl, int mode = 0);
 
 	/**
 	 * @brief  设置轨迹运行中的力和扭矩
@@ -1513,21 +1522,21 @@ public:
 	/**
 	 * @brief  设置开机自动加载默认的作业程序
 	 * @param  [in] flag  0-开机不自动加载默认程序，1-开机自动加载默认程序
-	 * @param  [in] program_name 作业程序名及路径，如"/fruser/movej.lua"，其中"/fruser/"为固定路径
+	 * @param  [in] program_name 作业程序名，如"movej.lua"
 	 * @return  错误码
 	 */
 	errno_t LoadDefaultProgConfig(uint8_t flag, char program_name[64]);
 
 	/**
 	 * @brief  加载指定的作业程序
-	 * @param  [in] program_name 作业程序名及路径，如"/fruser/movej.lua"，其中"/fruser/"为固定路径
+	 * @param  [in] program_name 作业程序名，如"movej.lua"
 	 * @return  错误码
 	 */
 	errno_t ProgramLoad(char program_name[64]);
 
 	/**
 	 * @brief  获取已加载的作业程序名
-	 * @param  [out] program_name 作业程序名及路径，如"/fruser/movej.lua"，其中"/fruser/"为固定路径
+	 * @param  [out] program_name 作业程序名，如"movej.lua"
 	 * @return  错误码
 	 */
 	errno_t GetLoadedProgram(char program_name[64]);
@@ -2061,6 +2070,15 @@ public:
 	errno_t ConveyorSetParam(float para[6], int followType = 0, int startDis = 0, int endDis = 100);
 
 	/**
+	* @brief 传送带原地跟踪参数配置
+	* @param [in] trackMode 0-时间；1-距离；2-时间和距离任意满足一个
+	* @param [in] trackTime 跟踪时间，单位s
+	* @param [in] trackDis 跟踪距离，单位mm
+	* @return 错误码
+	*/
+	int SetStationaryTrackPara(int trackMode, double trackTime, int trackDis);
+
+	/**
 	 * @brief 传动带抓取点补偿
 	 * @param [in] cmp 补偿位置 double[3]{x, y, z}
 	 * @return 错误码
@@ -2109,7 +2127,8 @@ public:
 
 	/**
 	 * @brief 获取SDK与机器人的通讯状态
-	 * @param [out]  state 通讯状态，0-通讯正常，1-通讯异常
+	 * @param [out] state 通讯状态，0-通讯正常;1-通讯断开;2-正在重连
+	 * @return 错误码
 	 */
 	errno_t GetSDKComState(int *state);
 
@@ -2281,20 +2300,20 @@ public:
 
 	/**
 	 * @brief 设置摆动参数
-	 * @param [in] weaveNum 摆焊参数配置编号
-	 * @param [in] weaveType 摆动类型 0-三角波摆动(LIN/ARC/Circle)；1-垂直L型三角波摆动(LIN/ARC/Circle)；2-圆形摆动-顺时针(LIN)；3-圆形摆动-逆时针(LIN)；4-正弦波摆动(LIN/ARC/Circle)；5-垂直L型正弦波摆动(LIN/ARC/Circle)；6-立焊三角摆动
-	 * @param [in] weaveFrequency 摆动频率(Hz)
-	 * @param [in] weaveIncStayTime 摆动等待时间 0-周期不包含等待时间；1-周期包含等待时间
-	 * @param [in] weaveRange 摆动幅度(mm)
-	 * @param [in] weaveLeftRange 垂直三角摆动左侧边长度(mm)
-	 * @param [in] weaveRightRange 垂直三角摆动右侧边长度(mm)
-	 * @param [in] additionalStayTime 垂直三角摆动零点停留时间(mm)
-	 * @param [in] weaveLeftStayTime 摆动左停留时间(ms)
-	 * @param [in] weaveRightStayTime 摆动右停留时间(ms)
+	 * @param [in] weaveNum 摆焊参数配置编号[0-7]
+	 * @param [in] weaveType 摆动类型 0-三角波摆动(LIN/ARC/Circle)；1-垂直L型三角波摆动(LIN/ARC/Circle)；2-圆形摆动-顺时针(LIN)；3-圆形摆动-逆时针(LIN)；4-正弦波摆动(LIN/ARC/Circle)；5-垂直L型正弦波摆动(LIN/ARC/Circle)；6-立焊三角摆动[0-9]
+	 * @param [in] weaveFrequency 摆动频率(Hz)[>0]
+	 * @param [in] weaveIncStayTime 摆动等待时间 0-周期不包含等待时间；1-周期包含等待时间[0-1]
+	 * @param [in] weaveRange 摆动幅度(mm)[>0]
+	 * @param [in] weaveLeftRange 垂直三角摆动左侧边长度(mm)[>=0]
+	 * @param [in] weaveRightRange 垂直三角摆动右侧边长度(mm)[>=]
+	 * @param [in] additionalStayTime 垂直三角摆动零点停留时间(mm)[>=0]
+	 * @param [in] weaveLeftStayTime 摆动左停留时间(ms)[>=0]
+	 * @param [in] weaveRightStayTime 摆动右停留时间(ms)[>=0]
 	 * @param [in] weaveCircleRadio 圆形摆动-回调比例(0-100%)
-	 * @param [in] weaveStationary 摆动位置等待，0-等待时间内位置继续移动；1-等待时间内位置静止
-	 * @param [in] weaveYawAngle 摆动方向方位角(绕摆动Z轴旋转)，单位°
-	 * @param [in] weaveRotAngle 摆动方向侧倾角(绕摆动X轴偏转)，单位°
+	 * @param [in] weaveStationary 摆动位置等待，0-等待时间内位置继续移动；1-等待时间内位置静止[0-1]
+	 * @param [in] weaveYawAngle 摆动方向方位角(绕摆动Z轴旋转)，单位°[-180-180]
+	 * @param [in] weaveRotAngle 摆动方向侧倾角(绕摆动X轴偏转)，单位°[-180-180]
 	 * @return 错误码
 	 */
 	errno_t WeaveSetPara(int weaveNum, int weaveType, double weaveFrequency, 
@@ -2330,6 +2349,27 @@ public:
 	 * @return 错误码
 	 */
 	errno_t WeaveEnd(int weaveNum);
+
+	/**
+	 * @brief 设置摆动结束回周期零点
+	 * @param [in] flag 摆动结束是否回周期零点；0-不回周期零点；1-回周期零点
+	 * @return 错误码
+	 */
+	errno_t SetWeaveBackCenterConfig(int flag);
+
+	/**
+	 * @brief 获取摆动结束回周期零点参数
+	 * @param [out] flag 摆动结束是否回周期零点；0-不回周期零点；1-回周期零点
+	 * @return 错误码
+	 */
+	errno_t GetWeaveBackCenterConfig(int& flag);
+
+	/**
+	 * @brief 设置摆动实时偏移
+	 * @param [in] offset 实时偏移量[mm，°]
+	 * @return 错误码
+	 */
+	errno_t SetWeaveOffsetRT(DescPose offset);
 
 	/**
 	 * @brief 正向送丝
@@ -2414,6 +2454,14 @@ public:
 	 * @return 错误码
 	 */
 	errno_t LuaUpload(std::string filePath);
+
+	/**
+	 * @brief 上传Lua文件
+	 * @param [in] filePath 本地lua文件路径名
+	 * @param [in] luaFormatErrStr lua文件校验错误信息
+	 * @return 错误码
+	 */
+	errno_t LuaUpload(std::string filePath, std::string& luaFormatErrStr);
 
 	/**
 	 * @brief 删除Lua文件
@@ -2787,6 +2835,26 @@ public:
 	errno_t ExtAxisParamConfig(int axisID, int axisType, int axisDirection, double axisMax, double axisMin, double axisVel, double axisAcc, double axisLead, int encResolution, double axisOffect, int axisCompany, int axisModel, int axisEncType);
 
 	/**
+	 * @brief UDP扩展轴参数获取
+	 * @param [in] axisID 扩展轴号[1-4]
+	 * @param [out] axisType 扩展轴类型 0-平移；1-旋转
+	 * @param [out] axisDirection 扩展轴方向 0-正向；1-方向
+	 * @param [out] axisMax 扩展轴最大位置 mm
+	 * @param [out] axisMin 扩展轴最小位置 mm
+	 * @param [out] axisVel 速度mm/s
+	 * @param [out] axisAcc 加速度mm/s2
+	 * @param [out] axisLead 导程mm
+	 * @param [out] encResolution 编码器分辨率
+	 * @param [out] axisOffect焊缝起始点扩展轴偏移量
+	 * @param [out] axisCompany 驱动器厂家 1-禾川；2-汇川；3-松下
+	 * @param [out] axisModel 驱动器型号 1-禾川-SV-XD3EA040L-E，2-禾川-SV-X2EA150A-A，1-汇川-SV620PT5R4I，1-松下-MADLN15SG，2-松下-MSDLN25SG，3-松下-MCDLN35SG
+	 * @param [out] axisEncType 编码器类型  0-增量；1-绝对值
+	 * @return 错误码
+	 */
+	errno_t ExtAxisGetParamConfig(int axisID, int& axisType, int& axisDirection, double& axisMax, double& axisMin, double& axisVel, double& axisAcc, double& axisLead, int& encResolution, double& axisOffect, int& axisCompany, int& axisModel, int& axisEncType);
+
+
+	/**
 	 * @brief 获取扩展轴驱动器配置信息  -- 接口失效，暂时注释 2024.06.05
 	 * @param [in] axisId 轴号[1-4]
 	 * @param [out] axisCompany 驱动器厂家 1-禾川；2-汇川；3-松下
@@ -2832,14 +2900,14 @@ public:
 	 */
 	 errno_t ExtAxisComputeECoordSys(DescPose& coord);
 
-	/**
-	 * @brief 应用扩展轴坐标系
-	 * @param [in]  axisCoordNum 坐标系编号
-	 * @param [in]  toolNum 工具号
-	 * @param [in]  coord 坐标系值
-	 * @param [in]  calibFlag 标定标志 0-否，1-是
-	 * @return 错误码
-	 */
+	 /**
+	  * @brief 应用扩展轴坐标系
+	  * @param [in]  axisCoordNum 扩展轴号；bit0-bit3对应扩展轴1-扩展轴4；如应用扩展轴[1，2]，axisCoordNum值为3
+	  * @param [in]  toolNum 扩展轴坐标系编号
+	  * @param [in]  coord 坐标系值
+	  * @param [in]  calibFlag 标定标志 0-否，1-是
+	  * @return 错误码
+	  */
 	 errno_t ExtAxisActiveECoordSys(int axisCoordNum, int toolNum, DescPose coord, int calibFlag);
 
 	 /**
@@ -3036,25 +3104,25 @@ public:
 	
 	 /**
 	  * @brief  电弧跟踪控制
-	  * @param  [in] flag 开关，0-关；1-开
-	  * @param  [in] dalayTime 滞后时间，单位ms
-	  * @param  [in] isLeftRight 左右偏差补偿
+	  * @param  [in] flag 开关，0-关；1-开[0-1]
+	  * @param  [in] dalayTime 滞后时间，单位ms[>=0]
+	  * @param  [in] isLeftRight 左右偏差补偿[0-1]
 	  * @param  [in] klr 左右调节系数(灵敏度);
-	  * @param  [in] tStartLr 左右开始补偿时间cyc
-	  * @param  [in] stepMaxLr 左右每次最大补偿量 mm
-	  * @param  [in] sumMaxLr 左右总计最大补偿量 mm
-	  * @param  [in] isUpLow 上下偏差补偿
+	  * @param  [in] tStartLr 左右开始补偿时间cyc[>=3]
+	  * @param  [in] stepMaxLr 左右每次最大补偿量 mm[>0]
+	  * @param  [in] sumMaxLr 左右总计最大补偿量 mm[>0]
+	  * @param  [in] isUpLow 上下偏差补偿[0-1]
 	  * @param  [in] kud 上下调节系数(灵敏度);
-	  * @param  [in] tStartUd 上下开始补偿时间cyc
-	  * @param  [in] stepMaxUd 上下每次最大补偿量 mm
-	  * @param  [in] sumMaxUd 上下总计最大补偿量
-	  * @param  [in] axisSelect 上下坐标系选择，0-摆动；1-工具；2-基座
-	  * @param  [in] referenceType 上下基准电流设定方式，0-反馈；1-常数
-	  * @param  [in] referSampleStartUd 上下基准电流采样开始计数(反馈);，cyc
-	  * @param  [in] referSampleCountUd 上下基准电流采样循环计数(反馈);，cyc
-	  * @param  [in] referenceCurrent 上下基准电流mA
-	  * @param  [in] offsetType 偏置跟踪类型，0-不偏置；1-采样；2-百分比
-	  * @param  [in] offsetParameter 偏置参数；采样(偏置采样开始时间，默认采一周期)；百分比(偏置百分比(-100 ~ 100))
+	  * @param  [in] tStartUd 上下开始补偿时间cyc[>=3]
+	  * @param  [in] stepMaxUd 上下每次最大补偿量 mm[>=(referSampleStartUd + referSampleCountUd)]
+	  * @param  [in] sumMaxUd 上下总计最大补偿量 [>0]
+	  * @param  [in] axisSelect 上下坐标系选择，0-摆动；1-工具；2-基座[0-2]
+	  * @param  [in] referenceType 上下基准电流设定方式，0-反馈；1-常数[0-1]
+	  * @param  [in] referSampleStartUd 上下基准电流采样开始计数(反馈);[>=3]
+	  * @param  [in] referSampleCountUd 上下基准电流采样循环计数(反馈);[>0]
+	  * @param  [in] referenceCurrent 上下基准电流mA[>0]
+	  * @param  [in] offsetType 偏置跟踪类型，0-不偏置；1-采样；2-百分比[0-2]
+	  * @param  [in] offsetParameter 偏置参数；采样(偏置采样开始时间，默认采一周期)[>=3]；百分比(偏置百分比[-100 ~ 100])
 	  * @return  错误码
 	  */
 	 errno_t ArcWeldTraceControl(int flag, double delaytime, int isLeftRight, double klr, double tStartLr, double stepMaxLr, double sumMaxLr, int isUpLow, double kud, double tStartUd, double stepMaxUd, double sumMaxUd, int axisSelect, int referenceType, double referSampleStartUd, double referSampleCountUd, double referenceCurrent, int offsetType = 0, int offsetParameter = 0);
@@ -3376,21 +3444,21 @@ public:
 	  * @param  [in] DONum  正向送丝信号扩展DO编号
 	  * @return  错误码
 	  */
-		errno_t SetWireForwardFeedExtDoNum(int DONum);
+	errno_t SetWireForwardFeedExtDoNum(int DONum);
 
 	 /**
 	  * @brief 扩展IO-配置焊机起弧成功信号
 	  * @param  [in] DINum  起弧成功信号扩展DI编号
 	  * @return  错误码
 	  */
-		errno_t SetArcDoneExtDiNum(int DINum);
+	errno_t SetArcDoneExtDiNum(int DINum);
 
 	 /**
 	  * @brief 扩展IO-配置焊机准备信号
 	  * @param  [in] DINum  焊机准备信号扩展DI编号
 	  * @return  错误码
 	  */
-		errno_t SetWeldReadyExtDiNum(int DINum);
+	errno_t SetWeldReadyExtDiNum(int DINum);
 
 	 /**
 	  * @brief 扩展IO-配置焊接中断恢复信号
@@ -3398,7 +3466,37 @@ public:
 	  * @param  [in] abortWeldDINum  焊接中断后退出焊接信号扩展DI编号
 	  * @return  错误码
 	  */
-	    errno_t SetExtDIWeldBreakOffRecover(int reWeldDINum, int abortWeldDINum);
+	 errno_t SetExtDIWeldBreakOffRecover(int reWeldDINum, int abortWeldDINum);
+
+	 /**
+	  * @brief 获取扩展DI功能配置
+	  * @param [out] DIConfig 扩展DI输入配置；DIConfig[0]-焊机准备扩展DI端口；
+											 DIConfig[1]-起弧成功扩展DI端口；
+											 DIConfig[2]-焊接中断恢复扩展DI端口；
+											 DIConfig[3]-焊接中断退出扩展DI端口；
+											 DIConfig[4]-焊丝寻位成功扩展DI端口；
+											 DIConfig[5]-激光焊机运行状态扩展DI端口；
+											 DIConfig[6]-激光焊机故障状态扩展DI端口；
+											 DIConfig[7-15]-预留
+	  * @return  错误码
+	  */
+	 errno_t GetExtDIConfig(int DIConfig[16]);
+
+	 /**
+	  * @brief 获取扩展DO功能配置
+	  * @param [out] DOConfig 扩展DO输入配置；DOConfig[0]-焊机起弧扩展DO端口；
+											 DOConfig[1]-气体检测扩展DO端口；
+											 DOConfig[2]-正向送丝扩展DO端口；
+											 DOConfig[3]-反向送丝扩展DO端口；
+											 DOConfig[4]-焊丝寻位扩展DO端口；
+											 DOConfig[5]-焊机控制模式扩展DO端口；
+											 DOConfig[6]-激光焊机使能扩展DO端口；
+											 DOConfig[7]-激光焊机启动(出光)扩展DO端口；
+											 DOConfig[8]-激光焊机复位扩展DO端口；
+											 DOConfig[9-15]-预留
+	  * @return  错误码
+	  */
+	 errno_t GetExtDOConfig(int DOConfig[16]);
 
 	 /**
 	  * @brief 设置机器人碰撞检测方法
@@ -3608,43 +3706,54 @@ public:
 	 * @param forceSensorEnable 力传感器启用状态，0-不启用；1-启用
 	 * @param gripperEnable 夹爪启用状态，0-不启用；1-启用
 	 * @param IOEnable IO设备启用状态，0-不启用；1-启用
+	 * @param dexhandEnable 灵巧手启用状态，0-不启用；1-启用
 	 * @return  错误码
 	 */
-	errno_t SetAxleLuaEnableDeviceType(int forceSensorEnable, int gripperEnable, int IOEnable);
+	errno_t SetAxleLuaEnableDeviceType(int forceSensorEnable, int gripperEnable, int IOEnable, int dexhandEnable);
 
 	/**
 	 * @brief 获取末端LUA末端设备启用类型
 	 * @param enable enable[0]:forceSensorEnable 力传感器启用状态，0-不启用；1-启用
 	 * @param enable enable[1]:gripperEnable 夹爪启用状态，0-不启用；1-启用
 	 * @param enable enable[2]:IOEnable IO设备启用状态，0-不启用；1-启用
+	 * @param dexhandEnable 灵巧手启用状态，0-不启用；1-启用
 	 * @return  错误码
 	 */
-	errno_t GetAxleLuaEnableDeviceType(int* forceSensorEnable, int* gripperEnable, int* IOEnable);
+	errno_t GetAxleLuaEnableDeviceType(int* forceSensorEnable, int* gripperEnable, int* IOEnable, int* dexhandEnable);
 
 	/**
 	 * @brief 获取当前配置的末端设备
-	 * @param forceSensorEnable 力传感器启用设备编号 0-未启用；1-启用
-	 * @param gripperEnable 夹爪启用设备编号，0-不启用；1-启用
-	 * @param IODeviceEnable IO设备启用设备编号，0-不启用；1-启用
+	 * @param [out] forceSensorEnable 力传感器启用设备编号 0-未启用；1-启用
+	 * @param [out] gripperEnable 夹爪启用设备编号，0-不启用；1-启用
+	 * @param [out] IODeviceEnable IO设备启用设备编号，0-不启用；1-启用
+	 * @param [out] decHandEnable 灵巧手启用设备编号，0-不启用；1-启用
 	 * @return  错误码
 	 */
-	errno_t GetAxleLuaEnableDevice(int forceSensorEnable[], int gripperEnable[], int IODeviceEnable[]);
+	errno_t GetAxleLuaEnableDevice(int forceSensorEnable[], int gripperEnable[], int IODeviceEnable[], int decHandEnable[]);
 
 	/**
 	 * @brief 设置启用夹爪动作控制功能
 	 * @param id 夹爪设备编号
-	 * @param func func[0]-夹爪使能；func[1]-夹爪初始化；2-位置设置；3-速度设置；4-力矩设置；6-读夹爪状态；7-读初始化状态；8-读故障码；9-读位置；10-读速度；11-读力矩
+	 * @param func func[0]-夹爪使能；func[1]-夹爪初始化；func[2]-位置设置；func[3]-速度设置；func[4]-力矩设置；func[6]-读夹爪状态；
+         func[7]-读初始化状态；func[8]-读故障码；func[9]-读位置；func[10]-读速度；func[11]-读力矩; func[12]-旋转夹爪旋转圈数设置； 
+         func[13]-旋转夹爪旋转速度设置； func[14]-旋转夹爪旋转力矩设置； func[15]-读旋转夹爪状态；func[16]-读旋转夹爪初始化状态；
+         func[17]-读旋转夹爪圈数；func[18]-读旋转夹爪速度；func[19]-读旋转夹爪力矩；func[20]-多轴同步运动设置；func[21]-故障清除指令；
+         func[22]-单轴运行状态；func[23]-所有轴运行状态；
 	 * @return  错误码
 	 */
-	errno_t SetAxleLuaGripperFunc(int id, int func[]);
+	errno_t SetAxleLuaGripperFunc(int id, int func[32]);
 
 	/**
 	 * @brief 获取启用夹爪动作控制功能
 	 * @param id 夹爪设备编号
-	 * @param func func[0]-夹爪使能；func[1]-夹爪初始化；2-位置设置；3-速度设置；4-力矩设置；6-读夹爪状态；7-读初始化状态；8-读故障码；9-读位置；10-读速度；11-读力矩
+	 * @param func func[0]-夹爪使能；func[1]-夹爪初始化；func[2]-位置设置；func[3]-速度设置；func[4]-力矩设置；func[6]-读夹爪状态；
+         func[7]-读初始化状态；func[8]-读故障码；func[9]-读位置；func[10]-读速度；func[11]-读力矩; func[12]-旋转夹爪旋转圈数设置； 
+         func[13]-旋转夹爪旋转速度设置； func[14]-旋转夹爪旋转力矩设置； func[15]-读旋转夹爪状态；func[16]-读旋转夹爪初始化状态；
+         func[17]-读旋转夹爪圈数；func[18]-读旋转夹爪速度；func[19]-读旋转夹爪力矩；func[20]-多轴同步运动设置；func[21]-故障清除指令；
+         func[22]-单轴运行状态；func[23]-所有轴运行状态；
 	 * @return  错误码
 	 */
-	errno_t GetAxleLuaGripperFunc(int id, int func[]);
+	errno_t GetAxleLuaGripperFunc(int id, int func[32]);
 
 	/**
 	 * @brief 设置控制器外设协议LUA文件名
@@ -3762,6 +3871,13 @@ public:
 	* @return 错误码
 	*/
 	errno_t SetWeldMachineCtrlMode(int mode, int ioType = 1);
+
+	/**
+	* @brief 获取焊机控制模式
+	* @param [out] mode 焊机控制模式;0-直流一元模式；1-脉冲一元模式；2-JOB模式；3-近控模式；4-分别模式；5-CC/CV模式；6-TIG；7-CMT
+	* @return 错误码
+	*/
+	errno_t GetWeldMachineCtrlMode(int& mode);
 
 	/**
 	* @brief 开始奇异位姿保护
@@ -4419,7 +4535,7 @@ public:
 	 * @param  [in] status[8] 写入的数值，最多写8个
 	 * @return  错误码
 	 */
-	errno_t FieldBusSlaveWriteAO(uint8_t AOIndex, uint8_t wirteNum, int status[8]);
+	errno_t FieldBusSlaveWriteAO(uint8_t AOIndex, uint8_t wirteNum, double status[8]);
 
 	/**
 	 * @brief  读取从站DI
@@ -4437,7 +4553,7 @@ public:
 	 * @param  [out] status[8] 读取到的数值，最多读8个
 	 * @return  错误码
 	 */
-	errno_t FieldBusSlaveReadAI(uint8_t AIIndex, uint8_t readNum, int status[8]);
+	errno_t FieldBusSlaveReadAI(uint8_t AIIndex, uint8_t readNum, double status[8]);
 
 	/**
 	 * @brief 等待扩展DI输入
@@ -4541,33 +4657,41 @@ public:
 	* @brief 根据编号获取工具坐标系
 	* @param [in] id 工具坐标系编号
 	* @param [out] coord 坐标系数值
-	 * @return 错误码
-	 */
-	errno_t GetToolCoordWithID(int id, DescPose& coord);
+	* @param [out] type 工具类型 0-工具；1-传感器
+	* @param [out] install 安装位置 0-机器人末端；1-机器人外部
+	* @param [out] toolID 工具ID 
+	* @param [out] loadNo 负载编号
+	* @return 错误码
+	*/
+	errno_t GetToolCoordWithID(int id, DescPose& coord, int& type, int& install, int& toolID, int& loadNo);
 
 	/**
 	* @brief 根据编号获取工件坐标系
 	* @param [in] id 工件坐标系编号
 	* @param [out] coord 坐标系数值
+	* @param [out] refFrame 参考坐标系
 	* @return 错误码
 	*/
-	errno_t GetWObjCoordWithID(int id, DescPose& coord);
+	errno_t GetWObjCoordWithID(int id, DescPose& coord, int& refFrame);
 
 	/**
 	* @brief 根据编号获取外部工具坐标系
-	* @param [in] id 外部工具坐标系编号
-	* @param [out] coord 坐标系数值
+	* @param [in] id 外部工具坐标系编号，20-39对应外部工具坐标系0-19
+	* @param [out] coord 机器人外部固定工具TCP位姿
+	* @param [out] tcoord 机器人末端安装工件坐标系位姿
 	* @return 错误码
 	*/
-	errno_t GetExToolCoordWithID(int id, DescPose& coord);
+	errno_t GetExToolCoordWithID(int id, DescPose& coord, DescPose& tcoord);
 
 	/**
 	* @brief 根据编号获取扩展轴坐标系
 	* @param [in] id 外部工具坐标系编号
 	* @param [out] coord 坐标系数值
+	* @param [out] axisCoordNum 扩展轴号；bit0-bit3对应扩展轴1-扩展轴4；如axisCoordNum值为3,对应应用扩展轴[1，2]
+	* @param [out] calibFlag 标定标志；0-未标定；1-已标定
 	* @return 错误码
 	*/
-	errno_t GetExAxisCoordWithID(int id, DescPose& coord);
+	errno_t GetExAxisCoordWithID(int id, DescPose& coord, int& axisCoordNum, int& calibFlag);
 
 	/**
 	* @brief 根据编号获取负载质量及质心
@@ -4819,7 +4943,7 @@ public:
 	 * @param [in] torqueCoeff J1-J6力矩补偿系数[0-1]
 	 * @return 错误码
 	 */
-	errno_t SerCoderCompenParams(int status, double torqueCoeff[6]);
+	errno_t SetCoderCompenParams(int status, double torqueCoeff[6]);
 
 	/**
 	 * @brief 光电传感器TCP标定-计算工具RPY
@@ -4879,6 +5003,12 @@ public:
 	 * @return 错误码
 	 */
 	errno_t MoveStationary();
+
+	/**
+	 * @brief 等待原地空运动完成
+	 * @return 错误码
+	 */
+	errno_t WaitStationaryMotionDone();
 
 	/**
 	 * @brief 获取lua程序错误行号和错误码
@@ -4956,9 +5086,10 @@ public:
 	 * @param [in] enable 0-关；1-手动模式启用；2-所有模式启用
 	 * @param [in] maxTCPVel 限制最大TCP速度;[0-1000]mm/s
 	 * @param [in] strategy 超速后策略；0-停止报警；1-自动限速；2-停止报警并去使能
+	 * @param [in] maxJointVel 6个关节最大速度(°/s) 默认为45°/s
 	 * @return 错误码
 	 */
-	errno_t SetVelReducePara(int enable, double maxTCPVel, int strategy);
+	errno_t SetVelReducePara(int enable, double maxTCPVel, int strategy, std::vector<double> maxJointVel = {45.0, 45.0, 45.0, 45.0, 45.0, 45.0});
 
 	/**
 	 * @brief 定点摆动开始
@@ -4986,12 +5117,269 @@ public:
 	errno_t SetUserLEDColor(bool r, bool g, bool b);
 
 	/**
+	 * @brief 配置机器人CNDE状态反馈
+	 * @param [in] states 可配置状态列表
+	 * @param [in] period 状态反馈周期
+	 * @return 错误码
+	 */
+	errno_t SetRobotRealtimeStateConfig(std::vector<RobotState> states, int period);
+
+	/**
+	 * @brief CNDE状态配置添加一个机器人状态
+	 * @param [in] state 可配置状态
+	 * @return 错误码
+	 */
+	errno_t AddRobotRealtimeState(RobotState state);
+
+	/**
+	 * @brief CNDE状态配置删除一个机器人状态
+	 * @param [in] state 可配置状态
+	 * @return 错误码
+	 */
+	errno_t DeleteRobotRealtimeState(RobotState state);
+
+
+	/**
+	 * @brief 设置CNDE状态反馈周期
+	 * @param [in] period 可配置状态反馈周期 4-1000ms
+	 * @return 错误码
+	 */
+	errno_t SetRobotRealtimeStatePeriod(int period);
+
+
+	/**
+	 * @brief 获取当前CNDE状态反馈所有状态集合和周期
+	 * @param [out] states 可配置状态列表
+	 * @param [out] period 可配置状态反馈周期
+	 * @return 错误码
+	 */
+	errno_t GetRobotRealtimeStateConfig(std::vector<RobotState>& states, int& period);
+
+	/**
+	 * @brief  关节空间速度伺服模式运动
+	 * @param  [in] joint_pos  6个目标关节速度,单位deg/s
+	 * @param  [in] axisPos  4个外部轴速度,单位deg/s
+	 * @param  [in] acc  加速度百分比，范围[0~100],暂不开放，默认为0
+	 * @param  [in] vel  速度百分比，范围[0~100]，暂不开放，默认为0
+	 * @param  [in] cmdT  指令下发周期，单位s，建议范围[0.001~0.0016]
+	 * @param  [in] filterT 滤波时间，单位s，暂不开放，默认为0
+	 * @param  [in] gain  目标位置的比例放大器，暂不开放，默认为0
+	 * @param  [in] id servoJ指令ID,默认为0
+	 * @param[in] comType 指令下发类型；0-xmlrpc；1-UDP(对应机器人20007端口)
+	 * @return  错误码
+	 */
+	errno_t ServoJV(double jointVel[6], double exisVel[4], float acc, float vel, float cmdT, float filterT, float gain, int id = 0, int comType = 0);
+
+	/**
+	 * @brief 关节MIT控制开始
+	 * @param [in]  comType 指令下发类型；0-xmlrpc；1-UDP(对应机器人20007端口)
+	 * @return  错误码
+	 */
+	errno_t ServoMITStart(int comType = 0);
+
+	/**
+	 * @brief 关节MIT控制结束
+	 * @param [in]  comType 指令下发类型；0-xmlrpc；1-UDP(对应机器人20007端口)
+	 * @return  错误码
+	 */
+	errno_t ServoMITEnd(int comType = 0);
+
+	/**
+	* @brief 关节MIT控制
+	* @param [in] posGain j1~j6关节位置增益
+	* @param [in] desPos j1~j6关节期望位置 单位:deg
+	* @param [in] velGain j1~j6关节速度增益
+	* @param [in] desVel j1~j6关节期望速度 单位:deg/s
+	* @param [in] torque_ff j1~j6前馈力矩 单位:Nm
+	* @param [in] interval 指令周期，单位s，范围[0.001~0.008]
+	* @param [in]  comType 指令下发类型；0-xmlrpc；1-UDP(对应机器人20007端口)
+	* @return 错误码
+	*/
+	errno_t ServoMIT(double posGain[6], double desPos[6], double velGain[6], double desVel[6], double torque_ff[6], double interval, int comType = 0);
+
+	/**
+	 * @brief 写入激光焊机10个工艺组中某一个的配置参数并配置给焊机
+	 * @param[in] io_type 通信类型 0-IO 1-UDP
+	 * @param[in] num 需要设置的组号（1~10）
+	 * @param[in] scanSpeed 扫描速度
+	 * @param[in] scanWidth 扫描宽度
+	 * @param[in] peakPower 峰值功率
+	 * @param[in] dutyCycle 占空比
+	 * @param[in] freq 频率
+	 * @return 错误码，0表示成功，非0表示失败
+	 */
+	errno_t SetLaserWeldingParam(int io_type, int num, int scanSpeed, int scanWidth,
+		int peakPower, int dutyCycle, int freq);
+
+	/**
+	 * @brief 设置激光焊接开始停止
+	 * @param[in] io_type 通信类型 0-IO 1-UDP
+	 * @param[in] status 控制字 0-收光 1-出光
+	 * @param[in] max_waittime 最大等待时间，单位毫秒，默认10000
+	 * @return 错误码，0表示成功，非0表示失败
+	 */
+	errno_t SetLaserWeldingStartEnd(int io_type, int status, int max_waittime = 10000);
+
+	/**
+	 * @brief 激光焊机使能去使能
+	 * @param[in] io_type 通信类型 0-IO 1-UDP
+	 * @param[in] status 0-去使能 1-使能
+	 * @return 错误码，0表示成功，非0表示失败
+	 */
+	errno_t SetLaserWeldingEnable(int io_type, int status);
+
+	/**
+	 * @brief 激光焊机故障复位
+	 * @param[in] io_type 通信类型 0-IO 1-UDP
+	 * @param[in] status 控制字 0-无效 1-故障复位
+	 * @return 错误码，0表示成功，非0表示失败
+	 */
+	errno_t ResetLaserWeldingErr(int io_type, int status);
+
+	/**
+	 * @brief 获取激光焊机运行状态
+	 * @param[in] io_type 通信类型 0-IO 1-UDP
+	 * @param[out] status 控制字 0-停机 1-运行
+	 * @return 错误码，0表示成功，非0表示失败
+	 */
+	errno_t GetLaserWeldingRunningState(int io_type, int& status);
+
+	/**
+	 * @brief 获取激光焊机故障状态
+	 * @param[in] io_type 通信类型 0-IO 1-UDP
+	 * @param[out] status 0-无故障 1-存在故障
+	 * @return 错误码，0表示成功，非0表示失败
+	 */
+	errno_t GetLaserWeldingErrState(int io_type, int& status);
+
+	/**
+	 * @brief 获取激光焊机10个工艺组中某一个的配置参数
+	 * @param[in] num 需要设置的组号（1~10）
+	 * @param[out] scanSpeed 扫描速度
+	 * @param[out] scanWidth 扫描宽度
+	 * @param[out] peakPower 峰值功率
+	 * @param[out] dutyCycle 占空比
+	 * @param[out] freq 频率
+	 * @return 错误码，0表示成功，非0表示失败
+	 */
+	errno_t GetLaserWeldingParamTarget(int num, int& scanSpeed, int& scanWidth, int& peakPower, int& dutyCycle, int& freq);
+
+	/**
+	 * @brief 获取当前激光焊机生效的配置参数
+	 * @param[in] io_type 通信类型 0-IO 1-UDP
+	 * @param[out] scanSpeed 扫描速度
+	 * @param[out] scanWidth 扫描宽度
+	 * @param[out] peakPower 峰值功率
+	 * @param[out] dutyCycle 占空比
+	 * @param[out] freq 频率
+	 * @return 错误码，0表示成功，非0表示失败
+	 */
+	errno_t GetLaserWeldingParamActual(int io_type, int& scanSpeed, int& scanWidth, int& peakPower, int& dutyCycle, int& freq);
+
+	/**
+	 * @brief 配置激光焊机扩展IO使能DO端口
+	 * @param[in] ctrlModeDONum 激光焊机使能的扩展DO端口号
+	 * @return 错误码，0表示成功，非0表示失败
+	 */
+	errno_t SetLaserWeldingEnableExtDoNum(int ctrlModeDONum);
+
+	/**
+	 * @brief 配置激光焊机扩展IO启动DO端口
+	 * @param[in] ctrlModeDONum 激光焊机启动（出光收光）的扩展DO端口号
+	 * @return 错误码，0表示成功，非0表示失败
+	 */
+	errno_t SetLaserWeldingStartExtDoNum(int ctrlModeDONum);
+
+	/**
+	 * @brief 配置激光焊机扩展IO故障复位DO端口
+	 * @param[in] ctrlModeDONum 激光焊机故障复位的扩展DO端口号
+	 * @return 错误码，0表示成功，非0表示失败
+	 */
+	errno_t SetLaserWeldingErrResetExtDoNum(int ctrlModeDONum);
+
+	/**
+	 * @brief 配置激光焊机扩展IO运行状态（出光状态）DI端口
+	 * @param[in] diNum 配置激光焊机运行状态（出光状态）扩展DI端口
+	 * @return 错误码，0表示成功，非0表示失败
+	 */
+	errno_t SetLaserWeldingRunningStateExtDiNum(int diNum);
+
+	/**
+	 * @brief 配置激光焊机扩展IO故障状态DI端口
+	 * @param[in] diNum 配置激光焊机故障状态扩展DI端口
+	 * @return 错误码，0表示成功，非0表示失败
+	 */
+	errno_t SetLaserWeldingErrStateExtDiNum(int diNum);
+
+	/**
+	 * @brief  控制灵巧手运动
+	 * @param  [in] idstart  起始从站号
+	 * @param  [in] slaveNum  数量
+	 * @param  [in] pos  位置数组，长度16，范围(-360~360)
+	 * @param  [in] speed  速度百分比数组，长度16，范围[0~100]
+	 * @param  [in] force  力矩百分比数组，长度16，范围[0~100]
+	 * @param  [in] max_time  最大等待时间，范围[0~30000]，单位ms
+	 * @return  错误码，成功返回0
+	 */
+	errno_t SetDexterousHandsMove(int idstart, int slaveNum, double pos[16], int speed[16], int force[16], int max_time);
+
+	/**
+	 * @brief  控制灵巧手复位激活
+	 * @param  [in] id  从站号
+	 * @param  [in] act  0-复位 1-激活
+	 * @return  错误码，成功返回0
+	 */
+	errno_t SetDexterousHandsAct(int id, int act);
+
+	/**
+	 * @brief  清除灵巧手错误
+	 * @return  错误码，成功返回0
+	 */
+	errno_t ClearDexterousHandsError();
+
+	/**
+	 * @brief 设置启用灵巧手动作控制功能
+	 * @param [in] id 灵巧手设备编号
+	 * @param [in] func 0-夹持触发、1-夹爪初始化、2-位置设置、3-速度设置、4-力矩设置、6-读夹爪状态、
+					7-读初始化状态、8-读故障码、9-读位置、10-读速度、11-读力矩、12-旋转圈数设置、13-旋转速度设置、
+					14-旋转力矩设置、15-读旋转夹爪状态、16-读旋转初始化状态、17-读旋转圈数、18-读旋转速度、
+					19-读旋转力矩、20-多轴同步运动设置、21-故障清除指令、22-单轴运行状态、23-所有轴运行状态
+	 * @return  错误码
+	 */
+	errno_t SetDexterousHandsFunc(int id, int func[32]);
+
+	/**
+	 * @brief 获取启用灵巧手动作控制功能
+	 * @param [in] id 灵巧手设备编号
+	 * @param [out] func 0-夹持触发、1-夹爪初始化、2-位置设置、3-速度设置、4-力矩设置、6-读夹爪状态、
+					7-读初始化状态、8-读故障码、9-读位置、10-读速度、11-读力矩、12-旋转圈数设置、13-旋转速度设置、
+					14-旋转力矩设置、15-读旋转夹爪状态、16-读旋转初始化状态、17-读旋转圈数、18-读旋转速度、
+					19-读旋转力矩、20-多轴同步运动设置、21-故障清除指令、22-单轴运行状态、23-所有轴运行状态
+	 * @return  错误码
+	 */
+	errno_t GetDexterousHandsFunc(int id, int func[32]);
+
+	/**
+	 * @brief 工件坐标系点位转换开始
+	 * @param [in] workpieceID 工件号[0-14]
+	 * @return 错误码，成功返回0
+	 */
+	errno_t WorkPieceTrsfStart(int workpieceID);
+
+	/**
+	 * @brief 工件坐标系点位转换结束
+	 * @return 错误码，成功返回0
+	 */
+	errno_t WorkPieceTrsfEnd();
+
+
+
+	/**
 	 *@brief  机器人接口类析构函数
 	 */
 	~FRRobot();
 
 private:
-	void RobotStateRoutineThread();
 	void RobotInstCmdSendRoutineThread();
 	void RobotInstCmdRecvRoutineThread();
 	void RobotTaskRoutineThread();
@@ -5041,7 +5429,6 @@ private:
 	int GetSafetyCode();
 
 private:
-	uint8_t robot_realstate_exit = 0;
 	uint8_t robot_instcmd_send_exit = 0;
 	uint8_t robot_instcmd_recv_exit = 0;
 	uint8_t robot_task_exit = 0;
@@ -5056,10 +5443,9 @@ private:
 
 	char robot_ip[64];
 	std::shared_ptr<ROBOT_STATE_PKG> robot_state_pkg;
-	std::shared_ptr <FRTcpClient> rtClient;
 	std::shared_ptr <FRTcpClient> cmdClient;
 	std::shared_ptr <FRUdpClient> udpCmdClient;
-
+	std::shared_ptr <FRCNDEClient> cndeClient;
 };
 
 #endif
