@@ -139,6 +139,16 @@ hardware_interface::CallbackReturn FairinoHardwareInterface::on_activate(const r
         RCLCPP_INFO(rclcpp::get_logger("FairinoHardwareInterface"),"初始指令位置: %f,%f,%f,%f,%f,%f",_jnt_position_command[0],\
         _jnt_position_command[1],_jnt_position_command[2],_jnt_position_command[3],_jnt_position_command[4],_jnt_position_command[5]);    
         RCLCPP_INFO(rclcpp::get_logger("FairinoHardwareInterface"), "机械臂硬件启动成功!");
+        // Announce the start of the servo stream. ServoJ must be bracketed by
+        // ServoMoveStart()/ServoMoveEnd() (see robot.h: "Start/End servo motion,
+        // used with ServoJ and ServoCart commands"). Without this the controller
+        // treats each ServoJ as a discrete buffered motion, adding ~2.1s of
+        // command->motion latency and causing streamed trajectory execution to
+        // abort on path tolerance. Bracketing cuts the latency to ~0.16-0.28s.
+        {
+            errno_t sms = _ptr_robot->ServoMoveStart();
+            RCLCPP_INFO(rclcpp::get_logger("FairinoHardwareInterface"), "ServoMoveStart returncode:%d", sms);
+        }
         return hardware_interface::CallbackReturn::SUCCESS;
     }else{
         RCLCPP_INFO(rclcpp::get_logger("FairinoHardwareInterface"), "读取初始关节角度错误，硬件无法启动！请检查通讯内容");
@@ -151,6 +161,11 @@ hardware_interface::CallbackReturn FairinoHardwareInterface::on_activate(const r
 hardware_interface::CallbackReturn FairinoHardwareInterface::on_deactivate(const rclcpp_lifecycle::State& previous_state)
 {
     RCLCPP_INFO(rclcpp::get_logger("FairinoHardwareInterface"), "Stopping ...please wait...");
+    // Close the servo stream opened in on_activate() (pairs with ServoMoveStart()).
+    {
+        errno_t sme = _ptr_robot->ServoMoveEnd();
+        RCLCPP_INFO(rclcpp::get_logger("FairinoHardwareInterface"), "ServoMoveEnd returncode:%d", sme);
+    }
     _ptr_robot->StopMotion();//停止机器人
     _ptr_robot->CloseRPC();//销毁实例，连接断开
     _ptr_robot.release();
