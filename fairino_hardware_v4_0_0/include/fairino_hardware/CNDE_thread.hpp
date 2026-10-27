@@ -32,7 +32,7 @@ typedef struct _OutConfig{
     uint8_t type{0x01};
     uint16_t len{0};
     uint16_t cycle_time{0x05};
-    char data[31]{};
+    char data[34]{};
     uint16_t end{0xA5A5};
 }OutConfig;
 #pragma pack()
