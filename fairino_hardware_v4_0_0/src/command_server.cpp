@@ -379,7 +379,7 @@ robot_command_thread::robot_command_thread(const std::string node_name):rclcpp::
     // _locktimer = this->create_wall_timer(100ms,std::bind(&robot_command_thread::_getRobotRTState,this));
     RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),msgout[msg_id(connect_success)]);
     /*********************************************************************************************/
-     _state_publisher = this->create_publisher<robot_feedback_msg>("nonrt_state_data",1);
+    _state_publisher = this->create_publisher<robot_feedback_msg>("nonrt_state_data",1);
     _locktimer1 = this->create_wall_timer(10ms,std::bind(&robot_command_thread::_state_recv_callback,this));//创建一个定时器任务用于获取非实时状态数据,触发间隔为100ms
     _locktimer2 = this->create_wall_timer(100ms,std::bind(&robot_command_thread::_ping_recv_callback, this));
 }

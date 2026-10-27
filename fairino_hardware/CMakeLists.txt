@@ -7,6 +7,7 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(fairino_msgs REQUIRED)
 
 # 生成可执行文件：名字就是 ros2_cmd_server
 add_executable(ros2_cmd_server
@@ -18,6 +19,7 @@ add_executable(ros2_cmd_server
 ament_target_dependencies(ros2_cmd_server
   rclcpp
   ament_index_cpp
+  fairino_msgs
 )
 
 target_include_directories(ros2_cmd_server PUBLIC

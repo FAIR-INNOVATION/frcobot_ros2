@@ -17,7 +17,7 @@ char* msgout[] = {
     "开始创建状态反馈TCP socket",
     "错误: 创建socket失败!",
     "创建状态反馈socket成功,开始连接控制器...",
-    "错误:无法连接控制器反馈数据端口,程序即将退出!",
+    "错误:无法连接控制器反馈数据端口,进入重连循环等待重试",
     "控制器状态端口连接成功",
     "开启tcp心跳检测失败",
     "守护线程:创建套接字失败, 3s后再次尝试",
@@ -38,7 +38,7 @@ char* msgout[] = {
     "Ready to create state feedback client socket",
     "Error:socket create failed",
     "Socket created,ready to connect robot...",
-    "Error:failed to connect robot state feedback port,program about to exit!",
+    "Error:failed to connect robot state feedback port, entering reconnect loop",
     "Connected to robot state feedback port",
     "Failed to set socket keep alive",
     "Keep alive:recreate socket failed, try again after 3sec",
@@ -83,12 +83,21 @@ robot_version_thread::robot_version_thread(const std::string node_name):rclcpp::
     _controller_ip = CONTROLLER_IP;//控制器默认ip地址
     RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),msgout[msg_id(create_state_feedback)]);
 
+    // 重连期间对端会一次性连接服务端并订阅话题，因此先创建占位服务端与发布者，
+    // 保证对端在重连阶段也能连接成功；重连成功拉起版本化节点前会关闭
+    _recv_ros_command_server = this->create_service<fairino_msgs::srv::RemoteCmdInterface>(
+        "fairino_remote_command_service",
+        std::bind(&robot_version_thread::_parseROSCommandData_callback, this,
+            std::placeholders::_1,
+            std::placeholders::_2));
+    _state_publisher = this->create_publisher<fairino_msgs::msg::RobotNonrtState>("nonrt_state_data", 1);
+
     //8080端口获取数据
     _socketfd1 = socket(AF_INET,SOCK_STREAM,0);//状态获取端口只有TCP
 
     if(_socketfd1 == -1){
         RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),msgout[msg_id(socket_create_failed)]);
-        exit(0);//创建套字失败,丢出错误
+        _reconnect_flag.store(true);//创建套接字失败,进入重连循环等待重试
     }else{
         RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),msgout[msg_id(socket_create_success)]);
         struct sockaddr_in tcp_client1;
@@ -101,7 +110,7 @@ robot_version_thread::robot_version_thread(const std::string node_name):rclcpp::
         int res1 = connect(_socketfd1,(struct sockaddr *)&tcp_client1,sizeof(tcp_client1));
         if(0 != res1){
             RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),msgout[msg_id(socket_connect_failed)]);
-            exit(0);//连接失败,丢出错误并返回
+            _reconnect_flag.store(true);//连接失败,进入重连循环等待重试
         }else{
             RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),msgout[msg_id(socket_connect_success)]);
 
@@ -117,13 +126,14 @@ robot_version_thread::robot_version_thread(const std::string node_name):rclcpp::
             }
         }
         
-          // 启动定时器：100ms 查询一次，成功后会 cancel + 退出
-        _locktimer = this->create_wall_timer(
-            std::chrono::milliseconds(100),
-            std::bind(&robot_version_thread::_state_recv_callback, this));
-        //连接成功，创建守护线程,如果该连接端掉，则自动发起重连接;生命周期随该节点
-        _try_to_reconnect();
     }
+
+    // 启动定时器：100ms 查询一次，成功后会 cancel + 退出
+    _locktimer = this->create_wall_timer(
+        std::chrono::milliseconds(100),
+        std::bind(&robot_version_thread::_state_recv_callback, this));
+    // 创建守护线程：无论首次连接成功与否，断线后自动重连;生命周期随该节点
+    _try_to_reconnect();
 }
 
 robot_version_thread::~robot_version_thread(){
@@ -191,9 +201,11 @@ void robot_version_thread::_try_to_reconnect(){
                     {
                         RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),msgout[msg_id(\
                             keep_alive_reconnect_success)]);
-                        // 设置TCP接收超时
-                        int flags2 = fcntl(sock_fd, F_GETFL, 0);
-                        fcntl(sock_fd, F_SETFL, flags2 | SOCK_NONBLOCK);
+                        // 设置超时接收（与首次连接一致）：阻塞等待机器人回包，超时1s
+                        struct timeval tv;
+                        tv.tv_sec  = 1;     // 1 秒
+                        tv.tv_usec = 0;
+                        setsockopt(sock_fd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
                         // 开启并设置keepalive
                         if (0 != setKeepAlive(sock_fd, 5, 3, 3)){
@@ -258,10 +270,24 @@ int robot_version_thread::setKeepAlive(int fd, int idle_time, int interval_time,
 
 
 
+/**
+ * @brief 重连期间占位服务端的回调：未连接机械臂，直接返回失败(-1)
+ */
+void robot_version_thread::_parseROSCommandData_callback(
+        const std::shared_ptr<fairino_msgs::srv::RemoteCmdInterface::Request> req,
+        std::shared_ptr<fairino_msgs::srv::RemoteCmdInterface::Response> res){
+    (void)req;
+    RCLCPP_WARN(rclcpp::get_logger(LOGGER_NAME),"未连接机械臂，拒绝指令并返回 -1");
+    res->cmd_res = "-1";
+}
+
 void robot_version_thread::_state_recv_callback(){
     /* 如果处于重连流程，不需要再读取，直接返回 */
     if(_reconnect_flag){
-        //RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),"重连中，请等待......");
+        // 重连期间发布 reconnect_flag=1，告知对端当前未连接机械臂
+        auto msg = fairino_msgs::msg::RobotNonrtState();
+        msg.reconnect_flag = 1;
+        _state_publisher->publish(msg);
         return;
     }
 
@@ -310,6 +336,11 @@ void robot_version_thread::_state_recv_callback(){
         if (package_exists(pkg)) {
             std::cout << "包存在: " << pkg << "，准备启动节点..." << std::endl;
             RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),msgout[msg_id(connect_package)]);
+
+            // 重连成功并即将拉起版本化节点：关闭本节点的占位服务端与发布者，
+            // 避免与版本化节点中的同名服务端 / 同话题发布者冲突
+            _recv_ros_command_server.reset();
+            _state_publisher.reset();
 
             // 0）先删除掉原来的软连接
             for(int i = 0; i < stringList.size(); i++)

@@ -1,0 +1,9 @@
+<library path="fairino_hardware">
+    <class name="fairino_hardware/FairinoHardwareInterface"
+           type="fairino_hardware::FairinoHardwareInterface"
+           base_class_type="hardware_interface::SystemInterface">
+        <description>
+            Hardware interface for Fairino Robots
+        </description>
+    </class>
+</library>

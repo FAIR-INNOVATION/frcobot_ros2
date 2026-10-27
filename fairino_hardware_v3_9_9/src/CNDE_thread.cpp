@@ -36,10 +36,10 @@ CNDE_recv_thread::CNDE_recv_thread(const std::string node_name):rclcpp::Node(nod
         sendto(_socketfd1,stop_buf,8,0,(struct sockaddr*)udp_client1,sizeof(struct sockaddr));
 
         /*往端口发送设置帧*/
-        std::string output_config = "actual_joint_pos,actual_TCP_pos";
+        std::string output_config = "actual_joint_pos,actual_flange_pos";
         OutConfig o_config;
         o_config.len = output_config.size() + 2;
-        memcpy(o_config.data,output_config.c_str(),31);
+        memcpy(o_config.data,output_config.c_str(),34);
         uint8_t buf[256];
         memcpy(buf,&o_config,sizeof(o_config));
         //std::cout << "o_config尺寸:" << sizeof(o_config) << std::endl;
