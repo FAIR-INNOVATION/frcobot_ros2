@@ -53,15 +53,6 @@ class robot_version_thread:public rclcpp::Node{
         std::string target_lib;
         std::string libdir;
         const std::vector<std::string> stringList = {
-            "fairino_hardware_v3_8_2_11",
-            "fairino_hardware_v3_8_2_12",
-            "fairino_hardware_v3_9_0",
-            "fairino_hardware_v3_9_0_1",
-            "fairino_hardware_v3_9_4",
-            "fairino_hardware_v3_9_5",
-            "fairino_hardware_v3_9_6",
-            "fairino_hardware_v3_9_7",
-            "fairino_hardware_v3_9_8",
             "fairino_hardware_v3_9_9",
             "fairino_hardware_v4_0_0",
             "fairino_hardware_v4_0_1"};//版本的名称
