@@ -43,6 +43,7 @@ class robot_version_thread:public rclcpp::Node{
 
         rclcpp::TimerBase::SharedPtr _locktimer;
         std::atomic_bool _robot_recv_exit{false};
+        std::atomic_bool _blocked_ver_flag{false};   // 版本 4.0.1 被屏蔽标志
 
         // 重连期间对外提供的占位服务端与话题发布者，供对端一次性连接；
         // 重连成功拉起对应版本硬件节点前关闭，避免与版本化节点同名冲突
@@ -53,6 +54,15 @@ class robot_version_thread:public rclcpp::Node{
         std::string target_lib;
         std::string libdir;
         const std::vector<std::string> stringList = {
+            "fairino_hardware_v3_8_2_11",
+            "fairino_hardware_v3_8_2_12",
+            "fairino_hardware_v3_9_0",
+            "fairino_hardware_v3_9_0_1",
+            "fairino_hardware_v3_9_4",
+            "fairino_hardware_v3_9_5",
+            "fairino_hardware_v3_9_6",
+            "fairino_hardware_v3_9_7",
+            "fairino_hardware_v3_9_8",
             "fairino_hardware_v3_9_9",
             "fairino_hardware_v4_0_0",
             "fairino_hardware_v4_0_1"};//版本的名称
