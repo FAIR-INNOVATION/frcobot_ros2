@@ -2455,6 +2455,67 @@ std::string robot_command_thread::GetDHCompensation(std::string para){
 }
 
 /**
+ * @brief 获取机器人DH补偿模型
+ * @param [out] mode 0-DH1.0；1-DH2.0
+ * @return 错误码
+ */
+std::string robot_command_thread::GetDHCompenMode(std::string para){
+    int mode;
+    int res = _ptr_robot->GetDHCompenMode(mode);
+    return std::to_string(res) + "," + \
+            std::to_string(mode);
+}
+
+/**
+ * @brief 获取机器人DH2.0参数
+ * @param [out] d 连杆偏距(mm)
+ * @param [out] a 连杆长度(mm)
+ * @param [out] alpha 连杆扭角(°)
+ * @param [out] beta 连杆偏角(°)
+ * @param [out] theta 关节零位(°)
+ * @return 错误码
+ */
+std::string robot_command_thread::GetDHAllParam(std::string para){
+    double d[6];
+    double a[6];
+    double alpha[6];
+    double beta[6];
+    double theta[6];
+    int res = _ptr_robot->GetDHAllParam(d,a,alpha,beta,theta);
+    return std::to_string(res) + "," + \
+            std::to_string(d[0]) + "," + \
+            std::to_string(d[1]) + "," + \
+            std::to_string(d[2]) + "," + \
+            std::to_string(d[3]) + "," + \
+            std::to_string(d[4]) + "," + \
+            std::to_string(d[5]) + "," + \
+            std::to_string(a[0]) + "," + \
+            std::to_string(a[1]) + "," + \
+            std::to_string(a[2]) + "," + \
+            std::to_string(a[3]) + "," + \
+            std::to_string(a[4]) + "," + \
+            std::to_string(a[5]) + "," + \
+            std::to_string(alpha[0]) + "," + \
+            std::to_string(alpha[1]) + "," + \
+            std::to_string(alpha[2]) + "," + \
+            std::to_string(alpha[3]) + "," + \
+            std::to_string(alpha[4]) + "," + \
+            std::to_string(alpha[5]) + "," + \
+            std::to_string(beta[0]) + "," + \
+            std::to_string(beta[1]) + "," + \
+            std::to_string(beta[2]) + "," + \
+            std::to_string(beta[3]) + "," + \
+            std::to_string(beta[4]) + "," + \
+            std::to_string(beta[5]) + "," + \
+            std::to_string(theta[0]) + "," + \
+            std::to_string(theta[1]) + "," + \
+            std::to_string(theta[2]) + "," + \
+            std::to_string(theta[3]) + "," + \
+            std::to_string(theta[4]) + "," + \
+            std::to_string(theta[5]);
+}
+
+/**
  * @brief 获取焊接中断状态
  * @return 焊接中断状态结构体信息
  * @retval breakOffState,weldArcState

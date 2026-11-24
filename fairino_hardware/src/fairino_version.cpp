@@ -282,7 +282,7 @@ void robot_version_thread::_parseROSCommandData_callback(
 }
 
 void robot_version_thread::_state_recv_callback(){
-    // 版本 4.0.1 被屏蔽：持续发布 reconnect_flag=2，不再读取版本
+    // 版本被屏蔽或找不到匹配功能包：持续发布 reconnect_flag=2，不再读取版本
     if(_blocked_ver_flag){
         auto msg = fairino_msgs::msg::RobotNonrtState();
         msg.reconnect_flag = 2;
@@ -345,14 +345,6 @@ void robot_version_thread::_state_recv_callback(){
             return;
         }
 
-        // 1) 停止定时器
-        if (_locktimer) _locktimer->cancel();
-
-        // 2) 关闭 8080 socket
-        shutdown(_socketfd1, SHUT_RDWR);
-        close(_socketfd1);
-        _socketfd1 = -1;
-
         for (auto &c : ver) if (c == '.') c = '_';    // v3_8_2
         std::string pkg = "fairino_hardware_" + ver;  // fairino_hardware_v3_8_2
 
@@ -374,6 +366,14 @@ void robot_version_thread::_state_recv_callback(){
         }
 
         if (package_exists(pkg)) {
+            // 1) 停止定时器
+            if (_locktimer) _locktimer->cancel();
+
+            // 2) 关闭 8080 socket
+            shutdown(_socketfd1, SHUT_RDWR);
+            close(_socketfd1);
+            _socketfd1 = -1;
+
             std::cout << "包存在: " << pkg << "，准备启动节点..." << std::endl;
             RCLCPP_INFO(rclcpp::get_logger(LOGGER_NAME),msgout[msg_id(connect_package)]);
 
@@ -461,10 +461,17 @@ void robot_version_thread::_state_recv_callback(){
             }).join();  // 等待线程完成
 
         } else {
+            // 未找到与当前版本匹配的 fairino_hardware 功能包：
+            // 关闭 socket，但保留定时器；置位屏蔽标志，回调将持续发布 reconnect_flag=2
+            shutdown(_socketfd1, SHUT_RDWR);
+            close(_socketfd1);
+            _socketfd1 = -1;
+            _blocked_ver_flag.store(true);
+
             // std::cout << "包不存在: " << std::endl;
-            RCLCPP_ERROR(rclcpp::get_logger(LOGGER_NAME), 
-                    "%s %s %s", 
-                    msgout[msg_id(not_package)], 
+            RCLCPP_ERROR(rclcpp::get_logger(LOGGER_NAME),
+                    "%s %s %s",
+                    msgout[msg_id(not_package)],
                     pkg.c_str(),resp.c_str());
             return;
         }

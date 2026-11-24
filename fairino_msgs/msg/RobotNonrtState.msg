@@ -127,3 +127,5 @@ uint8 slave1_reconnect_flag
 uint8 slave2_reconnect_flag
 int32 slave1_exaxistatus_errorcode
 int32 slave2_exaxistatus_errorcode
+int32 errlinnum
+int32 luaerrcode
