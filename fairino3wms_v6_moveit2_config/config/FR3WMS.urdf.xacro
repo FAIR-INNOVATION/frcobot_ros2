@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="FR3WMS">
+    <xacro:arg name="initial_positions_file" default="initial_positions.yaml" />
+
+    <!-- Import FR3WMS urdf file -->
+    <xacro:include filename="$(find fairino_description)/urdf/FR3WMS.urdf" />
+
+    <!-- Import control_xacro -->
+    <xacro:include filename="FR3WMS.ros2_control.xacro" />
+
+
+    <xacro:FR3WMS_ros2_control name="FakeSystem" initial_positions_file="$(arg initial_positions_file)"/>
+
+</robot>

@@ -5461,6 +5461,24 @@ public:
 	errno_t SetRobotTime();
 
 	/**
+	 * @brief 获取机器人DH补偿模型
+	 * @param [out] mode 0-DH1.0；1-DH2.0
+	 * @return 错误码
+	 */
+	errno_t GetDHCompenMode(int& mode);
+
+	/**
+	 * @brief 获取机器人DH2.0参数
+	 * @param [out] d 连杆偏距(mm)
+	 * @param [out] a 连杆长度(mm)
+	 * @param [out] alpha 连杆扭角(°)
+	 * @param [out] beta 连杆偏角(°)
+	 * @param [out] theta 关节零位(°)
+	 * @return 错误码
+	 */
+	errno_t GetDHAllParam(double d[6], double a[6], double alpha[6], double beta[6], double theta[6]);
+
+	/**
 	 *@brief  机器人接口类析构函数
 	 */
 	~FRRobot();

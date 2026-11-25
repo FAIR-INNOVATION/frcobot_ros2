@@ -46,6 +46,8 @@ public:
     std::string GetControllerVersion(std::string para);
     std::string GetTCPOffset(std::string para);
     std::string GetDHCompensation(std::string para);
+    std::string GetDHCompenMode(std::string para);
+    std::string GetDHAllParam(std::string para);
     std::string GetWeldingBreakOffState(std::string para);
     std::string GetErrorCode(std::string para);
     std::string GetInverseKin(std::string para);
@@ -842,6 +844,8 @@ private:
     {"AuxServoSetStatusID", &robot_command_thread::AuxServoSetStatusID},
     {"GetTCPOffset",&robot_command_thread::GetTCPOffset},
     {"GetDHCompensation",&robot_command_thread::GetDHCompensation}, 
+    {"GetDHCompenMode",&robot_command_thread::GetDHCompenMode}, 
+    {"GetDHAllParam",&robot_command_thread::GetDHAllParam}, 
     {"TractorEnable",&robot_command_thread::TractorEnable},
     {"TractorHoming",&robot_command_thread::TractorHoming},
     {"TractorMoveL",&robot_command_thread::TractorMoveL},
