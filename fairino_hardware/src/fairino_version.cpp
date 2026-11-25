@@ -1,12 +1,10 @@
 #include "fairino_version_pkg/fairino_version.hpp"
 #include <sys/types.h>
 #include <sys/socket.h>
-#include "sys/mman.h"
 #include <ament_index_cpp/get_package_share_directory.hpp>  
-#include <regex>                                            
-#include <thread>
 #include <cstdlib>
 #include <ament_index_cpp/get_package_prefix.hpp>
+#include <unistd.h>
 
 
 #define LOGGER_NAME "fairino_ros2_version_thread"
